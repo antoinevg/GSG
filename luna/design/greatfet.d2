@@ -1,0 +1,402 @@
+# - greatfet.git --------------------------------------------------------------
+
+greatfet: greatfet.git
+
+# firmware/common/
+greatfet.common: firmware/common/
+greatfet.common: {
+    greatfet_core: firmware/common/greatfet_core.c
+    greatfet_core.pin_setup: |`c
+        void pin_setup(void) {
+            int i;
+
+            pr_info("Configuring board pins...\n");
+
+            /* Configure all GPIO as Input (safe state) */
+            gpio_init();
+
+            /* GreatFET SPI pins / SSP1 pins. */
+            scu_pinmux(SCU_SSP1_SCK,  SCU_SSP_IO | SCU_SSP1_SCK_FUNC);
+            scu_pinmux(SCU_SSP1_MISO, SCU_SSP_IO | SCU_SSP1_MISO_FUNC);
+            scu_pinmux(SCU_SSP1_MOSI, SCU_SSP_IO | SCU_SSP1_MOSI_FUNC);
+            scu_pinmux(SCU_SSP1_SSEL, SCU_SSP_IO | SCU_SSP1_SSEL_FUNC);
+
+            /* Configure each of the LEDs. */
+            for (i = 0; i < NUM_LEDS; ++i) {
+                scu_pinmux(pinmux_led[i], scu_type_led[i]);
+                gpio_output(&gpio_led[i]);
+                gpio_set(&gpio_led[i]); /* led off */
+            }
+
+            /* enable input on SCL and SDA pins */
+            SCU_SFSI2C0 = SCU_I2C0_NOMINAL;
+
+        #ifdef BOARD_CAPABILITY_USB1_PROVIDE_VBUS
+            /* Set up the load switch that we\'ll use if we want to play host on USB1. */
+            /* Default to off, as we don\'t want to dual-drive VBUS. */
+            scu_pinmux(SCU_PINMUX_USB1_EN, SCU_CONF_FUNCTION0);
+            gpio_output(&gpio_usb1_en);
+            gpio_clear(&gpio_usb1_en);
+        #endif
+
+        #ifdef BOARD_CAPABILITY_USB1_SENSE_VBUS
+            /* Set up the GPIO we\'ll be using to sense the presence of USB1 VBUS. */
+            scu_pinmux(SCU_PINMUX_USB1_SENSE, SCU_CONF_FUNCTION0);
+            gpio_input(&gpio_usb1_sense);
+        #endif
+        }
+    `|
+    debug: firmware/common/debug.c
+    debug: {
+        pr_info: |c
+            void pr_info(char *fmt, ...)
+            {
+                va_list list;
+
+                va_start(list, fmt);
+                vprintk(LOGLEVEL_INFO, fmt, list);
+                va_end(list);
+            }
+        |
+    }
+    glitchkit: firmware/common/glitchkit.c
+    glitchkit: {
+        service_glitchkit: |`c
+            /**
+             * Main loop service routine for GlitchKit.
+             */
+            void service_glitchkit() {
+                if(!glitchkit.enabled) {
+                    return;
+                }
+
+                // Temporary implementation: hold the trigger high for >1ms.
+                // FIXME: Replace me with a timer!
+                if(glitchkit.triggered) {
+
+                    // Wait 1 ms...
+                    delay(1000);
+
+                    // ... and then de-assert the trigger.
+                    gpio_write(&glitchkit.trigger_gpio, false);
+                    glitchkit.triggered = false;
+                }
+            }
+        `|
+        task: |c DEFINE_TASK(service_glitchkit); |
+    }
+}
+
+# firmware/greatfet_usb/classes/
+greatfet.greatfet_usb.classes: firmware/greatfet_usb/classes/
+greatfet.greatfet_usb.classes.heartbeat: firmware/greatfet_usb/classes/heartbeat.c
+greatfet.greatfet_usb.classes.heartbeat: {
+    heartbeat_init: |`c
+        void heartbeat_init(void)
+        {
+            // FIXME: resevere the heartbeat LED for this class in the pin manager?
+            led_on(HEARTBEAT_LED);
+        }
+    `|
+    service_heartbeat: |`c
+        /**
+         * Performs a single unit of heartbeat mode\'s work.
+         * This should be called repeatedly from the main loop.
+         *
+         * Note that we use an iteration count, rather than e.g. our ms timer,
+         * as this gives the LED\'s period the nice property of being proportional
+         * to the amount of work being done e.g. in interrupts.
+         */
+        void service_heartbeat(void)
+        {
+            static uint32_t iteration_count = 0;
+
+            // If heartbeat mode is disabled, do nothing.
+            if (!heartbeat_mode_enabled) {
+                return;
+            }
+
+            // Count a heartbeat iteration.
+            iteration_count++;
+
+            // If we\'ve exceeded our heartbeat period, flip the LED,
+            // and start over.
+            if (iteration_count > heartbeat_period) {
+                led_toggle(HEARTBEAT_LED);
+                iteration_count = 0;
+            }
+        }
+    `|
+    task: |c DEFINE_TASK(service_heartbeat);|
+}
+
+# firmware/greatfet_usb/greatfet_usb.c
+greatfet.greatfet_usb.greatfet_usb: firmware/greatfet_usb/greatfet_usb.c
+greatfet.greatfet_usb.greatfet_usb: {
+    main: |c
+        int main(void)
+        {
+            pin_setup();
+            heartbeat_init();
+
+            init_usb0();
+            pr_info("GreatFET initialization complete!\n");
+
+            if (platform_get_parent_clock_source(CLOCK_SOURCE_PLL0_USB) == CLOCK_SOURCE_INTERNAL_OSCILLATOR) {
+                    emergency_mode();
+            }
+
+            // Run all of our tasks (methods defined with DEFINE_TASK), and never return.
+            scheduler_run();
+            return 0;
+        }
+    |
+    init_usb0: |c
+        void init_usb0(void) {
+            usb_set_descriptor_by_serial_number();
+            usb_peripheral_reset(&usb_peripherals[0]);
+            usb_device_init(&usb_peripherals[0]);
+
+            usb_queue_init(&usb0_endpoint_control_out_queue);
+            usb_queue_init(&usb0_endpoint_control_in_queue);
+            usb_queue_init(&usb0_endpoint_bulk_out_queue);
+            usb_queue_init(&usb0_endpoint_bulk_in_queue);
+
+            usb_endpoint_init(&usb0_endpoint_control_out);
+            usb_endpoint_init(&usb0_endpoint_control_in);
+
+            usb_endpoint_init(&usb0_endpoint_bulk_in);
+
+            nvic_set_priority(NVIC_USB0_IRQ, 254);
+            nvic_set_priority(NVIC_SGPIO_IRQ, 0);
+
+            usb_run(&usb_peripherals[0]);
+        }
+    |
+}
+greatfet.greatfet_usb.greatfet_usb: {
+    style: {
+        fill: lightgreen
+    }
+}
+greatfet.greatfet_usb.greatfet_usb.main -> greatfet.common.greatfet_core.pin_setup: pin_setup()
+greatfet.greatfet_usb.greatfet_usb.main -> greatfet.greatfet_usb.classes.heartbeat.heartbeat_init: heartbeat_init()
+greatfet.greatfet_usb.greatfet_usb.main -> libgreat.firmware.platform_drivers.platform_clock.platform_get_parent_clock_source: platform_get_parent_clock_source(CLOCK_SOURCE_PLL0_USB)
+greatfet.greatfet_usb.greatfet_usb.main -> greatfet.greatfet_usb.greatfet_usb.init_usb0: init_usb0()
+greatfet.greatfet_usb.greatfet_usb.main -> greatfet.common.debug.pr_info: pr_info("...")
+greatfet.greatfet_usb.greatfet_usb.main -> libgreat.firmware.drivers.scheduler.scheduler_run: scheduler_run()
+
+# firmware/greatfet_usb/usb_streaming.c
+greatfet.greatfet_usb.greatfet_usb_streaming: firmware/greatfet_usb/usb_streaming.c
+greatfet.greatfet_usb.greatfet_usb_streaming: {
+    task_usb_streaming: |c
+        /**
+         * Core USB streaming service routine: ferries data to or from the host.
+         */
+        void task_usb_streaming(void)
+        {
+            if(!usb_streaming_enabled) {
+                return;
+            }
+
+            // TODO: support USB streaming out, too
+            service_usb_streaming_in();
+        }
+    |
+    task: |c DEFINE_TASK(task_usb_streaming); |
+}
+
+
+# firmware/greatfet_usb/legacy_apis/
+greatfet.greatfet_usb.legacy_apis: firmware/greatfet_usb/legacy_apis/
+
+greatfet.greatfet_usb.legacy_apis.usb_api_sdir: firmware/greatfet_usb/legacy_apis/usb_api_sdir.c
+greatfet.greatfet_usb.legacy_apis.usb_api_sdir: {
+    sdir_rx_mode: |`c
+        void sdir_rx_mode(void)
+        {
+            if (!sdir_rx_enabled) {
+                return;
+            }
+
+            usb_endpoint_init(&usb0_endpoint_bulk_in);
+
+            sdir_rx_start();
+
+            unsigned int phase = 1;
+            while(sdir_rx_enabled) {
+                if ( usb_bulk_buffer_offset >= 0x4000
+                     && phase == 1) {
+                    usb_transfer_schedule_block(
+                        &usb0_endpoint_bulk_in,
+                        &usb_bulk_buffer[0x0000],
+                        0x4000, 0, 0
+                        );
+                    phase = 0;
+                }
+                // Set up IN transfer of buffer 1.
+                if ( usb_bulk_buffer_offset < 0x4000
+                     && phase == 0) {
+                    usb_transfer_schedule_block(
+                        &usb0_endpoint_bulk_in,
+                        &usb_bulk_buffer[0x4000],
+                        0x4000, 0, 0
+                    );
+                    phase = 1;
+                }
+            }
+            sdir_rx_stop();
+            // usb_endpoint_disable(&usb0_endpoint_bulk_in);
+        }
+    `|
+    sdir_tx_mode: |`c
+        void sdir_tx_mode(void)
+        {
+            if (!sdir_tx_enabled) {
+                return;
+            }
+
+            usb_endpoint_init(&usb0_endpoint_bulk_out);
+            usb_transfer_schedule_block(
+                &usb0_endpoint_bulk_out,
+                &usb_bulk_buffer[0x0000],
+                USB_XFER_SIZE, 0, 0
+                );
+            uint8_t usb_phase = 0;
+            dma_phase = 0;
+
+            sdir_tx_start();
+
+            while(sdir_tx_enabled) {
+                // Set up OUT transfer of buffer 0.
+                if (((dma_phase == 2) || (dma_phase == 3)) && usb_phase == 1) {
+                    usb_transfer_schedule_block(
+                        &usb0_endpoint_bulk_out,
+                        &usb_bulk_buffer[0x0000],
+                        USB_XFER_SIZE, 0, 0
+                        );
+                    usb_phase = 0;
+               }
+                // Set up OUT transfer of buffer 1.
+                if ( ((dma_phase == 0) || (dma_phase == 1)) && usb_phase == 0) {
+                    usb_transfer_schedule_block(
+                        &usb0_endpoint_bulk_out,
+                        &usb_bulk_buffer[USB_XFER_SIZE],
+                        USB_XFER_SIZE, 0, 0
+                    );
+                    usb_phase = 1;
+                }
+                //  delay(1000000);
+            }
+            sdir_tx_stop();
+        }
+    `|
+    task_sdir_rx_mode: |c DEFINE_TASK(sdir_rx_mode) |
+    task_sdir_tx_mode: |c DEFINE_TASK(sdir_tx_mode) |
+}
+
+
+# - libgreat.git --------------------------------------------------------------
+
+libgreat: libgreat.git
+
+# libgreat/firmware/
+libgreat.firmware: libgreat/firmware/
+
+libgreat.firmware.drivers: libgreat/firmware/drivers/
+libgreat.firmware.drivers: {
+    scheduler: libgreat/firmware/drivers/scheduler.c
+    scheduler.scheduler_run_tasks: |c
+        void scheduler_run_tasks(void)
+        {
+            task_implementation_t *task;
+
+            // Execute each task in our list, once.
+            for (task = &__task_array_start; task < &__task_array_end; task++) {
+                (*task)();
+            }
+        }
+    |
+    scheduler.scheduler_run: |c
+        ATTR_NORETURN void scheduler_run(void)
+        {
+            while(1) {
+                scheduler_run_tasks();
+            }
+        }
+    |
+}
+libgreat.firmware.drivers.scheduler: {
+    style: {
+        fill: orange
+    }
+}
+libgreat.firmware.drivers.scheduler -- greatfet.greatfet_usb.classes.heartbeat.task: {
+    label: Task\: service_heartbeat
+    style: {
+        stroke: orange
+        stroke-width: 5
+    }
+}
+libgreat.firmware.drivers.scheduler -- greatfet.greatfet_usb.greatfet_usb_streaming.task: {
+    label: Task\: task_usb_streaming
+    style: {
+        stroke: orange
+        stroke-width: 5
+    }
+}
+libgreat.firmware.drivers.scheduler -- greatfet.greatfet_usb.legacy_apis.usb_api_sdir.task_sdir_rx_mode: {
+    label: Task\: sdir_rx_mode
+    style: {
+        stroke: orange
+        stroke-width: 5
+    }
+}
+libgreat.firmware.drivers.scheduler -- greatfet.greatfet_usb.legacy_apis.usb_api_sdir.task_sdir_tx_mode: {
+    label: Task\: sdir_tx_mode
+    style: {
+        stroke: orange
+        stroke-width: 5
+    }
+}
+libgreat.firmware.drivers.scheduler -- greatfet.common.glitchkit.task: {
+    label: Task\: service_glitchkit
+    style: {
+        stroke: orange
+        stroke-width: 5
+    }
+}
+
+# libgreat/firmware/platform/lpc43xx/drivers/
+libgreat.firmware.platform_drivers: libgreat/firmware/platform/lpc43xx/drivers/
+libgreat.firmware.platform_drivers: {
+    platform_clock: libgreat/firmware/platform/lpc43xx/drivers/platform_clock.c
+    platform_clock: {
+        platform_get_parent_clock_source: |`c
+            /**
+             * @return the configured parent source for the given clock, or 0 if the clock
+             * doesn\'t appear to have one
+             */
+            clock_source_t platform_get_parent_clock_source(clock_source_t source)
+            {
+                return platform_clock_source_configurations[source].source;
+            }
+        `|
+    }
+    gpio: libgreat/firmware/platform/lpc43xx/drivers/gpio.c
+    usb: libgreat/firmware/platform/lpc43xx/drivers/usb/
+}
+
+# libgreat/host/pygreat
+libgreat.pygreat: libgreat/host/pygreat/
+
+
+# - Facedancer.git ------------------------------------------------------------
+
+# facedancer: facedancer.git
+
+
+
+# - luna.git ------------------------------------------------------------------
+
+# luna: luna.git
