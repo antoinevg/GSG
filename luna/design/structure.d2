@@ -1,0 +1,119 @@
+luna_git: luna.git
+
+# - Luna Examples -------------------------------------------------------------
+
+luna_git.examples_soc: examples/soc/
+luna_git.examples_soc.text: |c
+    bios/
+    hello/
+|
+
+# - Luna SoC ------------------------------------------------------------------
+
+luna_git.gateware_soc: luna/gateware/soc/
+luna_git.gateware_soc.lunasoc: luna/gateware/soc/lunasoc.py
+luna_git.gateware_soc.lunasoc: {
+    cpu: minerva
+    bus_arbiter: bus arbiter
+    bus_decoder: bus decoder
+    intc: interrupt controller
+    timer
+    sram
+    flash
+    hyperram
+    uart
+    usb
+    gpio
+    pmod: pmod0, pmod1
+
+    cpu -- bus_arbiter
+    bus_arbiter -- bus_decoder
+    bus_decoder -- intc
+    intc -- cpu
+    uart -- intc
+    timer -- intc
+    bus_decoder -- timer
+    bus_decoder -- sram
+    bus_decoder -- flash
+    bus_decoder -- hyperram
+    bus_decoder -- uart
+    bus_decoder -- usb
+    bus_decoder -- gpio
+    gpio -- pmod
+}
+
+luna_git.gateware_soc.cbindgen: luna/gateware/soc/cbindgen.py
+luna_git.gateware_soc.cbindgen.text: |c
+    resources.h
+    soc.ld
+|
+
+luna_git.gateware_soc.rbindgen: luna/gateware/soc/rbindgen.py
+luna_git.gateware_soc.rbindgen.text: |c
+    lunasoc.svd
+|
+
+luna_git.gateware_soc.lunasoc -> luna_git.gateware_soc.cbindgen
+luna_git.gateware_soc.lunasoc -> luna_git.gateware_soc.rbindgen
+
+luna_git.gateware_soc.cbindgen -- luna_git.examples_soc
+luna_git.gateware_soc.rbindgen -- luna_git.firmware.lunasoc-pac: svd2rust
+
+
+# - Luna Firmware -------------------------------------------------------------
+
+luna_git.firmware: firmware/soc/
+
+luna_git.firmware.lunasoc-pac: firmware/soc/lunasoc-pac/
+luna_git.firmware.lunasoc-pac.text: |c
+    build.rs
+    device.x
+    lib.rs
+|
+
+luna_git.firmware.lunasoc-hal: firmware/soc/lunasoc-hal/
+luna_git.firmware.lunasoc-hal.text: |c
+    flash.rs
+    gpio.rs
+    timer.rs
+    uart.rs
+    usb.rs
+|
+
+luna_git.firmware.luna-usb: firmware/soc/luna-usb/
+luna_git.firmware.luna-usb.text: |c
+    service_heartbeat
+    sdir_rx_mode
+    sdir_tx_mode
+    task_usb_streaming
+|
+
+luna_git.firmware.lunasoc-pac -- luna_git.firmware.lunasoc-hal
+luna_git.firmware.lunasoc-pac -- luna_git.firmware.luna-usb
+luna_git.firmware.lunasoc-hal -- luna_git.firmware.luna-usb
+
+luna_git.firmware.lunasoc-hal -- libgreat-rs_git
+
+# - libgreat-rs ---------------------------------------------------------------
+
+libgreat-rs_git: libgreat-rs.git
+
+libgreat-rs_git.firmware_classes: firmware/classes/
+libgreat-rs_git.firmware_classes.text: |c
+    core.rs
+    firmware.rs
+|
+
+libgreat-rs_git.firmware_drivers: firmware/drivers/
+libgreat-rs_git.firmware_drivers.text: |c
+    comms/comms_class.rs
+    error.rs
+    memory/allocator.rs
+    reset.rs
+|
+
+libgreat-rs_git.firmware_platform_drivers: firmware/platform/soc/drivers/
+libgreat-rs_git.firmware_platform_drivers.text: |c
+    usb3343.rs
+    w25q32jv.rs
+|
