@@ -6,11 +6,14 @@ LAYOUT := dagre
 #THEME := 0 # Default
 THEME := 103 # Earth tones
 
+greatfet: greatfet.d2
+	d2 --theme=$(THEME) --layout=elk --watch $< $(basename $<).svg
+
 dataflow: dataflow.d2
 	d2 --theme=$(THEME) --layout=dagre --watch $< $(basename $<).svg
 
 structure: structure.d2
 	d2 --theme=0 --layout=elk --watch $< $(basename $<).svg
 
-greatfet: greatfet.d2
-	d2 --theme=$(THEME) --layout=elk --watch $< $(basename $<).svg
+facedancer: facedancer.d2
+	d2 --theme=0 --layout=elk --watch $< $(basename $<).svg
