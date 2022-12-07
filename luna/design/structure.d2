@@ -7,6 +7,27 @@ luna_git.examples_soc.text: |c
     bios/
     hello/
 |
+luna_git.examples_soc: {
+    near: luna_git.firmware
+}
+
+# - Luna Hardware -------------------------------------------------------------
+
+# luna_git.hardware: hardware/
+# luna_git.hardware.usb3343
+# luna_git.hardware.w25q32jv
+
+# - Luna Gateware -------------------------------------------------------------
+
+# luna_git.gateware_flash: luna/gateware/interface/flash.py
+# luna_git.gateware_flash.ECP5ConfigurationFlashInterface
+# luna_git.gateware_usb: luna/gateware/usb/usb2/device.py
+# luna_git.gateware_usb.USBDeviceController: USBDeviceController
+# luna_git.gateware_flash                   -- luna_git.hardware.w25q32jv
+# luna_git.gateware_usb.USBDeviceController -- luna_git.hardware.usb3343
+
+# luna_git.gateware_soc.lunasoc.spiflash -- luna_git.gateware_flash.ECP5ConfigurationFlashInterface
+# luna_git.gateware_soc.lunasoc.usb   -- luna_git.gateware_usb.USBDeviceController
 
 # - Luna SoC ------------------------------------------------------------------
 
@@ -17,30 +38,50 @@ luna_git.gateware_soc.lunasoc: {
     bus_arbiter: bus arbiter
     bus_decoder: bus decoder
     intc: interrupt controller
-    timer
-    sram
-    flash
-    hyperram
-    uart
-    usb
-    gpio
-    pmod: pmod0, pmod1
 
+    gpio
+    hyperram
+    jtag
+    pmod: pmod0, pmod1
+    spiflash
+    sram
+    timer
+    uart
+    usb: usb0, usb1, usb2
+
+    cpu -- jtag
     cpu -- bus_arbiter
     bus_arbiter -- bus_decoder
     bus_decoder -- intc
     intc -- cpu
     uart -- intc
     timer -- intc
-    bus_decoder -- timer
-    bus_decoder -- sram
-    bus_decoder -- flash
+
+    bus_decoder -- gpio
     bus_decoder -- hyperram
+    bus_decoder -- spiflash
+    bus_decoder -- sram
+    bus_decoder -- timer
     bus_decoder -- uart
     bus_decoder -- usb
-    bus_decoder -- gpio
+
     gpio -- pmod
 }
+
+luna_git.gateware_soc.lunasoc.cpu.style: { fill: lightblue }
+luna_git.gateware_soc.lunasoc.bus_arbiter.style: { fill: lightgreen }
+luna_git.gateware_soc.lunasoc.bus_decoder.style: { fill: lightgreen }
+luna_git.gateware_soc.lunasoc.intc.style: { fill: lightgreen }
+
+luna_git.gateware_soc.lunasoc.gpio.style.fill: orange
+luna_git.gateware_soc.lunasoc.hyperram.style.fill: orange
+luna_git.gateware_soc.lunasoc.spiflash.style.fill: orange
+luna_git.gateware_soc.lunasoc.sram.style.fill: orange
+luna_git.gateware_soc.lunasoc.timer.style.fill: orange
+luna_git.gateware_soc.lunasoc.uart.style.fill: orange
+luna_git.gateware_soc.lunasoc.usb.style.fill: orange
+
+
 
 luna_git.gateware_soc.cgen: luna/gateware/soc/cgen.py
 luna_git.gateware_soc.cgen.text: |c
@@ -73,18 +114,16 @@ luna_git.firmware.lunasoc-pac.text: |c
 
 luna_git.firmware.lunasoc-hal: firmware/soc/lunasoc-hal/
 luna_git.firmware.lunasoc-hal.text: |c
-    flash.rs
-    gpio.rs
-    timer.rs
-    uart.rs
-    usb.rs
+    flash.rs  (libgreat-rs.ECP5ConfigurationFlashInterface)
+    gpio.rs   (libgreat-rs.GpioPeripehral)
+    serial.rs (libgreat-rs.AsyncSerial)
+    timer.rs  (libgreat-rs.TimerPeripheral)
+    usb_hs.rs (libgreat-rs.USBDeviceController)
 |
 
 luna_git.firmware.luna-usb: firmware/soc/luna-usb/
 luna_git.firmware.luna-usb.text: |c
     service_heartbeat
-    sdir_rx_mode
-    sdir_tx_mode
     task_usb_streaming
 |
 
@@ -130,6 +169,9 @@ libgreat-rs_git.firmware_drivers.text: |c
 
 libgreat-rs_git.firmware_platform_drivers: firmware/platform/soc/drivers/
 libgreat-rs_git.firmware_platform_drivers.text: |c
-    usb3343.rs
-    w25q32jv.rs
+    amaranth_stdio.serial.AsyncSerial.rs
+    lambdasoc.periph.Peripheral -> GpioPeripheral.rs
+    lambdasoc.periph.timer.TimerPeripheral.rs
+    luna.gateware.interface.flash.ECP5ConfigurationFlashInterface.rs
+    luna.gateware.usb2.USBDeviceController.rs
 |
