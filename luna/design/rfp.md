@@ -89,6 +89,8 @@ Luna uses USB as the transport for "great communications protocol" messages.
 
 An implementation of this transport can be found in the `libgreat` host library.
 
+Main task: Re-use of the pygreatfet comms backend.
+
 
 
 ---
@@ -131,7 +133,9 @@ Example: [libgreat.git firmware/drivers/comms/](https://github.com/greatscottgad
 
 TODO description
 
-Main task: Marshall "great communication protocol" classes/verbs between the device firmware and the USBDeviceController peripheral API.
+The USB serialization libary is responsible for marshalling "great communication protocol" classes/verbs between the device firmware and the USBDeviceController peripheral API.
+
+Main task: Implement support for the "great communication protocol" wire format using the [`serde`](https://serde.rs/data-format.html) crate.
 
 
 
@@ -153,20 +157,30 @@ Main task: Drivers need to be implemented for the following SoC peripherals:
 * `luna.gateware.usb2.USBDeviceController`
 * `luna.gateware.soc.GpioPeripheral`
 
-The embedded-hal drivers can live in `lunasoc-hal` during development but with the understanding that this code that can work with any SoC built using the `amaranth-soc` and `lambdassoc` libraries and would, as such, benefit from upstream contribution.
+The embedded-hal drivers can live in `lunasoc-hal` during development but with the understanding that this code can potentially run on any SoC built using the `amaranth-soc` and `lambdassoc` libraries. As such, it would be beneficial to both GSG and the Amaranth community if it could find a forever home upstream.
 
 
 ---
 
 ## 4 Implementation: Device SoC
 
-Example: TODO LunaSoc
+Example: [simplesoc.py]()
 
 TODO description
 
 ### Main tasks
 
-TODO
+* Update the `simplesoc.py` placeholder to the latest versions of the `amaranth-soc` and `lambdasoc` libraries.
+* Create additional peripherals:
+  - GpioPeripheral
+  - SPIFlashPeripheral ?
+* Wire up additional peripherals:
+  - GpioPeripheral
+  - SPIFlashPeripheral / ECP5ConfigurationFlashInterface ?
+  - USBDeviceController
+  - HyperRAMInterface
+* Implement SVD export for SoC designs
+  - Bearing in mind that this too would benefit from finding a cosy home upstream
 
 
 
@@ -260,6 +274,7 @@ This includes:
 * [GreatFET Documentation](https://wikileaks.org/ciav7p1/cms/page_20873567.html)
   - [Verb Signatures](https://greatfet.readthedocs.io/en/latest/libgreat_verb_signatures.html)
   - [Classes](https://greatfet.readthedocs.io/en/latest/greatfet_classes.html)
+* [Writing a Serde data format](https://serde.rs/data-format.html)
 * [Beyond Logic - USB in a NutShell](https://www.beyondlogic.org/usbnutshell/)
 
 ### Repositories
