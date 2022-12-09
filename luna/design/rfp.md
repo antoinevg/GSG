@@ -97,7 +97,7 @@ Main task: Re-use of the pygreatfet comms backend.
 
 ## 3 Implementation: Device Firmware
 
-![Diagram: Firmware Structure](structure.svg)
+![Diagram: Firmware Structure](structure/top.svg)
 
 
 ### 3.1 Device Firmware
@@ -107,7 +107,6 @@ Example: [greatfet.git firmware/greatfet_usb/](https://github.com/greatscottgadg
 The primary function of the Device Firmware is to implement the functionality defined by the "great communications protocol" messages between Facedancer and the device.
 
 Additional functionality includes logging, error handling, reset control, device heartbear and SoC firmware updates.
-
 
 #### Main tasks: Device Commands
 
@@ -165,6 +164,9 @@ The embedded-hal drivers can live in `lunasoc-hal` during development but with t
 ## 4 Implementation: Device SoC
 
 Example: [simplesoc.py]()
+
+![Diagram: Device SoC](structure/luna_git.gateware_soc.svg)
+
 
 TODO description
 

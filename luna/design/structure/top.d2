@@ -1,0 +1,48 @@
+$theme: 0
+$layout: elk
+
+luna_git: luna.git
+
+
+# - Luna Examples -------------------------------------------------------------
+$include: luna_git.examples_soc.d2
+
+
+# - Luna Hardware -------------------------------------------------------------
+
+# luna_git.hardware: hardware/
+# luna_git.hardware.usb3343
+# luna_git.hardware.w25q32jv
+
+
+# - Luna Gateware -------------------------------------------------------------
+
+# luna_git.gateware_flash: luna/gateware/interface/flash.py
+# luna_git.gateware_flash.ECP5ConfigurationFlashInterface
+# luna_git.gateware_usb: luna/gateware/usb/usb2/device.py
+# luna_git.gateware_usb.USBDeviceController: USBDeviceController
+# luna_git.gateware_flash                   -- luna_git.hardware.w25q32jv
+# luna_git.gateware_usb.USBDeviceController -- luna_git.hardware.usb3343
+
+# luna_git.gateware_soc.lunasoc.spiflash -- luna_git.gateware_flash.ECP5ConfigurationFlashInterface
+# luna_git.gateware_soc.lunasoc.usb   -- luna_git.gateware_usb.USBDeviceController
+
+
+# - Luna SoC ------------------------------------------------------------------
+$include: luna_git.gateware_soc.d2
+
+
+# - Luna Firmware -------------------------------------------------------------
+$include: luna_git.firmware.d2
+
+
+# - libgreat-rs ---------------------------------------------------------------
+$include: libgreat-rs_git.d2
+
+
+
+# - relationships
+
+luna_git.gateware_soc.cgen -- luna_git.examples_soc
+luna_git.gateware_soc.svdgen -- luna_git.firmware.lunasoc-pac: svd2rust
+luna_git.firmware.lunasoc-hal -- libgreat-rs_git

@@ -1,0 +1,26 @@
+# - libgreat-rs ---------------------------------------------------------------
+
+libgreat-rs_git: libgreat-rs.git
+
+libgreat-rs_git.firmware_classes: firmware/classes/
+libgreat-rs_git.firmware_classes.text: |c
+    core.rs
+    firmware.rs
+|
+
+libgreat-rs_git.firmware_drivers: firmware/drivers/
+libgreat-rs_git.firmware_drivers.text: |c
+    comms/comms_class.rs
+    error.rs
+    memory/allocator.rs
+    reset.rs
+|
+
+libgreat-rs_git.firmware_platform_drivers: firmware/platform/soc/drivers/
+libgreat-rs_git.firmware_platform_drivers.text: |c
+    amaranth_stdio.serial.AsyncSerial.rs
+    lambdasoc.periph.Peripheral -> GpioPeripheral.rs
+    lambdasoc.periph.timer.TimerPeripheral.rs
+    luna.gateware.interface.flash.ECP5ConfigurationFlashInterface.rs
+    luna.gateware.usb2.USBDeviceController.rs
+|

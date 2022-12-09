@@ -1,0 +1,46 @@
+# - embedded-hal --------------------------------------------------------------
+
+embedded-hal_git: @rust-embedded/embedded-hal.git {
+    near: luna_git.firmware.lunasoc-hal
+}
+embedded-hal_git.text: |c
+    delay
+    digital
+    serial
+    spi
+    timer
+    watchdog
+    ...
+|
+
+# - Luna Firmware -------------------------------------------------------------
+
+luna_git.firmware: firmware/soc/
+
+luna_git.firmware.lunasoc-pac: firmware/soc/lunasoc-pac/
+luna_git.firmware.lunasoc-pac.text: |c
+    build.rs
+    device.x
+    lib.rs
+|
+
+luna_git.firmware.lunasoc-hal: firmware/soc/lunasoc-hal/
+luna_git.firmware.lunasoc-hal.text: |c
+    flash.rs  (libgreat-rs.ECP5ConfigurationFlashInterface)
+    gpio.rs   (libgreat-rs.GpioPeripehral)
+    serial.rs (libgreat-rs.AsyncSerial)
+    timer.rs  (libgreat-rs.TimerPeripheral)
+    usb_hs.rs (libgreat-rs.USBDeviceController)
+|
+
+luna_git.firmware.luna-usb: firmware/soc/luna-usb/
+luna_git.firmware.luna-usb.text: |c
+    service_heartbeat
+    task_usb_streaming
+|
+
+luna_git.firmware.lunasoc-pac -- luna_git.firmware.lunasoc-hal
+luna_git.firmware.lunasoc-pac -- luna_git.firmware.luna-usb
+luna_git.firmware.lunasoc-hal -- luna_git.firmware.luna-usb
+
+luna_git.firmware.lunasoc-hal -- embedded-hal_git
