@@ -20,11 +20,26 @@ The Facedancer software is a host-side Python module for the control of simple h
 
 Adding support to Facedancer for a new remote-controlled USB device ("the device") requires the implementation of a number of major components on both the controlling host ("the host") and the device being controlled.
 
-Understanding the relationship of these components can best be visualized in terms of the data flow between them:
+This proposal will cover the requirements for the development of a Facedancer backend for the [Great Scott Gadgets Luna](https://greatscottgadgets.com/luna/).
 
-![Diagram: Data Flow](dataflow.svg)
+Understanding the relationships between the major components of Facedancer can best be visualized in terms of the data flow between them:
 
-TODO walk through diagram
+![Diagram: Data Flow](dataflow/luna.svg)
+
+The host side can be broken down into the following major components:
+
+1. The *Facedancer Backend*: `facedancer.git:/facedancer/backends/moondancer.py`
+2. The *Host Side Luna Device Command library*: `luna.git:/host/`
+3. The *Host Side Command Serialization and Transport Library*: `libgreat.git:/host/pygreat/`
+
+The device side consists of the major components:
+
+1. The *Device Side Command Serialization and Transport library*: `libgreat-rs.git:/firmware/drivers/`
+2. The *Device Side Luna Device Command Library*: `luna.git:/luna/firmware/soc/classes/`
+3. The *Luna SoC Gateware*: `luna.git:/luna/gateware/`
+4. The *Luna SoC Peripheral Drivers*: `libgreat-rs.git:/firmware/platform/soc/drivers/`
+5. The *Luna Physical Hardware*: `luna.git:/hardware/`
+
 
 
 
@@ -32,18 +47,16 @@ TODO walk through diagram
 
 ## 2 Implementation: Host Library
 
-For the purposes of Luna we can largely re-use the existing GreatFET python code.
+There is an existing host side implementation in Python which targets the [Greatt Scott Gadgets GreatFET](https://greatscottgadgets.com/greatfet/). We should be able to re-use it with only minor modification and re-organization of the existing codebase.
 
-This section exists primarily to serve as a reference to how this code is organized.
+This section exists primarily to serve as a reference to how this code is currently organized.
 
 ![Diagram: Facedancer](facedancer.svg)
 
-TODO walk through diagram
+TODO split into individual diagrams for each section
 
 
 ### 2.1 Facedancer Backend
-
-Example: [facedancer.git backends/greatdancer.py](https://github.com/greatscottgadgets/Facedancer/blob/master/facedancer/backends/greatdancer.py)
 
 A Facedancer host backend ("the facedancer backend) is responsible for servicing the API surface exposed to Facedancer applets. ("the Facedancer applet API")
 
@@ -53,12 +66,14 @@ As such, it is primarily responsible for enacting the following functionality on
 * Read data from endpoints.
 * Write data to endpoints.
 
-Main task: Re-use the GreatFET `greatdancer` backend.
+#### 2.1.1 Main task: Re-use the GreatFET `greatdancer` backend.
+
+#### 2.1.2 Example: [facedancer.git backends/greatdancer.py](https://github.com/greatscottgadgets/Facedancer/blob/master/facedancer/backends/greatdancer.py)
+
+
 
 
 ### 2.2 Device Commands
-
-Example: [greatfet.git host/greatfet/](https://github.com/greatscottgadgets/greatfet/tree/master/host/greatfet/)
 
 Great Scott Gadgets device commands are organized into a simple class/verb scheme to define a transport-independent format ("great communications protocol") for communication with a host-connected device.
 
@@ -78,18 +93,22 @@ Additional classes of interest are:
 * `0x113 usb_analysis` ?
   - functionality for USB analysis e.g. with Rhododendron
 
-Main task: Re-use of the greatfet host library.
+#### 2.2.1 Main task: Re-use of the greatfet host library.
+
+#### 2.2.2 Example: [greatfet.git host/greatfet/](https://github.com/greatscottgadgets/greatfet/tree/master/host/greatfet/)
+
+
 
 
 ### 2.3 USB Serialization
-
-Example: [libgreat.git host/pygreat/comms_backends/usb.py](https://github.com/greatscottgadgets/libgreat/blob/master/host/pygreat/comms_backends/usb.py)
 
 Luna uses USB as the transport for "great communications protocol" messages.
 
 An implementation of this transport can be found in the `libgreat` host library.
 
-Main task: Re-use of the pygreatfet comms backend.
+#### 2.3.1 Main task: Re-use of the pygreatfet comms backend.
+
+#### 2.3.2 Example: [libgreat.git host/pygreat/comms_backends/usb.py](https://github.com/greatscottgadgets/libgreat/blob/master/host/pygreat/comms_backends/usb.py)
 
 
 
@@ -97,18 +116,20 @@ Main task: Re-use of the pygreatfet comms backend.
 
 ## 3 Implementation: Device Firmware
 
-![Diagram: Firmware Structure](structure/top.svg)
-
 
 ### 3.1 Device Firmware
 
-Example: [greatfet.git firmware/greatfet_usb/](https://github.com/greatscottgadgets/greatfet/tree/master/firmware/greatfet_usb/)
+![Diagram: Firmware Structure](structure/luna_git.firmware.svg)
+
 
 The primary function of the Device Firmware is to implement the functionality defined by the "great communications protocol" messages between Facedancer and the device.
 
 Additional functionality includes logging, error handling, reset control, device heartbear and SoC firmware updates.
 
-#### Main tasks: Device Commands
+The device firmware shall be implemented in Rust following established community guidelines for Embedded Rust development.
+
+
+#### 3.1.1 Main tasks: Device Commands
 
 Implement support for the following classes/verbs:
 
@@ -117,7 +138,9 @@ Implement support for the following classes/verbs:
 * Write data to endpoints
 * TODO
 
-#### Main tasks: Additional Functionality
+
+
+#### 3.1.2 Main tasks: Additional Functionality
 
 * Logging
 * Error handling
@@ -126,21 +149,20 @@ Implement support for the following classes/verbs:
 * SoC firmware update
 
 
-### 3.2 USB Serialization
-
-Example: [libgreat.git firmware/drivers/comms/](https://github.com/greatscottgadgets/libgreat/tree/master/firmware/drivers/comms/)
-
-TODO description
+### 3.3 USB Serialization
 
 The USB serialization libary is responsible for marshalling "great communication protocol" classes/verbs between the device firmware and the USBDeviceController peripheral API.
 
-Main task: Implement support for the "great communication protocol" wire format using the [`serde`](https://serde.rs/data-format.html) crate.
+#### 3.3.1 Main task: Implement support for the "great communication protocol" wire format using the [`serde`](https://serde.rs/data-format.html) crate.
+
+#### 3.3.2 Example: [libgreat.git firmware/drivers/comms/](https://github.com/greatscottgadgets/libgreat/tree/master/firmware/drivers/comms/)
 
 
 
-### 3.3 Peripheral Drivers
 
-Example: [libgreat.git firmware/platform/lpc43xx/](https://github.com/greatscottgadgets/libgreat/tree/master/firmware/platform/lpc43xx)
+### 3.4 Peripheral Drivers
+
+#### Organization
 
 Peripheral drivers are organized across three crates:
 
@@ -148,7 +170,7 @@ Peripheral drivers are organized across three crates:
 * `amaranth-hal` - Concrete implementations of the device-independent `embedded-hal` traits for the peripherals.
 * `lunasoc-hal`  - Re-exports of `libgreat-hal` and any peripherals that don't belong in amaranth-soc.
 
-Main task: Drivers need to be implemented for the following SoC peripherals:
+#### 3.4.1 Main task: Drivers need to be implemented for the following SoC peripherals:
 
 * `amaranth_stdio.serial.AsyncSerial`
 * `lambdasoc.periph.timer.TimerPeripheral`
@@ -158,19 +180,22 @@ Main task: Drivers need to be implemented for the following SoC peripherals:
 
 The embedded-hal drivers can live in `lunasoc-hal` during development but with the understanding that this code can potentially run on any SoC built using the `amaranth-soc` and `lambdassoc` libraries. As such, it would be beneficial to both GSG and the Amaranth community if it could find a forever home upstream.
 
+#### 3.4.2 Example: [libgreat.git firmware/platform/lpc43xx/](https://github.com/greatscottgadgets/libgreat/tree/master/firmware/platform/lpc43xx)
+
+
+### TODO GreatFET Firmware: [greatfet.git firmware/greatfet_usb/](https://github.com/greatscottgadgets/greatfet/tree/master/firmware/greatfet_usb/)
+
+![Diagram: GreatFET](greatfet.svg)
+
+TODO split into individual diagrams for sections aboce
+
 
 ---
 
 ## 4 Implementation: Device SoC
 
-Example: [simplesoc.py]()
 
-![Diagram: Device SoC](structure/luna_git.gateware_soc.svg)
-
-
-TODO description
-
-### Main tasks
+### 4.1 Main tasks
 
 * Update the `simplesoc.py` placeholder to the latest versions of the `amaranth-soc` and `lambdasoc` libraries.
 * Create additional peripherals:
@@ -183,6 +208,14 @@ TODO description
   - HyperRAMInterface
 * Implement SVD export for SoC designs
   - Bearing in mind that this too would benefit from finding a cosy home upstream
+
+
+### 4.2 Example: [simplesoc.py]()
+
+![Diagram: Device SoC](structure/luna_git.gateware_soc.svg)
+
+Gateware shall be implemented in [Amaranth](https://github.com/amaranth-lang/amaranth) with the use of external libraries such as `Amaranth-SoC` and `LambdaSoC` where possible.
+
 
 
 
@@ -200,16 +233,15 @@ TBD
 
 ### 5.3 Applets
 
-Main task: Currently all Facedancer applets live in a legacy_applets/ directory. If there have been API changes that triggered this they should probably be refactored to the new API.
+#### 5.3.1 Main task: Currently all Facedancer applets live in a legacy_applets/ directory. If there have been API changes that triggered this they should probably be refactored to the new API.
 
 ### 5.4 Device Creation
 
-Main task: Document the Facedancer applet API.
+#### 5.4.1 Main task: Document the Facedancer applet API.
 
 ### 5.5 Pmod ports
 
-Main task: Support GreatFET gpio-related commands ?
-
+#### 5.5.2 Main task: Support GreatFET gpio-related commands ?
 
 
 ---
@@ -271,6 +303,11 @@ This includes:
 
 ## 9 Appendix
 
+### Structural Decomposition
+
+![Diagram: Firmware Structure](structure/top.svg)
+
+
 ### Links to Useful Documentation
 
 * [GreatFET Documentation](https://wikileaks.org/ciav7p1/cms/page_20873567.html)
@@ -327,7 +364,7 @@ This includes:
 
 
 
----
+<!--
 
 ## Task Breakdown
 
@@ -357,3 +394,6 @@ This includes:
   - use greatfet.git:host/greatfet/ python module as a base
 
 * TODO luna/gateware/soc/lunasoc/
+
+
+-->

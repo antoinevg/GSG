@@ -1,0 +1,160 @@
+# = data flow: luna ==
+
+
+# - host-side -----------------------------------------------------------------
+
+host-side: Host Side
+host-side.style: { stroke-dash: 5 }
+host-side: {
+
+    facedancer_git: facedancer.git
+    facedancer_git.backends_moondancer: facedancer/backends/moondancer.py
+    facedancer_git.backends_moondancer_img: {
+        label: ""
+        shape: image
+        icon: https://static.wikia.nocookie.net/mlp/images/5/51/Moon_Dancer_ID_S5E12.png
+    }
+    facedancer_git.backends_moondancertxt: |
+        ## Luna Facedancer Backend
+        Derive from: `facedancer.git:/facedancer/backends/greatdancer.py`
+    |
+
+    greatfet_git: luna.git
+    greatfet_git.host_luna: host/luna/luna.py
+    greatfet_git.host_luna_txt: |
+        ## Luna Device Command Library
+        Derive from: `greatfet.git:/host/greatfet/greatfet.py`
+    |
+
+    libgreat_git: libgreat.git
+    libgreat_git.host_pygreat: host/pygreat/
+    libgreat_git.host_pygreat_txt: |
+        ## Command Serialization and Transport Library
+        Re-use: `libgreat.git:/host/pygreat/`
+        # &nbsp;
+    |
+
+}
+
+# - device-side ---------------------------------------------------------------
+
+device-side: Device Side
+device-side.style: { stroke-dash: 5 }
+device-side: {
+
+    libgreat-rs_git_firmware: libgreat-rs.git
+    libgreat-rs_git_firmware.drivers: ""
+    libgreat-rs_git_firmware.drivers.comms: firmware/drivers/comms/
+    libgreat-rs_git_firmware.drivers.comms_txt: |
+        ## Command Serialization and Transport Library
+        Reference implementation: `libgreat.git:/firmware/drivers/comms/`
+        # &nbsp;
+    |
+
+    libgreat-rs_git_firmware.platform: ""
+    libgreat-rs_git_firmware.platform.drivers: firmware/platform/soc/drivers/
+    libgreat-rs_git_firmware.platform.drivers_txt: |
+        ## Luna SoC Peripheral Drivers
+        # &nbsp;
+    |
+
+    luna_git: luna.git
+
+    luna_git.firmware: firmware/
+    luna_git.firmware.soc: luna/firmware/soc/
+    luna_git.firmware.soc_txt: |
+        ## Luna Device Command Library
+        Reference implementation: `greatfet.git:/firmware/greatfet_usb/classes/greatdancer.c`
+        # &nbsp;
+    |
+
+    luna_git.gateware: luna/gateware/
+    luna_git.gateware.soc: luna/gateware/soc/
+    luna_git.gateware.soc_txt: |
+        ## Luna SoC Gateware
+        # &nbsp;
+    |
+
+    #luna_git.gateware.usb: luna/gateware/usb/
+
+    luna_git.hardware: hardware/
+    luna_git.hardware.txt: |
+        ## Luna Physical Hardware
+        # &nbsp;
+    |
+    luna_git.hardware.ecp5: LFE5U-12F-6BG256C
+    luna_git.hardware.usb-j1: U11 USB3343
+    luna_git.hardware.usb-j2: U8 USB3343
+    luna_git.hardware.usb-j3: U9 USB3343
+    luna_git.hardware.etc: "..."
+    #luna_git.hardware.hyperram: W956A8MBYA6I
+    #luna_git.hardware.spiflash: W25Q32JVSSIQ
+    #luna_git.hardware.atsamd: ATSAMD11D14A-MUT
+
+}
+
+
+# - internal relationships ----------------------------------------------------
+
+host-side.facedancer_git.backends_moondancer <-> host-side.greatfet_git.host_luna: {
+    label: python
+    style: {
+        font-size: 24
+        stroke-width: 5
+        stroke: blue
+    }
+}
+
+host-side.greatfet_git.host_luna <-> host-side.libgreat_git.host_pygreat: {
+    label: python
+    style: {
+        font-size: 24
+        stroke-width: 5
+        stroke: blue
+    }
+}
+
+host-side.libgreat_git.host_pygreat <-> device-side.libgreat-rs_git_firmware.drivers.comms: {
+    label: usb
+    style: {
+        font-size: 24
+        stroke-width: 5
+        stroke: green
+    }
+}
+
+device-side.libgreat-rs_git_firmware <-> device-side.luna_git.firmware.soc: {
+    label: Rust
+    style: {
+        font-size: 24
+        stroke-width: 5
+        stroke: orange
+    }
+}
+
+device-side.libgreat-rs_git_firmware.platform.drivers <-> device-side.luna_git.gateware.soc: {
+    label: Rust
+    style: {
+        font-size: 24
+        stroke-width: 5
+        stroke: orange
+    }
+}
+
+device-side.luna_git.firmware.soc <-> device-side.luna_git.gateware: {
+    label: "" #Rust
+    style: {
+        font-size: 24
+        stroke-width: 0
+        stroke: white
+    }
+}
+
+device-side.luna_git.gateware <-> device-side.luna_git.hardware: {
+    label: Amaranth
+    style: {
+        font-size: 24
+        stroke-width: 5
+        stroke: purple
+    }
+}

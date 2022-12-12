@@ -13,6 +13,7 @@ embedded-hal_git.text: |c
     ...
 |
 
+
 # - Luna Firmware -------------------------------------------------------------
 
 luna_git.firmware: firmware/soc/
@@ -39,8 +40,14 @@ luna_git.firmware.luna-usb.text: |c
     task_usb_streaming
 |
 
+
+# internal relationships
+
 luna_git.firmware.lunasoc-pac -- luna_git.firmware.lunasoc-hal
 luna_git.firmware.lunasoc-pac -- luna_git.firmware.luna-usb
 luna_git.firmware.lunasoc-hal -- luna_git.firmware.luna-usb
+
+
+# external relationships
 
 luna_git.firmware.lunasoc-hal -- embedded-hal_git

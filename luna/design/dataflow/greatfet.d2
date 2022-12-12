@@ -1,0 +1,82 @@
+# - data flow: greatfet one ---------------------------------------------------
+
+facedancer_git: facedancer.git
+facedancer_git.backends_greatdancer: facedancer/backends/greatdancer.py
+
+libgreat_git: libgreat.git
+libgreat_git.host_pygreat: host/pygreat/
+libgreat_git.firmware: firmware/
+libgreat_git.firmware.drivers: firmware/drivers/
+libgreat_git.firmware.platform_drivers: firmware/platform/lpc43xx/drivers/
+
+greatfet_git: greatfet.git
+greatfet_git.firmware: firmware/greatfet_usb/
+greatfet_git.host_greatfet: host/greatfet/greatfet.py
+
+azalea_git: @greatfet-hardware/azalea.git
+azalea_git.lpc4330: U1 LPC4330FBD144
+azalea_git.lpc4330.usb0: usb0
+azalea_git.lpc4330.usb1: usb1
+azalea_git.lpc4330.etc: "..."
+azalea_git.w25q16dv: U2 W25Q16DV
+#azalea_git.j1: J1
+#azalea_git.j2: J2
+#azalea_git.j3: J3 USB0
+#azalea_git.j4: J4 USB1
+#azalea_git.j5: J5 JTAG
+#azalea_git.j7: BONUS_ROW
+
+# connections
+facedancer_git <-> greatfet_git.host_greatfet: {
+    label: python
+    style: {
+        font-size: 24
+        stroke-width: 5
+        stroke: blue
+    }
+}
+
+greatfet_git.host_greatfet <-> libgreat_git.host_pygreat: {
+    label: python
+    style: {
+        font-size: 24
+        stroke-width: 5
+        stroke: blue
+    }
+}
+
+libgreat_git.host_pygreat <-> libgreat_git.firmware: {
+    label: usb
+    style: {
+        font-size: 24
+        stroke-width: 5
+        stroke: green
+    }
+}
+
+libgreat_git.firmware.platform_drivers <-> azalea_git.lpc4330: {
+    label: C
+    style: {
+        font-size: 24
+        stroke-width: 5
+        stroke: red
+    }
+}
+
+libgreat_git.firmware <-> greatfet_git.firmware: {
+    label: C
+    style: {
+        font-size: 24
+        stroke-width: 5
+        stroke: red
+    }
+}
+
+greatfet_git.firmware <-> azalea_git: {
+    label: C
+    style: {
+        font-size: 24
+        stroke-width: 5
+        stroke: red
+    }
+}

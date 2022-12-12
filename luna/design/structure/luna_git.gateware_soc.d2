@@ -37,6 +37,20 @@ luna_git.gateware_soc.lunasoc: {
     gpio -- pmod
 }
 
+luna_git.gateware_soc.cgen: luna/gateware/soc/cgen.py
+luna_git.gateware_soc.cgen.text: |c
+    resources.h
+    soc.ld
+|
+
+luna_git.gateware_soc.svdgen: luna/gateware/soc/svdgen.py
+luna_git.gateware_soc.svdgen.text: |c
+    lunasoc.svd
+|
+
+
+# styles
+
 luna_git.gateware_soc.lunasoc.cpu.style: { fill: lightblue }
 luna_git.gateware_soc.lunasoc.bus_arbiter.style: { fill: lightgreen }
 luna_git.gateware_soc.lunasoc.bus_decoder.style: { fill: lightgreen }
@@ -50,16 +64,14 @@ luna_git.gateware_soc.lunasoc.timer.style.fill: orange
 luna_git.gateware_soc.lunasoc.uart.style.fill: orange
 luna_git.gateware_soc.lunasoc.usb.style.fill: orange
 
-luna_git.gateware_soc.cgen: luna/gateware/soc/cgen.py
-luna_git.gateware_soc.cgen.text: |c
-    resources.h
-    soc.ld
-|
 
-luna_git.gateware_soc.svdgen: luna/gateware/soc/svdgen.py
-luna_git.gateware_soc.svdgen.text: |c
-    lunasoc.svd
-|
+# internal relationships
 
 luna_git.gateware_soc.lunasoc -> luna_git.gateware_soc.cgen
 luna_git.gateware_soc.lunasoc -> luna_git.gateware_soc.svdgen
+
+
+# external relationships
+
+#luna_git.gateware_soc.cgen -- luna_git.examples_soc
+#luna_git.gateware_soc.svdgen -- luna_git.firmware.lunasoc-pac: svd2rust
