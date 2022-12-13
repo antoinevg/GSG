@@ -5,6 +5,10 @@ A private repo for sharing stuff with my colleagues at Great Scott Gadgets.
 
 ## Dependencies
 
+### multimarkdown
+
+    brew install multimarkdown
+
 ### d2
 
 See: https://d2lang.com/tour/install
@@ -25,7 +29,6 @@ See: https://watchexec.github.io/
 Install:
 
     cargo install watchexec-cli
-
 
 Uninstall:
 

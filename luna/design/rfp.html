@@ -1,0 +1,387 @@
+<p>&lt;!DOCTYPE html&gt;
+<html lang="en">
+<head>
+<link rel="stylesheet" href="./rfp.css">
+<style>
+body { padding: 100px; }
+img { width: 1024; }
+</style>
+<meta charset="utf-8">
+<meta name="description" content="Luna Initial Design Specification">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>rfp.html</title>
+</head></p>
+
+<body>
+
+<h1 id="facedancer:implementinitialdesignspecificationrfp68https:github.comgreatscottgadgetslunaissues68"><a href="https://github.com/greatscottgadgets/luna/issues/68">FaceDancer: Implement Initial Design Specification / RFP #68</a></h1>
+
+<h2 id="0task">0 Task</h2>
+
+<p>Create an initial design document describing a FaceDancer backend for LUNA.</p>
+
+<p>This should:</p>
+
+<ul>
+<li>[ ] Include plans for the core backend.</li>
+<li>[ ] Accommodate future FPGA acceleration, where possible.</li>
+<li>[ ] Accommodate fancy USBProxy enhancements.</li>
+</ul>
+
+<hr />
+
+<h2 id="1introduction">1 Introduction</h2>
+
+<p>The Facedancer software is a host-side Python module for the control of simple hardware devices that act as &quot;remote-controlled&quot; USB controllers.</p>
+
+<h3 id="1.1dataflow">1.1 Data flow</h3>
+
+<p>Adding support to Facedancer for a new remote-controlled USB device (&quot;the device&quot;) requires the implementation of a number of major components on both the controlling host (&quot;the host&quot;) and the device being controlled.</p>
+
+<p>This proposal will cover the requirements for the development of a Facedancer backend for the <a href="https://greatscottgadgets.com/luna/">Great Scott Gadgets Luna</a>.</p>
+
+<p>Understanding the relationships between the major components of Facedancer can best be visualized in terms of the data flow between them:</p>
+
+<figure>
+<img src="dataflow/luna.svg" alt="Diagram: Data Flow" />
+<figcaption>Diagram: Data Flow</figcaption>
+</figure>
+
+<p>The host side can be broken down into the following major components:</p>
+
+<ol>
+<li>The <em>Luna Facedancer Backend</em>: <code>facedancer.git:/facedancer/backends/moondancer.py</code></li>
+<li>The <em>Host Side Luna Device Command library</em>: <code>luna.git:/host/</code></li>
+<li>The <em>Host Side Command Serialization and Transport Library</em>: <code>libgreat.git:/host/pygreat/</code></li>
+</ol>
+
+<p>The device side consists of the major components:</p>
+
+<ol>
+<li>The <em>Device Side Command Serialization and Transport library</em>: <code>libgreat-rs.git:/firmware/drivers/</code></li>
+<li>The <em>Device Side Luna Device Command Library</em>: <code>luna.git:/luna/firmware/soc/classes/</code></li>
+<li>The <em>Luna SoC Firmware</em>: <code>luna.git:/luna/firmware/soc/</code></li>
+<li>The <em>Luna SoC Peripheral Drivers</em>: <code>libgreat-rs.git:/firmware/platform/soc/drivers/</code></li>
+<li>The <em>Luna SoC Gateware</em>: <code>luna.git:/luna/gateware/</code></li>
+<li>The <em>Luna Physical Hardware</em>: <code>luna.git:/hardware/</code></li>
+</ol>
+
+<hr />
+
+<h2 id="2hostsideimplementation">2 Host Side Implementation</h2>
+
+<p>There is an existing host side implementation in Python which targets the <a href="https://greatscottgadgets.com/greatfet/">Greatt Scott Gadgets GreatFET</a>. We should be able to re-use much of the code with only minor modification and re-organization of the existing codebase.</p>
+
+<p>This section exists primarily to serve as a reference to how this code is currently organized.</p>
+
+<figure>
+<img src="facedancer/top_facedancer.svg" alt="Diagram: Facedancer" />
+<figcaption>Diagram: Facedancer</figcaption>
+</figure>
+
+<p>TODO split into individual diagrams for each section</p>
+
+<h3 id="2.1lunafacedancerbackend">2.1 Luna Facedancer Backend</h3>
+
+<p>A Facedancer host backend (&quot;the facedancer backend) is responsible for servicing the API surface exposed to Facedancer applets. (&quot;the Facedancer applet API&quot;)</p>
+
+<p>As such, it is primarily responsible for enacting the following functionality on the device being controlled by Facedancer:</p>
+
+<ul>
+<li>Initialize the USB device, configuration, interface and endpoint descriptors of the device.</li>
+<li>Read data from endpoints.</li>
+<li>Write data to endpoints.</li>
+</ul>
+
+<h3 id="2.2lunadevicecommandlibrary">2.2 Luna Device Command Library</h3>
+
+<p>Great Scott Gadgets device commands are organized into a simple class/verb scheme to define a transport-independent format (&quot;great communications protocol&quot;) for communication with a host-connected device.</p>
+
+<h3 id="2.3commandserializationandtransportlibrary">2.3 Command Serialization and Transport Library</h3>
+
+<p>Luna uses USB as the transport for &quot;great communications protocol&quot; messages.</p>
+
+<p>Blah blah</p>
+
+<h3 id="2.4maintasks:">2.4 Main Tasks:</h3>
+
+<ul>
+<li>[ ] Derive a new Luna Facedancer Backend from <a href="https://github.com/greatscottgadgets/Facedancer/blob/master/facedancer/backends/greatdancer.py">facedancer.git:facedancer/backends/greatdancer.py</a></li>
+<li>[ ] Derive a new Luna Device Command Library from <a href="https://github.com/greatscottgadgets/greatfet/tree/master/host/greatfet/">greatfet.git host/greatfet/</a></li>
+<li>[ ] Re-use the Command Serialization and Transport Library from: <a href="https://github.com/greatscottgadgets/libgreat/blob/master/host/pygreat/comms_backends/usb.py">libgreat.git host/pygreat/comms_backends/usb.py</a></li>
+</ul>
+
+<hr />
+
+<h2 id="3devicesidefirmwareimplementation">3 Device Side Firmware Implementation</h2>
+
+<p>The primary function of the Device Firmware is to implement the functionality defined by the &quot;great communications protocol&quot; messages between Facedancer and the device.</p>
+
+<p>Additional functionality includes logging, error handling, reset control, device heartbear and SoC firmware updates.</p>
+
+<figure>
+<img src="structure/luna_git.firmware.svg" alt="Diagram: Firmware Structure" />
+<figcaption>Diagram: Firmware Structure</figcaption>
+</figure>
+
+<p>The device firmware shall be implemented in Rust following established community guidelines for Embedded Rust development.</p>
+
+<h3 id="3.1commandserializationandtransportlibrary">3.1 Command Serialization and Transport library</h3>
+
+<p>The USB serialization libary is responsible for marshalling &quot;great communication protocol&quot; classes/verbs between the device firmware and the USBDeviceController peripheral API.</p>
+
+<h4 id="referenceimplementation">Reference Implementation</h4>
+
+<p><a href="https://github.com/greatscottgadgets/libgreat/tree/master/firmware/drivers/comms/">libgreat.git:/firmware/drivers/comms/</a></p>
+
+<h3 id="3.2lunadevicecommandlibrary">3.2 Luna Device Command Library</h3>
+
+<p>The main classes that should be supported by the Luna hardware are:</p>
+
+<ul>
+<li><code>0x105 usbhost</code></li>
+<li> remote control over Luna’s USB ports in host mode, for e.g. FaceDancer</li>
+<li><code>0x120 moondancer</code> (new class)</li>
+<li> remote control over Luna’s USB ports in device mode, for e.g. FaceDancer</li>
+<li><code>0x10F usbproxy</code></li>
+<li> Firmware functionality supporting USBProxy</li>
+</ul>
+
+<p>Additional classes of interest are:</p>
+
+<ul>
+<li><code>0x107 glitchkit_usb</code></li>
+<li> control over functionality intended to help with timing USB fault injection</li>
+<li><code>0x113 usb_analysis</code></li>
+<li> functionality for USB analysis e.g. with Rhododendron</li>
+</ul>
+
+<p>Specifically, support should be implemented for the following operations:</p>
+
+<ul>
+<li>Configure descriptors for USBDeviceController peripheral</li>
+<li>Read data from endpoints</li>
+<li>Write data to endpoints</li>
+<li>TODO</li>
+</ul>
+
+<h4 id="referenceimplementation">Reference Implementation</h4>
+
+<p><a href="https://github.com/greatscottgadgets/greatfet/tree/master/firmware/greatfet_usb/classes/greatdancer.c">greatfet.git:/firmware/greatfet_usb/classes/greatdancer.c</a></p>
+
+<h3 id="3.3lunasocfirmware">3.3 Luna SoC Firmware</h3>
+
+<ul>
+<li>Logging</li>
+<li>Error handling</li>
+<li>Reset control</li>
+<li>Device heartbeat</li>
+<li>SoC firmware update</li>
+</ul>
+
+<h4 id="referenceimplementation">Reference Implementation</h4>
+
+<p><a href="https://github.com/greatscottgadgets/greatfet/tree/master/firmware/greatfet_usb/">greatfet.git:/firmware/greatfet_usb/</a></p>
+
+<figure>
+<img src="greatfet/top_greatfet.svg" alt="Diagram: GreatFET" />
+<figcaption>Diagram: GreatFET</figcaption>
+</figure>
+
+<p>TODO split into individual diagrams for sections aboce</p>
+
+<h3 id="3.4lunasocperipheraldrivers">3.4 Luna SoC Peripheral Drivers</h3>
+
+<p>Drivers need to be implemented for the following SoC peripherals:</p>
+
+<ul>
+<li><code>amaranth_stdio.serial.AsyncSerial</code></li>
+<li><code>lambdasoc.periph.timer.TimerPeripheral</code></li>
+<li><code>luna.gateware.interface.flash.ECP5ConfigurationFlashInterface</code></li>
+<li><code>luna.gateware.usb2.USBDeviceController</code></li>
+<li><code>luna.gateware.soc.GpioPeripheral</code></li>
+</ul>
+
+<p>Peripheral drivers are organized across three crates:</p>
+
+<ul>
+<li><code>lunasoc-pac</code> - A peripheral register access API generated by <code>svd2rust</code></li>
+<li><code>amaranth-hal</code> - Concrete implementations of the device-independent <code>embedded-hal</code> traits for the peripherals.</li>
+<li><code>lunasoc-hal</code> - Re-exports of <code>libgreat-hal</code> and any peripherals that don't belong in amaranth-soc.</li>
+</ul>
+
+<blockquote>
+<p>Note: The embedded-hal drivers can live in <code>lunasoc-hal</code> during development but with the understanding that this code can potentially run on any SoC built using the <code>amaranth-soc</code> and <code>lambdassoc</code> libraries. As such, it would be beneficial to both GSG and the Amaranth community if it could find a forever home upstream.</p>
+</blockquote>
+
+<h4 id="referenceimplementation">Reference Implementation</h4>
+
+<p><a href="https://github.com/greatscottgadgets/libgreat/tree/master/firmware/platform/lpc43xx">libgreat.git:/firmware/platform/lpc43xx/</a></p>
+
+<h3 id="3.5maintasks">3.5 Main Tasks</h3>
+
+<ul>
+<li>[ ] Implement support for the &quot;great communication protocol&quot; wire format using the <a href="https://serde.rs/data-format.html"><code>serde</code></a> crate.</li>
+<li>[ ]</li>
+</ul>
+
+<hr />
+
+<h2 id="4devicesidegatewareimplementation">4 Device Side Gateware Implementation</h2>
+
+<figure>
+<img src="structure/luna_git.gateware_soc.svg" alt="Diagram: Device SoC" />
+<figcaption>Diagram: Device SoC</figcaption>
+</figure>
+
+<h3 id="referenceimplementation">Reference Implementation</h3>
+
+<p><a href="">simplesoc.py</a></p>
+
+<h3 id="4.2maintasks">4.2 Main tasks</h3>
+
+<ul>
+<li><p>[ ] Update the <code>simplesoc.py</code> placeholder to the latest versions of the <code>amaranth-soc</code> and <code>lambdasoc</code> libraries.</p></li>
+<li><p>Create additional peripherals as required:</p></li>
+<li><p> [ ] GpioPeripheral</p></li>
+<li><p> [ ] SPIFlashPeripheral ?</p></li>
+<li><p>Wire up additional peripherals as required:</p></li>
+<li><p> [ ] GpioPeripheral</p></li>
+<li><p> [ ] SPIFlashPeripheral / ECP5ConfigurationFlashInterface ?</p></li>
+<li><p> [ ] USBDeviceController</p></li>
+<li><p> [ ] HyperRAMInterface</p></li>
+<li><p>[ ] Implement SVD export for SoC designs</p></li>
+<li><p> Bearing in mind that this too would benefit from finding a cosy home upstream</p></li>
+</ul>
+
+<p>Gateware shall be implemented in <a href="https://github.com/amaranth-lang/amaranth">Amaranth</a> with the use of external libraries such as <code>Amaranth-SoC</code> and <code>LambdaSoC</code> where possible.</p>
+
+<hr />
+
+<h2 id="5newfeatures">5 New Features</h2>
+
+<h3 id="5.1usbproxy">5.1 USBProxy</h3>
+
+<p>TBD</p>
+
+<h3 id="5.2usbfuzzing">5.2 USB Fuzzing</h3>
+
+<p>TBD</p>
+
+<h3 id="5.3applets">5.3 Applets</h3>
+
+<h4 id="5.3.1maintask:currentlyallfacedancerappletsliveinalegacy_appletsdirectory.iftherehavebeenapichangesthattriggeredthistheyshouldprobablyberefactoredtothenewapi.">5.3.1 Main task: Currently all Facedancer applets live in a legacy_applets/ directory. If there have been API changes that triggered this they should probably be refactored to the new API.</h4>
+
+<h3 id="5.4devicecreation">5.4 Device Creation</h3>
+
+<h4 id="5.4.1maintask:documentthefacedancerappletapi.">5.4.1 Main task: Document the Facedancer applet API.</h4>
+
+<h3 id="5.5pmodports">5.5 Pmod ports</h3>
+
+<h4 id="5.5.2maintask:supportgreatfetgpio-relatedcommands">5.5.2 Main task: Support GreatFET gpio-related commands ?</h4>
+
+<hr />
+
+<h2 id="6codeorganization">6 Code Organization</h2>
+
+<p>To reduce the maintenance burden across the larger Great Scott Gadgets codebase it's proposed to make some minor changes to the organization of the greatfet.git and libgreat.git repositories.</p>
+
+<h3 id="6.1facedancergreatcommunicationprotocolclassid:">6.1 Facedancer &quot;Great Communication Protocol&quot; class id:</h3>
+
+<p>Class ids currently live in:</p>
+
+<p>https://github.com/greatscottgadgets/greatfet/blob/master/docs/source/greatfet_classes.rst</p>
+
+<ol>
+<li>Move greatfet_classes.rst from greatfet.git into libgreat.git</li>
+<li>Add class id for Luna</li>
+</ol>
+
+<p>Also see: https://gsg.atlassian.net/wiki/spaces/MEETINGS/pages/2438824143/2022-12-06+Engineering+Work+Session</p>
+
+<h3 id="6.2commoncodefromgreatfet.git">6.2 Common code from greatfet.git</h3>
+
+<p>There may be some common code in the greatfet.git python host code that needs to be made available to Luna. This may also need to move to the libreat.git repository.</p>
+
+<p>This includes:</p>
+
+<ul>
+<li>https://github.com/greatscottgadgets/greatfet/blob/master/host/greatfet/commands/greatfet_usb_capture.py</li>
+<li>TODO</li>
+</ul>
+
+<hr />
+
+<h2 id="7openquestions">7 Open Questions</h2>
+
+<ul>
+<li><p>[ ] do we want to support these additional usb-related classes for Luna:</p>
+
+<ul>
+<li><code>0x107 glitchkit_usb</code> - control over functionality intended to help with timing USB fault injection</li>
+<li><code>0x113 usb_analysis</code> - functionality for USB analysis e.g. with Rhododendron</li>
+</ul></li>
+<li><p>[ ] are there any constraints on the &quot;Great Communications Protocol&quot; implementation that will place limits on what we can do with Luna vs GreatFET?</p></li>
+<li><p>[ ] libgreat-rs.git -&gt; libscott.git ? what else?</p></li>
+<li><p><p> the problem with having two repo's that both start with libgreat
+is that it may not be clear which one to look in?</p></p></li>
+<li><p> don't want to put the rust crate into libgreat because complex CI
+and releases will ensue</p></li>
+<li><p>[ ] Should we implement the main device firmware in a pure Rust <code>no_std</code> environment without the use of the <code>alloc</code> feature?</p></li>
+<li><p> <code>alloc</code> comes with its own share of problems in the form of memory fragmentation and unpredictable latency.</p></li>
+<li><p> are there any high-alloc areas of the code that can't be handled by e.g. the <code>heapless</code> crate.</p></li>
+</ul>
+
+<hr />
+
+<h2 id="8generalmaintenance">8 General Maintenance</h2>
+
+<ul>
+<li><p>CLI syntax consistency:</p>
+
+<p>https://discord.com/channels/688454539283791881/991385907997462528/1050123182222344202</p></li>
+<li><p>TODO link other identified issues</p></li>
+</ul>
+
+<hr />
+
+<h2 id="9appendix">9 Appendix</h2>
+
+<h3 id="structuraldecomposition">Structural Decomposition</h3>
+
+<figure>
+<img src="structure/top_structure.svg" alt="Diagram: Firmware Structure" />
+<figcaption>Diagram: Firmware Structure</figcaption>
+</figure>
+
+<h3 id="linkstousefuldocumentation">Links to Useful Documentation</h3>
+
+<ul>
+<li><a href="https://wikileaks.org/ciav7p1/cms/page_20873567.html">GreatFET Documentation</a></li>
+<li> <a href="https://greatfet.readthedocs.io/en/latest/libgreat_verb_signatures.html">Verb Signatures</a></li>
+<li> <a href="https://greatfet.readthedocs.io/en/latest/greatfet_classes.html">Classes</a></li>
+<li><a href="https://serde.rs/data-format.html">Writing a Serde data format</a></li>
+<li><a href="https://www.beyondlogic.org/usbnutshell/">Beyond Logic - USB in a NutShell</a></li>
+</ul>
+
+<h3 id="repositories">Repositories</h3>
+
+<ul>
+<li>https://github.com/antoinevg/GSG-private/</li>
+<li>https://github.com/antoinevg/luna</li>
+<li>https://github.com/antoinevg/Facedancer</li>
+<li>https://github.com/greatscottgadgets/libgreat</li>
+<li>https://github.com/greatscottgadgets/greatfet</li>
+</ul>
+
+<h3 id="issues">Issues</h3>
+
+<ul>
+<li><a href="https://github.com/greatscottgadgets/luna/issues/68">FaceDancer: Implement Initial Design Specification / RFP #68</a></li>
+<li><a href="https://github.com/greatscottgadgets/luna/issues/151">Facedancer SoC #151</a></li>
+<li><a href="https://github.com/greatscottgadgets/Facedancer/issues/59">LUNA support for Facedancer #59</a></li>
+</ul>
+
+</body>
+</html>
+
