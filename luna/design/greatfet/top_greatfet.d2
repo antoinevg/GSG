@@ -1,3 +1,6 @@
+$theme: 0
+$layout: dagre
+
 # - greatfet.git --------------------------------------------------------------
 
 greatfet: greatfet.git
@@ -207,94 +210,6 @@ greatfet.greatfet_usb.greatfet_usb_streaming: {
 }
 
 
-# firmware/greatfet_usb/legacy_apis/
-greatfet.greatfet_usb.legacy_apis: firmware/greatfet_usb/legacy_apis/
-
-greatfet.greatfet_usb.legacy_apis.usb_api_sdir: firmware/greatfet_usb/legacy_apis/usb_api_sdir.c
-greatfet.greatfet_usb.legacy_apis.usb_api_sdir: {
-    sdir_rx_mode: |`c
-        void sdir_rx_mode(void)
-        {
-            if (!sdir_rx_enabled) {
-                return;
-            }
-
-            usb_endpoint_init(&usb0_endpoint_bulk_in);
-
-            sdir_rx_start();
-
-            unsigned int phase = 1;
-            while(sdir_rx_enabled) {
-                if ( usb_bulk_buffer_offset >= 0x4000
-                     && phase == 1) {
-                    usb_transfer_schedule_block(
-                        &usb0_endpoint_bulk_in,
-                        &usb_bulk_buffer[0x0000],
-                        0x4000, 0, 0
-                        );
-                    phase = 0;
-                }
-                // Set up IN transfer of buffer 1.
-                if ( usb_bulk_buffer_offset < 0x4000
-                     && phase == 0) {
-                    usb_transfer_schedule_block(
-                        &usb0_endpoint_bulk_in,
-                        &usb_bulk_buffer[0x4000],
-                        0x4000, 0, 0
-                    );
-                    phase = 1;
-                }
-            }
-            sdir_rx_stop();
-            // usb_endpoint_disable(&usb0_endpoint_bulk_in);
-        }
-    `|
-    sdir_tx_mode: |`c
-        void sdir_tx_mode(void)
-        {
-            if (!sdir_tx_enabled) {
-                return;
-            }
-
-            usb_endpoint_init(&usb0_endpoint_bulk_out);
-            usb_transfer_schedule_block(
-                &usb0_endpoint_bulk_out,
-                &usb_bulk_buffer[0x0000],
-                USB_XFER_SIZE, 0, 0
-                );
-            uint8_t usb_phase = 0;
-            dma_phase = 0;
-
-            sdir_tx_start();
-
-            while(sdir_tx_enabled) {
-                // Set up OUT transfer of buffer 0.
-                if (((dma_phase == 2) || (dma_phase == 3)) && usb_phase == 1) {
-                    usb_transfer_schedule_block(
-                        &usb0_endpoint_bulk_out,
-                        &usb_bulk_buffer[0x0000],
-                        USB_XFER_SIZE, 0, 0
-                        );
-                    usb_phase = 0;
-               }
-                // Set up OUT transfer of buffer 1.
-                if ( ((dma_phase == 0) || (dma_phase == 1)) && usb_phase == 0) {
-                    usb_transfer_schedule_block(
-                        &usb0_endpoint_bulk_out,
-                        &usb_bulk_buffer[USB_XFER_SIZE],
-                        USB_XFER_SIZE, 0, 0
-                    );
-                    usb_phase = 1;
-                }
-                //  delay(1000000);
-            }
-            sdir_tx_stop();
-        }
-    `|
-    task_sdir_rx_mode: |c DEFINE_TASK(sdir_rx_mode) |
-    task_sdir_tx_mode: |c DEFINE_TASK(sdir_tx_mode) |
-}
-
 
 # - libgreat.git --------------------------------------------------------------
 
@@ -340,20 +255,6 @@ libgreat.firmware.drivers.scheduler -- greatfet.greatfet_usb.classes.heartbeat.t
 }
 libgreat.firmware.drivers.scheduler -- greatfet.greatfet_usb.greatfet_usb_streaming.task: {
     label: Task\: task_usb_streaming
-    style: {
-        stroke: orange
-        stroke-width: 5
-    }
-}
-libgreat.firmware.drivers.scheduler -- greatfet.greatfet_usb.legacy_apis.usb_api_sdir.task_sdir_rx_mode: {
-    label: Task\: sdir_rx_mode
-    style: {
-        stroke: orange
-        stroke-width: 5
-    }
-}
-libgreat.firmware.drivers.scheduler -- greatfet.greatfet_usb.legacy_apis.usb_api_sdir.task_sdir_tx_mode: {
-    label: Task\: sdir_tx_mode
     style: {
         stroke: orange
         stroke-width: 5

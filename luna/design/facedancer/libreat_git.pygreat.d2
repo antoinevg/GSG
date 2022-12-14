@@ -1,0 +1,42 @@
+libgreat_git: libgreat.git
+
+# - libgreat.git/host/pygreat/board.py ----------------------------------------
+
+libgreat_git.pygreat.GreatBoard: host/pygreat/board.py:GreatBoard
+libgreat_git.pygreat.GreatBoard: {
+    __init__: |python
+        def __init__(self, **device_identifiers):
+            """
+            Instantiates a new connection to a libgreat device; by default connects
+            to the first available board.
+
+            Accepts the same arguments as pyusb's usb.find() method, allowing narrowing
+            to a more specific board by serial number.
+
+            FIXME: accept an identifier string or a comms_backend object instead of the
+            array above
+            """
+
+            # By default, accept any device with the default vendor/product IDs.
+            self.identifiers = self.populate_default_identifiers(device_identifiers)
+
+            # For convenience, allow serial_number=None to be equivalent to not
+            # providing a serial number: a board with any serial number will be
+            # accepted.
+            if 'serial_number' in self.identifiers and self.identifiers['serial_number'] is None:
+                del self.identifiers['serial_number']
+
+            # TODO: replace this with a comms_string
+            # Create our backend connection to the device.
+            self.comms = CommsBackend.from_device_uri(**self.identifiers)
+
+            # Get an object that allows easy access to each of our APIs.
+            self.apis = self.comms.generate_api_object()
+
+            # TODO: optionally use the core API to discover other APIs
+
+            # Final sanity check: if we don't handle this board ID, bail out!
+            if self.HANDLED_BOARD_IDS and (self.board_id() not in self.HANDLED_BOARD_IDS):
+                raise DeviceNotFoundError()
+    |
+}

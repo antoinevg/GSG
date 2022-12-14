@@ -1,0 +1,34 @@
+greatfet_git: greatfet.git
+
+# - greatfet.git/host/greatfet/greatfet.py ------------------------------------
+
+greatfet_git.host_greatfet: greatfet.git/host/greatfet/greatfet.py
+greatfet_git.host_greatfet: {
+    __init__: |python
+        def GreatFET(**board_identifiers):
+            """
+            Attempts to create a new instance of GreatFET board (sub)class
+            most applicable to the given device. For example, if the attached
+            board is a GreatFET One, this will automatically create a
+            GreatFETOne object.
+
+            Accepts the same arguments as pyusb's usb.find() method, allowing narrowing
+            to a more specific GreatFET by e.g. serial number. Like usb.find(), providing
+            find_all will return a list of all found devices.
+
+            Throws a DeviceNotFoundError if no device is avaiable and find_all is not set.
+            """
+
+            if 'find_all' in board_identifiers and board_identifiers['find_all']:
+                del board_identifiers['find_all']
+                return GreatFETBoard.autodetect_all(**board_identifiers)
+            else:
+                return GreatFETBoard.autodetect(**board_identifiers)
+    |
+}
+
+
+greatfet_git.host_greatfet.TODO
+greatfet_git.host_greatfet.TODO.text: |
+    greatfet host-side python library - Show Commands under host/greatfet/ ...
+|
