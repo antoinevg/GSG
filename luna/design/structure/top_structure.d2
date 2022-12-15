@@ -40,11 +40,7 @@ $include: luna_git.firmware.d2
 $include: libgreat-rs_git.d2
 
 
-
 # - sub-component relationships -----------------------------------------------
-# TODO it would be nice if these could live here and we could pull them in when
-#      rendering the corresponding sub-component's diagram
 
 luna_git.gateware_soc.cgen -- luna_git.examples_soc
 luna_git.gateware_soc.svdgen -- luna_git.firmware.lunasoc-pac: svd2rust
-luna_git.firmware.lunasoc-hal -- libgreat-rs_git

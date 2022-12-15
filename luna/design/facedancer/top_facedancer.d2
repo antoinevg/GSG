@@ -126,12 +126,24 @@ facedancer_git.future_device.USBBaseDevice.run -> facedancer_git.backends_moonda
 
 $include: facedancer_git.backends_moondancer.d2
 
+facedancer_git.backends_moondancer.__init__ -- greatfet_git.host_greatfet.__init__: self.device = greatfet.GreatFET()
+facedancer_git.backends_moondancer.__init__ -- libgreat_git.pygreat.GreatBoard.__init__: self.api = self.device.apis.greatdancer
+
+facedancer_git.backends_moondancer._handle_setup_event_on_endpoint -> greatfet_git.firmware_greatfet_usb_classes_greatdancer: {
+    label: self.api.read_setup(endpoint_number)
+    style: {
+        font-size: 24
+        stroke-width: 5
+        stroke: green
+    }
+}
+
 
 # - libgreat.git/host/pygreat/board.py -------------------------------
 
 libgreat_git: libgreat.git
 
-$include: libreat_git.pygreat.d2
+$include: libgreat_git.pygreat.d2
 
 
 # - greatfet.git/host/greatfet/greatfet.py ------------------------------------
@@ -140,6 +152,38 @@ greatfet_git: greatfet.git
 
 $include: greatfet_git.host_greatfet.d2
 
+# - greatfet.git/host/greatfet/greatfet.py ------------------------------------
+
+greatfet_git.host_greatfet: greatfet.git/host/greatfet/greatfet.py
+greatfet_git.host_greatfet: {
+    __init__: |python
+        def GreatFET(**board_identifiers):
+            """
+            Attempts to create a new instance of GreatFET board (sub)class
+            most applicable to the given device. For example, if the attached
+            board is a GreatFET One, this will automatically create a
+            GreatFETOne object.
+
+            Accepts the same arguments as pyusb's usb.find() method, allowing narrowing
+            to a more specific GreatFET by e.g. serial number. Like usb.find(), providing
+            find_all will return a list of all found devices.
+
+            Throws a DeviceNotFoundError if no device is avaiable and find_all is not set.
+            """
+
+            if 'find_all' in board_identifiers and board_identifiers['find_all']:
+                del board_identifiers['find_all']
+                return GreatFETBoard.autodetect_all(**board_identifiers)
+            else:
+                return GreatFETBoard.autodetect(**board_identifiers)
+    |
+}
+
+
+greatfet_git.host_greatfet.TODO
+greatfet_git.host_greatfet.TODO.text: |
+    greatfet host-side python library - Show Commands under host/greatfet/ ...
+|
 
 
 # - greatfet.git/firmware/greatfet_usb/classes/greatdancer.c ------------------

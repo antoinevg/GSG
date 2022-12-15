@@ -247,14 +247,3 @@ facedancer_git.backends_moondancer: {
                         self.connected_device.handle_nak(endpoint.number)
     |
 }
-facedancer_git.backends_moondancer.__init__ -- greatfet_git.host_greatfet.__init__: self.device = greatfet.GreatFET()
-facedancer_git.backends_moondancer.__init__ -- libgreat_git.pygreat.GreatBoard.__init__: self.api = self.device.apis.greatdancer
-
-facedancer_git.backends_moondancer._handle_setup_event_on_endpoint -> greatfet_git.firmware_greatfet_usb_classes_greatdancer: {
-    label: self.api.read_setup(endpoint_number)
-    style: {
-        font-size: 24
-        stroke-width: 5
-        stroke: green
-    }
-}

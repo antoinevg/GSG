@@ -1,19 +1,3 @@
-# - embedded-hal --------------------------------------------------------------
-
-embedded-hal_git: @rust-embedded/embedded-hal.git {
-    near: luna_git.firmware.lunasoc-hal
-}
-embedded-hal_git.text: |c
-    delay
-    digital
-    serial
-    spi
-    timer
-    watchdog
-    ...
-|
-
-
 # - Luna Firmware -------------------------------------------------------------
 
 luna_git.firmware: firmware/soc/
@@ -34,20 +18,81 @@ luna_git.firmware.lunasoc-hal.text: |c
     usb_hs.rs (libgreat-rs.USBDeviceController)
 |
 
-luna_git.firmware.luna-usb: firmware/soc/luna-usb/
-luna_git.firmware.luna-usb.text: |c
-    service_heartbeat
-    task_usb_streaming
+luna_git.firmware.luna: firmware/soc/luna/
+luna_git.firmware.luna.services: |c
+    logger
+    scheduler & irq handler
+      - heartbeat
+      - usb
+      - firmware update
+|
+
+luna_git.firmware.luna.classes: firmware/soc/luna/classes/
+luna_git.firmware.luna.classes.text: |c
+    0x0   core
+    0x1   firmware
+    0x10  debug
+    0x11  selftest
+    0x10A leds
+    0x120 moondancer
+    0x10F usbproxy
 |
 
 
 # internal relationships
 
 luna_git.firmware.lunasoc-pac -- luna_git.firmware.lunasoc-hal
-luna_git.firmware.lunasoc-pac -- luna_git.firmware.luna-usb
-luna_git.firmware.lunasoc-hal -- luna_git.firmware.luna-usb
-
+luna_git.firmware.lunasoc-pac -- luna_git.firmware.luna
+luna_git.firmware.lunasoc-hal -- luna_git.firmware.luna
 
 # external relationships
 
 luna_git.firmware.lunasoc-hal -- embedded-hal_git
+luna_git.firmware.lunasoc-hal -- libgreat-rs_git.firmware_platform_drivers
+luna_git.firmware.luna -- libgreat-rs_git.firmware_classes
+luna_git.firmware.luna -- libgreat-rs_git.firmware_drivers
+
+
+# - libgreat-rs ---------------------------------------------------------------
+
+libgreat-rs_git: libgreat-rs.git
+
+libgreat-rs_git.firmware_classes: firmware/classes/
+libgreat-rs_git.firmware_classes.text: |c
+    0x0   core
+    0x1   firmware
+    0x10  debug
+    0x11  selftest
+|
+
+libgreat-rs_git.firmware_drivers: firmware/drivers/
+libgreat-rs_git.firmware_drivers.text: |c
+    error.rs
+    reset.rs
+    comms/   # GCP transport, serialization & dispatch
+|
+
+libgreat-rs_git.firmware_platform_drivers: firmware/platform/soc/drivers/
+libgreat-rs_git.firmware_platform_drivers.text: |c
+    amaranth_stdio.serial.AsyncSerial.rs
+    lambdasoc.periph.Peripheral -> GpioPeripheral.rs
+    lambdasoc.periph.timer.TimerPeripheral.rs
+    luna.gateware.interface.flash.ECP5ConfigurationFlashInterface.rs
+    luna.gateware.usb2.USBDeviceController.rs
+|
+
+
+# - embedded-hal --------------------------------------------------------------
+
+embedded-hal_git: @rust-embedded/embedded-hal.git {
+    near: luna_git.firmware.lunasoc-hal
+}
+embedded-hal_git.text: |c
+    delay
+    digital
+    serial
+    spi
+    timer
+    watchdog
+    ...
+|
