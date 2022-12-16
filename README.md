@@ -1,6 +1,6 @@
-# GSG-private
+# GSG
 
-A private repo for sharing stuff with my colleagues at Great Scott Gadgets.
+A repo for sharing stuff with my colleagues at Great Scott Gadgets.
 
 
 ## Dependencies

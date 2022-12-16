@@ -22,7 +22,7 @@ Create an initial design document describing a FaceDancer backend for LUNA.
 
 This should:
 
-* [ ] Include plans for the core backend.
+* [x] Include plans for the core backend.
 * [ ] Accommodate future FPGA acceleration, where possible.
 * [ ] Accommodate fancy USBProxy enhancements.
 
@@ -50,7 +50,7 @@ Adding support to Facedancer for a new remote-controlled USB device ("the device
 
 This proposal will cover the requirements for the development of a Facedancer backend for the [Great Scott Gadgets Luna](https://greatscottgadgets.com/luna/).
 
-Understanding the relationships between the major components of Facedancer can best be visualized in terms of the data flow between them:
+Understanding the relationships between the major components of Facedancer can best be visualised in terms of the data flow between them:
 
 ![Diagram: Data Flow](dataflow/luna.svg)
 
@@ -59,12 +59,12 @@ The host side can be broken down into the following major components:
 1. The *Luna Facedancer Backend*: `facedancer.git:/facedancer/backends/moondancer.py`
 2. The *Luna host-side Python Library*: `luna.git:/host/`
 3. The *Luna host-side CLI*: : `luna.git:/host/`
-3. The *Host-side Command Serialization and Transport Library*: `libgreat.git:/host/pygreat/`
+3. The *Host-side Command Serialisation and Transport Library*: `libgreat.git:/host/pygreat/`
 
 The device side consists of the major components:
 
 1. The *Device-side Transport Library*: `libgreat-rs.git:/firmware/drivers/`
-2. The *Device-side Command Serialization Library*: `libgreat-rs.git:/firmware/drivers/`
+2. The *Device-side Command Serialisation Library*: `libgreat-rs.git:/firmware/drivers/`
 3. The *Luna Device API*: `luna.git:/luna/firmware/soc/classes/`
 4. The *Luna SoC Firmware*: `luna.git:/luna/firmware/soc/`
 5. The *Luna SoC Peripheral Drivers*: `libgreat-rs.git:/firmware/platform/soc/drivers/`
@@ -77,9 +77,9 @@ The device side consists of the major components:
 
 ## 2 Host Side Implementation
 
-There is an existing host side implementation in Python which targets the [Greatt Scott Gadgets GreatFET](https://greatscottgadgets.com/greatfet/). We should be able to re-use much of the code with only minor modification and re-organization of the existing codebase.
+There is an existing host side implementation in Python which targets the [Great Scott Gadgets GreatFET](https://greatscottgadgets.com/greatfet/). We should be able to re-use much of the code with only minor modification and reorganisation of the existing codebase.
 
-This section exists primarily to serve as a reference to how this code is currently organized.
+This section exists primarily to serve as a reference to how this code is organised.
 
 <!--
 ![Diagram: Facedancer](facedancer/top_facedancer.svg)
@@ -97,7 +97,7 @@ Currently, there are two Applets available:
 * [`FTDIDevice`](https://github.com/greatscottgadgets/Facedancer/blob/master/facedancer/devices/ftdi.py) - Emulated FTDI USB Serial device.
 * [`USBKeyboardDevice`](https://github.com/greatscottgadgets/Facedancer/blob/master/facedancer/devices/keyboard.py) - Simple USB Keyboard device.
 
-There are also a number of legacy Applets available that we will talk about more in [Section 5.5]().
+There are also a number of legacy Applets available that we will talk about more in [Section 6.1](#61-additional-facedancer-applets).
 
 This user-facing scripting environment is abstracted away from any given Facedancer hardware allowing support to be extended for new devices.
 
@@ -112,21 +112,21 @@ A Facedancer host backend ("the facedancer backend) is responsible for servicing
 
 As such, it is primarily responsible for enacting the following functionality on the device being controlled by Facedancer:
 
-* Initializing the USB device, configuration, interface and endpoint descriptors of the emulated device.
+* Initialising the USB device, configuration, interface and endpoint descriptors of the emulated device.
 * Reading data from the emulated device's endpoints.
 * Writing data to the emulated device's endpoints.
 
 
 ### 2.2 Luna host-side Python Library
 
-Great Scott Gadgets device commands are organized into a simple class/verb schema to define a transport-independent RPC protocol called the Great Communications Protocol ("GCP") for communication with a host-connected device.
+Great Scott Gadgets device commands are organised into a simple class/verb schema to define a transport-independent RPC protocol called the Great Communications Protocol ("GCP") for communication with a host-connected device.
 
 Amongst other capabilities, this enables the automatic generation and population of a host-side Python API object that reflects the commands implemented in the firmware of the device.
 
 ![Diagram: Luna host-side Python Library](facedancer/libgreat_git.pygreat.svg)
 
 
-### 2.3 Command Serialization and Transport Library
+### 2.3 Command Serialisation and Transport Library
 
 Luna uses USB as the transport for GCP messages.
 
@@ -138,7 +138,7 @@ The host-side implementation can be found in the [`pygreat`](https://github.com/
 
 * [ ] Derive a new Luna Facedancer Backend from [facedancer.git:/facedancer/backends/greatdancer.py](https://github.com/greatscottgadgets/Facedancer/blob/master/facedancer/backends/greatdancer.py)
 * [ ] Derive a new Luna host-side Python Library from [greatfet.git:/ host/greatfet/](https://github.com/greatscottgadgets/greatfet/tree/master/host/greatfet/)
-* [ ] Integrate the Command Serialization and Transport Library from: [libgreat.git:/host/pygreat/comms_backends/usb.py](https://github.com/greatscottgadgets/libgreat/blob/master/host/pygreat/comms_backends/usb.py)
+* [ ] Integrate the Command Serialisation and Transport Library from: [libgreat.git:/host/pygreat/comms_backends/usb.py](https://github.com/greatscottgadgets/libgreat/blob/master/host/pygreat/comms_backends/usb.py)
 
 
 
@@ -146,9 +146,9 @@ The host-side implementation can be found in the [`pygreat`](https://github.com/
 
 ## 3 Device Side Firmware Implementation
 
-The primary function of the Device Firmware is to implement the functionality defined by the GCP messages between Facedancer and the device.
+The primary function of the Device Firmware is to implement the functionality invoked by GCP messages from Facedancer to the device.
 
-Additional functionality includes logging, error handling, reset control, device heartbear and SoC firmware updates.
+Additional functionality includes logging, error handling, reset control, device heartbeat and SoC firmware updates.
 
 ![Diagram: Firmware Structure](structure/luna_git.firmware.svg)
 
@@ -190,7 +190,7 @@ Drivers should be implemented for the following SoC peripherals:
 * `luna.gateware.usb2.USBDeviceController`
 * `luna.gateware.interface.flash.ECP5ConfigurationFlashInterface`
 
-Peripheral drivers will be organized across three crates:
+Peripheral drivers will be organised across three crates:
 
 * `lunasoc-pac`  - A peripheral register access API generated by `svd2rust`
 * `amaranth-hal` - Concrete implementations of the device-independent `embedded-hal` traits for the peripherals.
@@ -203,9 +203,9 @@ Peripheral drivers will be organized across three crates:
 [libgreat.git:/firmware/platform/lpc43xx/](https://github.com/greatscottgadgets/libgreat/tree/master/firmware/platform/lpc43xx)
 
 
-### 3.3 Command Serialization and Transport Library
+### 3.3 Command Serialisation and Transport Library
 
-The USB serialization and Transport libary is responsible for marshalling "Great Communication Protocol" commands from the host to the device.
+The USB serialisation and Transport library is responsible for marshalling "Great Communication Protocol" commands from the host to the device.
 
 Command execution takes the form of a host request containing the command class, verb and parameters followed by a device response containing one or more return parameters.
 
@@ -217,19 +217,19 @@ We can break library implementation down into three main components:
 
 The USB transport is responsible for reading host requests and sending device responses using the  USBDeviceController peripheral driver.
 
-#### 3.3.2. Command Serialization
+#### 3.3.2. Command Serialisation
 
-Command Serialization is responsible for:
+Command Serialisation is responsible for:
 
-* Deserializing commands read from the USB transport to a Rust representation.
-* Serializing command responses in Rust representation to USB transport responses.
+* Deserialising commands read from the USB transport to a Rust representation.
+* Serialising command responses in Rust representation to USB transport responses.
 
 #### 3.3.3. Command Dispatch
 
 Command dispatch is responsible for:
 
 * Dispatching GCP commands in Rust representation to their corresponding Rust implementations.
-* Scheduling the command response for serialization and transport.
+* Scheduling the command response for serialisation and transport.
 
 #### Reference Implementation
 
@@ -248,11 +248,13 @@ Command dispatch is responsible for:
     - debug utilities
 * `0x11 selftest`
     - utilities for self-testing libgreat-based boards
+* `0x105 usbhost` *(is this currently supported ? see [Open Questions](#10-open-questions))*
+    - remote control over Luna's USB ports in host mode, for e.g. FaceDancer
 * `0x10A leds`
     - control over a given board’s LEDs
 * `0x120 moondancer` (new class, implementing the verbs from `0x104 greatdancer`)
     - remote control over Luna's USB ports in device mode, for e.g. FaceDancer
-* `0x10F usbproxy`
+* `0x10F usbproxy` *(is this currently supported ? see [Open Questions](#10-open-questions))*
     - Firmware functionality supporting USBProxy
 
 #### Additional classes of interest are:
@@ -261,8 +263,6 @@ Command dispatch is responsible for:
     - verbs for programming SPI flashes
 * `0x103 gpio`
     - control the GreatFET’s idle/”heartbeat” LED
-* `0x105 usbhost` *(is this supported ? see [Open Questions]())*
-    - remote control over Luna's USB ports in host mode, for e.g. FaceDancer
 * `0x107 glitchkit_usb`
     - control over functionality intended to help with timing USB fault injection
 * `0x113 usb_analysis`
@@ -319,7 +319,7 @@ Utilities for self-testing libgreat-based boards:
 
 Remote control over Luna's USB ports in host mode, for e.g. FaceDancer
 
-*(is this currently supported ? see [Open Questions]())*
+*(is this currently supported ? see [Open Questions](#10-open-questions))*
 
 <!--
 * ``
@@ -348,7 +348,7 @@ Connection / disconnection:
 
 Enumeration / setup:
 
-* `greatdancer_verb_set_address(address: u16, deffered: u8)`
+* `greatdancer_verb_set_address(address: u16, deferred: u8)`
 * `greatdancer_verb_set_up_endpoints(endpoint_descriptors: [(address: u8, max_packet_size: u16, type: u8)])`
 
 Status & control:
@@ -369,7 +369,7 @@ Data transfers:
 
 Firmware functionality supporting USBProxy
 
-*(is this supported ? see [Open Questions]())*
+*(is this currently supported ? see [Open Questions](#10-open-questions))*
 
 <!--
 * ``
@@ -383,22 +383,22 @@ Firmware functionality supporting USBProxy
 
 #### Initial Bring-up
 
-* [ ] Implement `blinky` for LunaSoC.
-* [ ] Implement `uart` for LunaSoC.
+* [ ] Implement `hello-blinky` for LunaSoC.
+* [ ] Implement `hello-uart` for LunaSoC.
 
 #### Luna SoC Firmware
 
 * [ ] Implement clock and reset control for the SoC.
 * [ ] Configure memory access for:
-    - SoC SPI Flash peripheral
     - SoC SRAM
+    - SoC SPI Flash peripheral
     - SoC HyperRAMInterface Peripheral
 * [ ] Implement a `no_std` error handling strategy that does not rely on the `alloc` feature.
 * [ ] Implement a device logging strategy:
     - logs shall be recoverable following system panic.
     - logs shall be accessible at runtime via `0x10 debug`.
 * [ ] Implement a task scheduling and interrupt handling strategy.
-* [ ] Implement a device hearbeat mechanism.
+* [ ] Implement a device heartbeat mechanism.
 * [ ] Implement a SoC firmware loading strategy.
 * [ ] Implement a SoC firmware update mechanism.
 
@@ -410,10 +410,12 @@ Firmware functionality supporting USBProxy
 * [ ] Implement an `embedded-hal` driver for `luna.gateware.usb2.USBDeviceController`
 * [ ] Implement an `embedded-hal` driver for `luna.gateware.interface.flash.ECP5ConfigurationFlashInterface`
 
-#### Command Serialization and Transport Library
+#### Command Serialisation and Transport Library
 
 * [ ] Implement a GCP transport for the USBDeviceController peripheral driver.
-* [ ] Implement support for the "Great Communication Protocol" serialization format using the [`serde`](https://serde.rs/data-format.html) crate.
+* [ ] Implement support for the "Great Communication Protocol" serialisation format.
+    - Option: [`serde`](https://serde.rs/data-format.html)
+    - TODO Option: [`yoke`](https://hachyderm.io/@ekuber/109513137375293238)
 * [ ] Implement a dispatch mechanism for GCP commands and responses.
 
 #### Luna Device API
@@ -485,8 +487,7 @@ The following conventions should be respected:
 * Commands shall be implemented as a single keyword containing no preceding or interceding dash or underscore tokens to distinguish them from flags.
 * Flags shall be distinguished by a single dash (abbreviated flag name) and a double dash (expanded flag name).
 * Abbreviated flag names shall use the first letter of their expanded variant. Where this leads to conflicts alternative wording should be explored for the expanded names.
-* Abbreviated flag names shall be capitalized in order to further distinguish them from expanded flag names.
-* Abbreviated flag names may be omitted for lesser-used commands (e.g. `--keep-files`)
+* Abbreviated flag names shall be lower-case in order to reduce cognitive overhead.
 
 ### 5.1 Description
 
@@ -510,10 +511,10 @@ The following conventions should be respected:
 
 The following flags shall be supported:
 
-* `--dry-run, -D`: When provided as the only option; builds the relevant bitstream without uploading or flashing it.
-* `--keep-files`: Keeps the local files in the default `build` folder.
-* `--fpga`: Overrides build configuration to build for a given FPGA. Useful if no FPGA is connected during build.
-* `--console`: Attempts to open a convenience 115200 8N1 UART console on the specified port immediately after uploading.
+* `--dry-run, -d`: When provided as the only option; builds the relevant bitstream without uploading or flashing it.
+* `--keep-files, -k`: Keeps the local files in the default `build` folder.
+* `--fpga, -f`: Overrides build configuration to build for a given FPGA. Useful if no FPGA is connected during build.
+* `--console, -c`: Attempts to open a convenience 115200 8N1 UART console on the specified port immediately after uploading.
 
 #### SoC Commands shall include:
 
@@ -530,9 +531,9 @@ The following flags shall be supported:
 
 #### Global flags shall include:
 
-* `--help`: Display Luna CLI help.
-* `--build-dir`: Override the default `build/` directory.
-* `--` All flags following a naked double-dash will be passed to any tools invoked by the Luna CLI.
+* `--help, -h`: Display Luna CLI help.
+* `--build-dir, -b`: Override the default `build/` directory.
+* `--` All flags following a naked double-dash will be passed to external tools invoked by the Luna CLI.
 * TBD
 
 #### Naming considerations
@@ -648,12 +649,7 @@ Additional documentation:
 * Luna Tutorials
 * Facedancer Applet API reference
 
-### 8.1 Main Tasks
-
-* [ ] ...
-
-
-### 8.2 References
+### 8.1 References
 
 * [GreatFET Tutorials](https://greatscottgadgets.github.io/greatfet-tutorials/)
 * [GreatFET Project documentation](https://greatfet.readthedocs.io/en/latest/)
@@ -666,13 +662,17 @@ External:
 * [Hackaday - Hands-on: GreatFET](https://hackaday.com/2019/07/02/hands-on-greatfet-is-an-embedded-tool-that-does-it-all/)
 * [Colin O'Flunn - USB Attacks and More with GreatFET](https://circuitcellar.com/research-design-hub/usb-attacks-and-more-with-greatfet/)
 
+### 8.2 Main Tasks
+
+* [ ] ...
+
 
 
 ---
 
-## 9 Code Organization
+## 9 Code Organisation
 
-The `luna.git` repository should utilize GSG repository layout conventions with the following top-level structure:
+The `luna.git` repository should utilise GSG repository layout conventions with the following top-level structure:
 
 ```
 /ci-scripts  - Scripts used by CI
@@ -686,7 +686,7 @@ The `luna.git` repository should utilize GSG repository layout conventions with 
 
 > Note: The hardware release cycle operates on a different time-scale to software release cycles. Ideally device hardware should live in its own repository.
 
-To reduce the maintenance burden across the larger Great Scott Gadgets codebase it's proposed to make some minor changes to the organization of the greatfet.git and libgreat.git repositories.
+To reduce the maintenance burden across the larger Great Scott Gadgets codebase it's proposed to make some minor changes to the organisation of the greatfet.git and libgreat.git repositories.
 
 ### 9.1 Facedancer "Great Communication Protocol" class id:
 
@@ -735,7 +735,7 @@ This strategy is hard work that can cost a couple days work but we pay it forwar
 
 ## 10 Open Questions
 
-* [ ] are the Great Communication Protocol `0x105 usbhost` and `0x10F subproxy` classes supported anywhere currently?
+* [ ] are the Great Communication Protocol `0x105 usbhost` and `0x10F usbproxy` classes supported anywhere currently?
     - if so, where are the implementations hiding?
 
 * [ ] how do we want to manage SoC firmware uploads to SPI flash
@@ -777,6 +777,7 @@ This strategy is hard work that can cost a couple days work but we pay it forwar
 ![Diagram: Facedancer Call Graph](facedancer/top_facedancer.svg)
 
 
+
 ---
 
 ## 12 Appendix
@@ -795,9 +796,8 @@ External:
 
 ### Repositories
 
-* https://github.com/antoinevg/GSG-private/
-* https://github.com/antoinevg/luna
-* https://github.com/antoinevg/Facedancer
+* https://github.com/greatscottgadgets/luna
+* https://github.com/greatscottgadgets/Facedancer
 * https://github.com/greatscottgadgets/libgreat
 * https://github.com/greatscottgadgets/greatfet
 

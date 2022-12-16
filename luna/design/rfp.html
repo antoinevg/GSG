@@ -50,7 +50,7 @@ img { max-width: 1024; }
 
 <p>This proposal will cover the requirements for the development of a Facedancer backend for the <a href="https://greatscottgadgets.com/luna/">Great Scott Gadgets Luna</a>.</p>
 
-<p>Understanding the relationships between the major components of Facedancer can best be visualized in terms of the data flow between them:</p>
+<p>Understanding the relationships between the major components of Facedancer can best be visualised in terms of the data flow between them:</p>
 
 <figure>
 <img src="dataflow/luna.svg" alt="Diagram: Data Flow" />
@@ -63,14 +63,14 @@ img { max-width: 1024; }
 <li>The <em>Luna Facedancer Backend</em>: <code>facedancer.git:/facedancer/backends/moondancer.py</code></li>
 <li>The <em>Luna host-side Python Library</em>: <code>luna.git:/host/</code></li>
 <li>The <em>Luna host-side CLI</em>: : <code>luna.git:/host/</code></li>
-<li>The <em>Host-side Command Serialization and Transport Library</em>: <code>libgreat.git:/host/pygreat/</code></li>
+<li>The <em>Host-side Command Serialisation and Transport Library</em>: <code>libgreat.git:/host/pygreat/</code></li>
 </ol>
 
 <p>The device side consists of the major components:</p>
 
 <ol>
 <li>The <em>Device-side Transport Library</em>: <code>libgreat-rs.git:/firmware/drivers/</code></li>
-<li>The <em>Device-side Command Serialization Library</em>: <code>libgreat-rs.git:/firmware/drivers/</code></li>
+<li>The <em>Device-side Command Serialisation Library</em>: <code>libgreat-rs.git:/firmware/drivers/</code></li>
 <li>The <em>Luna Device API</em>: <code>luna.git:/luna/firmware/soc/classes/</code></li>
 <li>The <em>Luna SoC Firmware</em>: <code>luna.git:/luna/firmware/soc/</code></li>
 <li>The <em>Luna SoC Peripheral Drivers</em>: <code>libgreat-rs.git:/firmware/platform/soc/drivers/</code></li>
@@ -82,9 +82,9 @@ img { max-width: 1024; }
 
 <h2 id="2hostsideimplementation">2 Host Side Implementation</h2>
 
-<p>There is an existing host side implementation in Python which targets the <a href="https://greatscottgadgets.com/greatfet/">Greatt Scott Gadgets GreatFET</a>. We should be able to re-use much of the code with only minor modification and re-organization of the existing codebase.</p>
+<p>There is an existing host side implementation in Python which targets the <a href="https://greatscottgadgets.com/greatfet/">Great Scott Gadgets GreatFET</a>. We should be able to re-use much of the code with only minor modification and reorganisation of the existing codebase.</p>
 
-<p>This section exists primarily to serve as a reference to how this code is currently organized.</p>
+<p>This section exists primarily to serve as a reference to how this code is organised.</p>
 
 <!--
 ![Diagram: Facedancer](facedancer/top_facedancer.svg)
@@ -125,14 +125,14 @@ TODO split into individual diagrams for each section
 <p>As such, it is primarily responsible for enacting the following functionality on the device being controlled by Facedancer:</p>
 
 <ul>
-<li>Initializing the USB device, configuration, interface and endpoint descriptors of the emulated device.</li>
+<li>Initialising the USB device, configuration, interface and endpoint descriptors of the emulated device.</li>
 <li>Reading data from the emulated device's endpoints.</li>
 <li>Writing data to the emulated device's endpoints.</li>
 </ul>
 
 <h3 id="2.2lunahost-sidepythonlibrary">2.2 Luna host-side Python Library</h3>
 
-<p>Great Scott Gadgets device commands are organized into a simple class/verb schema to define a transport-independent RPC protocol called the Great Communications Protocol (&quot;GCP&quot;) for communication with a host-connected device.</p>
+<p>Great Scott Gadgets device commands are organised into a simple class/verb schema to define a transport-independent RPC protocol called the Great Communications Protocol (&quot;GCP&quot;) for communication with a host-connected device.</p>
 
 <p>Amongst other capabilities, this enables the automatic generation and population of a host-side Python API object that reflects the commands implemented in the firmware of the device.</p>
 
@@ -141,7 +141,7 @@ TODO split into individual diagrams for each section
 <figcaption>Diagram: Luna host-side Python Library</figcaption>
 </figure>
 
-<h3 id="2.3commandserializationandtransportlibrary">2.3 Command Serialization and Transport Library</h3>
+<h3 id="2.3commandserialisationandtransportlibrary">2.3 Command Serialisation and Transport Library</h3>
 
 <p>Luna uses USB as the transport for GCP messages.</p>
 
@@ -152,16 +152,16 @@ TODO split into individual diagrams for each section
 <ul>
 <li>[ ] Derive a new Luna Facedancer Backend from <a href="https://github.com/greatscottgadgets/Facedancer/blob/master/facedancer/backends/greatdancer.py">facedancer.git:/facedancer/backends/greatdancer.py</a></li>
 <li>[ ] Derive a new Luna host-side Python Library from <a href="https://github.com/greatscottgadgets/greatfet/tree/master/host/greatfet/">greatfet.git:/ host/greatfet/</a></li>
-<li>[ ] Integrate the Command Serialization and Transport Library from: <a href="https://github.com/greatscottgadgets/libgreat/blob/master/host/pygreat/comms_backends/usb.py">libgreat.git:/host/pygreat/comms_backends/usb.py</a></li>
+<li>[ ] Integrate the Command Serialisation and Transport Library from: <a href="https://github.com/greatscottgadgets/libgreat/blob/master/host/pygreat/comms_backends/usb.py">libgreat.git:/host/pygreat/comms_backends/usb.py</a></li>
 </ul>
 
 <hr />
 
 <h2 id="3devicesidefirmwareimplementation">3 Device Side Firmware Implementation</h2>
 
-<p>The primary function of the Device Firmware is to implement the functionality defined by the GCP messages between Facedancer and the device.</p>
+<p>The primary function of the Device Firmware is to implement the functionality invoked by GCP messages from Facedancer to the device.</p>
 
-<p>Additional functionality includes logging, error handling, reset control, device heartbear and SoC firmware updates.</p>
+<p>Additional functionality includes logging, error handling, reset control, device heartbeat and SoC firmware updates.</p>
 
 <figure>
 <img src="structure/luna_git.firmware.svg" alt="Diagram: Firmware Structure" />
@@ -212,7 +212,7 @@ TODO split into individual diagrams for each section
 <li><code>luna.gateware.interface.flash.ECP5ConfigurationFlashInterface</code></li>
 </ul>
 
-<p>Peripheral drivers will be organized across three crates:</p>
+<p>Peripheral drivers will be organised across three crates:</p>
 
 <ul>
 <li><code>lunasoc-pac</code> - A peripheral register access API generated by <code>svd2rust</code></li>
@@ -228,9 +228,9 @@ TODO split into individual diagrams for each section
 
 <p><a href="https://github.com/greatscottgadgets/libgreat/tree/master/firmware/platform/lpc43xx">libgreat.git:/firmware/platform/lpc43xx/</a></p>
 
-<h3 id="3.3commandserializationandtransportlibrary">3.3 Command Serialization and Transport Library</h3>
+<h3 id="3.3commandserialisationandtransportlibrary">3.3 Command Serialisation and Transport Library</h3>
 
-<p>The USB serialization and Transport libary is responsible for marshalling &quot;Great Communication Protocol&quot; commands from the host to the device.</p>
+<p>The USB serialisation and Transport library is responsible for marshalling &quot;Great Communication Protocol&quot; commands from the host to the device.</p>
 
 <p>Command execution takes the form of a host request containing the command class, verb and parameters followed by a device response containing one or more return parameters.</p>
 
@@ -242,13 +242,13 @@ TODO split into individual diagrams for each section
 
 <p>The USB transport is responsible for reading host requests and sending device responses using the USBDeviceController peripheral driver.</p>
 
-<h4 id="3.3.2.commandserialization">3.3.2. Command Serialization</h4>
+<h4 id="3.3.2.commandserialisation">3.3.2. Command Serialisation</h4>
 
-<p>Command Serialization is responsible for:</p>
+<p>Command Serialisation is responsible for:</p>
 
 <ul>
-<li>Deserializing commands read from the USB transport to a Rust representation.</li>
-<li>Serializing command responses in Rust representation to USB transport responses.</li>
+<li>Deserialising commands read from the USB transport to a Rust representation.</li>
+<li>Serialising command responses in Rust representation to USB transport responses.</li>
 </ul>
 
 <h4 id="3.3.3.commanddispatch">3.3.3. Command Dispatch</h4>
@@ -257,7 +257,7 @@ TODO split into individual diagrams for each section
 
 <ul>
 <li>Dispatching GCP commands in Rust representation to their corresponding Rust implementations.</li>
-<li>Scheduling the command response for serialization and transport.</li>
+<li>Scheduling the command response for serialisation and transport.</li>
 </ul>
 
 <h4 id="referenceimplementation">Reference Implementation</h4>
@@ -431,7 +431,7 @@ TODO split into individual diagrams for each section
 <p>Enumeration / setup:</p>
 
 <ul>
-<li><code>greatdancer_verb_set_address(address: u16, deffered: u8)</code></li>
+<li><code>greatdancer_verb_set_address(address: u16, deferred: u8)</code></li>
 <li><code>greatdancer_verb_set_up_endpoints(endpoint_descriptors: [(address: u8, max_packet_size: u16, type: u8)])</code></li>
 </ul>
 
@@ -471,8 +471,8 @@ TODO split into individual diagrams for each section
 <h4 id="initialbring-up">Initial Bring-up</h4>
 
 <ul>
-<li>[ ] Implement <code>blinky</code> for LunaSoC.</li>
-<li>[ ] Implement <code>uart</code> for LunaSoC.</li>
+<li>[ ] Implement <code>hello-blinky</code> for LunaSoC.</li>
+<li>[ ] Implement <code>hello-uart</code> for LunaSoC.</li>
 </ul>
 
 <h4 id="lunasocfirmware">Luna SoC Firmware</h4>
@@ -482,8 +482,8 @@ TODO split into individual diagrams for each section
 <li>[ ] Configure memory access for:
 
 <ul>
-<li>SoC SPI Flash peripheral</li>
 <li>SoC SRAM</li>
+<li>SoC SPI Flash peripheral</li>
 <li>SoC HyperRAMInterface Peripheral</li>
 </ul></li>
 <li>[ ] Implement a <code>no_std</code> error handling strategy that does not rely on the <code>alloc</code> feature.</li>
@@ -494,7 +494,7 @@ TODO split into individual diagrams for each section
 <li>logs shall be accessible at runtime via <code>0x10 debug</code>.</li>
 </ul></li>
 <li>[ ] Implement a task scheduling and interrupt handling strategy.</li>
-<li>[ ] Implement a device hearbeat mechanism.</li>
+<li>[ ] Implement a device heartbeat mechanism.</li>
 <li>[ ] Implement a SoC firmware loading strategy.</li>
 <li>[ ] Implement a SoC firmware update mechanism.</li>
 </ul>
@@ -509,11 +509,16 @@ TODO split into individual diagrams for each section
 <li>[ ] Implement an <code>embedded-hal</code> driver for <code>luna.gateware.interface.flash.ECP5ConfigurationFlashInterface</code></li>
 </ul>
 
-<h4 id="commandserializationandtransportlibrary">Command Serialization and Transport Library</h4>
+<h4 id="commandserialisationandtransportlibrary">Command Serialisation and Transport Library</h4>
 
 <ul>
 <li>[ ] Implement a GCP transport for the USBDeviceController peripheral driver.</li>
-<li>[ ] Implement support for the &quot;Great Communication Protocol&quot; serialization format using the <a href="https://serde.rs/data-format.html"><code>serde</code></a> crate.</li>
+<li>[ ] Implement support for the &quot;Great Communication Protocol&quot; serialisation format.
+
+<ul>
+<li>Option: <a href="https://serde.rs/data-format.html"><code>serde</code></a></li>
+<li>TODO Option: <a href="https://hachyderm.io/@ekuber/109513137375293238"><code>yoke</code></a></li>
+</ul></li>
 <li>[ ] Implement a dispatch mechanism for GCP commands and responses.</li>
 </ul>
 
@@ -598,8 +603,7 @@ TODO split into individual diagrams for each section
 <li>Commands shall be implemented as a single keyword containing no preceding or interceding dash or underscore tokens to distinguish them from flags.</li>
 <li>Flags shall be distinguished by a single dash (abbreviated flag name) and a double dash (expanded flag name).</li>
 <li>Abbreviated flag names shall use the first letter of their expanded variant. Where this leads to conflicts alternative wording should be explored for the expanded names.</li>
-<li>Abbreviated flag names shall be capitalized in order to further distinguish them from expanded flag names.</li>
-<li>Abbreviated flag names may be omitted for lesser-used commands (e.g. <code>--keep-files</code>)</li>
+<li>Abbreviated flag names shall be lower-case in order to reduce cognitive overhead.</li>
 </ul>
 
 <h3 id="5.1description">5.1 Description</h3>
@@ -631,10 +635,10 @@ TODO split into individual diagrams for each section
 <p>The following flags shall be supported:</p>
 
 <ul>
-<li><code>--dry-run, -D</code>: When provided as the only option; builds the relevant bitstream without uploading or flashing it.</li>
-<li><code>--keep-files</code>: Keeps the local files in the default <code>build</code> folder.</li>
-<li><code>--fpga</code>: Overrides build configuration to build for a given FPGA. Useful if no FPGA is connected during build.</li>
-<li><code>--console</code>: Attempts to open a convenience 115200 8N1 UART console on the specified port immediately after uploading.</li>
+<li><code>--dry-run, -d</code>: When provided as the only option; builds the relevant bitstream without uploading or flashing it.</li>
+<li><code>--keep-files, -k</code>: Keeps the local files in the default <code>build</code> folder.</li>
+<li><code>--fpga, -f</code>: Overrides build configuration to build for a given FPGA. Useful if no FPGA is connected during build.</li>
+<li><code>--console, -c</code>: Attempts to open a convenience 115200 8N1 UART console on the specified port immediately after uploading.</li>
 </ul>
 
 <h4 id="soccommandsshallinclude:">SoC Commands shall include:</h4>
@@ -657,9 +661,9 @@ TODO split into individual diagrams for each section
 <h4 id="globalflagsshallinclude:">Global flags shall include:</h4>
 
 <ul>
-<li><code>--help</code>: Display Luna CLI help.</li>
-<li><code>--build-dir</code>: Override the default <code>build/</code> directory.</li>
-<li><code>--</code> All flags following a naked double-dash will be passed to any tools invoked by the Luna CLI.</li>
+<li><code>--help, -h</code>: Display Luna CLI help.</li>
+<li><code>--build-dir, -b</code>: Override the default <code>build/</code> directory.</li>
+<li><code>--</code> All flags following a naked double-dash will be passed to external tools invoked by the Luna CLI.</li>
 <li>TBD</li>
 </ul>
 
@@ -790,13 +794,7 @@ TODO split into individual diagrams for each section
 <li>Facedancer Applet API reference</li>
 </ul>
 
-<h3 id="8.1maintasks">8.1 Main Tasks</h3>
-
-<ul>
-<li>[ ] ...</li>
-</ul>
-
-<h3 id="8.2references">8.2 References</h3>
+<h3 id="8.1references">8.1 References</h3>
 
 <ul>
 <li><a href="https://greatscottgadgets.github.io/greatfet-tutorials/">GreatFET Tutorials</a></li>
@@ -813,11 +811,17 @@ TODO split into individual diagrams for each section
 <li><a href="https://circuitcellar.com/research-design-hub/usb-attacks-and-more-with-greatfet/">Colin O'Flunn - USB Attacks and More with GreatFET</a></li>
 </ul>
 
+<h3 id="8.2maintasks">8.2 Main Tasks</h3>
+
+<ul>
+<li>[ ] ...</li>
+</ul>
+
 <hr />
 
-<h2 id="9codeorganization">9 Code Organization</h2>
+<h2 id="9codeorganisation">9 Code Organisation</h2>
 
-<p>The <code>luna.git</code> repository should utilize GSG repository layout conventions with the following top-level structure:</p>
+<p>The <code>luna.git</code> repository should utilise GSG repository layout conventions with the following top-level structure:</p>
 
 <pre><code>/ci-scripts  - Scripts used by CI
 /docs        - Documentation
@@ -832,7 +836,7 @@ TODO split into individual diagrams for each section
 <p>Note: The hardware release cycle operates on a different time-scale to software release cycles. Ideally device hardware should live in its own repository.</p>
 </blockquote>
 
-<p>To reduce the maintenance burden across the larger Great Scott Gadgets codebase it's proposed to make some minor changes to the organization of the greatfet.git and libgreat.git repositories.</p>
+<p>To reduce the maintenance burden across the larger Great Scott Gadgets codebase it's proposed to make some minor changes to the organisation of the greatfet.git and libgreat.git repositories.</p>
 
 <h3 id="9.1facedancergreatcommunicationprotocolclassid:">9.1 Facedancer &quot;Great Communication Protocol&quot; class id:</h3>
 
@@ -976,9 +980,8 @@ TODO split into individual diagrams for each section
 <h3 id="repositories">Repositories</h3>
 
 <ul>
-<li>https://github.com/antoinevg/GSG-private/</li>
-<li>https://github.com/antoinevg/luna</li>
-<li>https://github.com/antoinevg/Facedancer</li>
+<li>https://github.com/greatscottgadgets/luna</li>
+<li>https://github.com/greatscottgadgets/Facedancer</li>
 <li>https://github.com/greatscottgadgets/libgreat</li>
 <li>https://github.com/greatscottgadgets/greatfet</li>
 </ul>
