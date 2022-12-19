@@ -315,7 +315,8 @@ Verbs for working with/updating device firmware:
 
 Debug utilities:
 
-* `verb_read_dmesg() -> ?`
+* Deprecated: `verb_read_dmesg()`
+  - Replace with a dedicated USB endpoint for firmware logging output.
 * `verb_clear_dmesg()`
 * `verb_peek(address: u32) -> u32`
 * `verb_poke(address: u32, value: u32)`
@@ -421,7 +422,9 @@ TODO Investigate existing USBProxy implementation for GreatFET/Facedancer.
 * [ ] Implement a GCP transport for the USBDeviceController peripheral driver.
 * [ ] Implement support for the "Great Communication Protocol" serialisation format.
     - Option: [`serde`](https://serde.rs/data-format.html)
-    - TODO Option: [`yoke`](https://hachyderm.io/@ekuber/109513137375293238)
+    - Option: [`yoke`](https://hachyderm.io/@ekuber/109513137375293238)
+* [ ] Extend GCP to add support for multiple concurrent USB streams.
+* [ ] Implement GCP support for multiple concurrent USB streams.
 * [ ] Implement a dispatch mechanism for GCP commands and responses.
 
 #### Luna Device API
@@ -429,6 +432,8 @@ TODO Investigate existing USBProxy implementation for GreatFET/Facedancer.
 * [ ] Implement the device api for: `0x0 core`
 * [ ] Implement the device api for: `0x1 firmware`
 * [ ] Implement the device api for: `0x10 debug`
+* [ ] Implement firmware log output via a dedicated USB endpoint.
+  - Message metadata should include a monotonic counter in order to detect dropped messages.
 * [ ] Optional: Implement the device api for: `0x11 selftest`
 * [ ] Implement the device api for: `0x10A leds`
 * [ ] Implement the device api for: `0x120 moondancer`
@@ -749,27 +754,33 @@ Replace the term Facedancer "Applet" with the term Facedancer "Device Emulation"
     - `0x105 usbhost`  - *no support planned at present*
     - `0x10F usbproxy` - investigate current GreatFET/Facedancer implementation.
 
-* [ ] how do we want to manage SoC firmware uploads to SPI flash
+* [x] how do we want to manage SoC firmware uploads to SPI flash
     - appended to the bitstream uploaded to SPI flash?
     - SoC bios takes over SPI flash after ECP5 boot and uses a dedicated region for separate upload?
     - Which of the many available tools should Luna CLI use if we support a separate flash operations?
-    - other ?
+    - @martinling: *"my feeling is that it would be preferable for this to be a separate mechanism implemented by the SoC bios after ECP5 boot, rather than the firmware being tacked onto the end of the bitstream image, because it would be nice to be able to iterate on the SoC firmware without reflashing the bitstream. I think dfu-util would be the most obvious choice of upload tool, but it's not the only option."*
+    - Decision:
+        * Separate from gateware.
+        * Start with `dfu-util` to SRAM.
+        * Add support for SPI Flash later.
 
-* [ ] do we want to support these additional usb-related classes for Luna:
+* [x] do we want to support these additional usb-related classes for Luna:
     - `0x107 glitchkit_usb` - control over functionality intended to help with timing USB fault injection
     - `0x113 usb_analysis`  - functionality for USB analysis e.g. with Rhododendron
+    - Decision: Optional
 
-* [ ] are there any constraints on the "Great Communications Protocol" implementation that will place limits on what we can do with Luna vs GreatFET?
+* [x] are there any constraints on the "Great Communications Protocol" implementation that will place limits on what we can do with Luna vs GreatFET?
+    - @martinling: *"Constraints of GCP that might affect what we can do with LUNA: At a quick glance, it looks like one thing that's currently missing in the protocol is a way to set up multiple independent data streams to/from the host. There is a streaming mechanism in usb_streaming.c used by e.g. the logic analyzer function, but looking at the code for it, it seems to assume a single fixed endpoint in use. This makes sense for GreatFET, where we have a fixed number of hardware endpoints, but with LUNA we don't have that constraint, and there are bound to be use cases that would benefit from multiple concurrent streams."*
 
 * [x] `libgreat-rs.git` -> `libgreat.git/firmware-rs/greatsoc-hal, greatsoc-pac` etc. or somesuch ?
     - the problem with having two repo's that both start with libgreat is that it may not be clear which one to look in?
     - on the other hand, nervous about putting the rust crate into libgreat because more complex CI and releases might ensue ?
     - Decided: There are more big reasons to stick to a single repo than small reasons not to.
 
-* [ ] Should we implement the main device firmware in a pure Rust `no_std` environment without the use of the `alloc` feature?
+* [x] Should we implement the main device firmware in a pure Rust `no_std` environment without the use of the `alloc` feature?
     - `alloc` comes with its own share of problems in the form of memory fragmentation and unpredictable latency.
     - are there any high-alloc areas of the code that can't be handled by e.g. the `heapless` crate.
-
+    - @martinling: *"My feeling would be that we should aim to initially, but that we should be prepared to bring in an allocator if it proves to be unnecessarily difficult without one."*
 
 
 ---
