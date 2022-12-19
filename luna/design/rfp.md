@@ -125,6 +125,17 @@ Amongst other capabilities, this enables the automatic generation and population
 
 ![Diagram: Luna host-side Python Library](facedancer/libgreat_git.pygreat.svg)
 
+For ease of debugging we should investigate various strategies by which we can improve on the instrumentation offered by the existing mechanism. Specifically there are two areas that would benefit from enhancement:
+
+1. More readable stack traces.
+1. Better interoperability with host-side code.
+
+Strategies to investigate include:
+
+* Appending metadata to API objects that can be used to generate better stack traces.
+* Building host-side API's on stubs generated from a textual representation of the API rather than at runtime.
+* The use and/or abuse of a tool such as [PyO3](https://github.com/PyO3/pyo3).
+* Handrolled API implementation.
 
 ### 2.3 Command Serialisation and Transport Library
 
@@ -138,6 +149,7 @@ The host-side implementation can be found in the [`pygreat`](https://github.com/
 
 * [ ] Derive a new Luna Facedancer Backend from [facedancer.git:/facedancer/backends/greatdancer.py](https://github.com/greatscottgadgets/Facedancer/blob/master/facedancer/backends/greatdancer.py)
 * [ ] Derive a new Luna host-side Python Library from [greatfet.git:/ host/greatfet/](https://github.com/greatscottgadgets/greatfet/tree/master/host/greatfet/)
+* [ ] Investigate strategies for improving the existing host-side Python Libary implementation.
 * [ ] Integrate the Command Serialisation and Transport Library from: [libgreat.git:/host/pygreat/comms_backends/usb.py](https://github.com/greatscottgadgets/libgreat/blob/master/host/pygreat/comms_backends/usb.py)
 
 
@@ -166,11 +178,11 @@ The following functionality should be supported:
 * Device heartbeat
 * SoC firmware update
 
-The Firmware should have memory access to:
+The Firmware shall have memory access to:
 
 * SoC SRAM
-* SPI Flash
-* HyperRAM
+* Optional: Flash
+* Optional: HyperRAM
 
 
 #### Reference Implementation
@@ -248,7 +260,7 @@ Command dispatch is responsible for:
     - debug utilities
 * `0x11 selftest`
     - utilities for self-testing libgreat-based boards
-* `0x105 usbhost` *(is this currently supported ? see [Open Questions](#10-open-questions))*
+* <del>0x105 usbhost</del> *no support planned at present*
     - remote control over Luna's USB ports in host mode, for e.g. FaceDancer
 * `0x10A leds`
     - control over a given board’s LEDs
@@ -312,21 +324,15 @@ Debug utilities:
 
 Utilities for self-testing libgreat-based boards:
 
-* `selftest_verb_measure_clock_frequencies(clock_numbers: [u32]) -> [clock_frequencies_mhz: u32]`
-* `selftest_verb_measure_raw_clock_frequencies(clock_numbers: [u32]) ->  [clock_frequencies_mhz: u32] `
+* Optional: `selftest_verb_measure_clock_frequencies(clock_numbers: [u32]) -> [clock_frequencies_mhz: u32]`
+* Optional: `selftest_verb_measure_raw_clock_frequencies(clock_numbers: [u32]) ->  [clock_frequencies_mhz: u32] `
 
-#### `0x105 usbhost` - [``]()
+#### <del>0x105 usbhost</del>
 
 Remote control over Luna's USB ports in host mode, for e.g. FaceDancer
 
-*(is this currently supported ? see [Open Questions](#10-open-questions))*
+*no support planned at present*
 
-<!--
-* ``
-* ``
-* ``
-* ``
- -->
 
 #### `0x10A leds` - [`greatfet.git:/firmware/greatfet_usb/classes/leds.c`](https://github.com/greatscottgadgets/greatfet/tree/master/firmware/greatfet_usb/classes/leds.c)
 
@@ -367,9 +373,9 @@ Data transfers:
 
 #### `0x10F usbproxy` - [``]()
 
-Firmware functionality supporting USBProxy
+Firmware functionality supporting USBProxy.
 
-*(is this currently supported ? see [Open Questions](#10-open-questions))*
+TODO Investigate existing USBProxy implementation for GreatFET/Facedancer.
 
 <!--
 * ``
@@ -391,8 +397,8 @@ Firmware functionality supporting USBProxy
 * [ ] Implement clock and reset control for the SoC.
 * [ ] Configure memory access for:
     - SoC SRAM
-    - SoC SPI Flash peripheral
-    - SoC HyperRAMInterface Peripheral
+    - Optional: SoC SPI Flash peripheral
+    - Optional: SoC HyperRAMInterface Peripheral
 * [ ] Implement a `no_std` error handling strategy that does not rely on the `alloc` feature.
 * [ ] Implement a device logging strategy:
     - logs shall be recoverable following system panic.
@@ -408,7 +414,7 @@ Firmware functionality supporting USBProxy
 * [ ] Implement an `embedded-hal` driver for `lambdasoc.periph.timer.TimerPeripheral`
 * [ ] Implement an `embedded-hal` driver for `amaranth_stdio.serial.AsyncSerial`
 * [ ] Implement an `embedded-hal` driver for `luna.gateware.usb2.USBDeviceController`
-* [ ] Implement an `embedded-hal` driver for `luna.gateware.interface.flash.ECP5ConfigurationFlashInterface`
+* [ ] Optional: Implement an `embedded-hal` driver for `luna.gateware.interface.flash.ECP5ConfigurationFlashInterface`
 
 #### Command Serialisation and Transport Library
 
@@ -423,9 +429,10 @@ Firmware functionality supporting USBProxy
 * [ ] Implement the device api for: `0x0 core`
 * [ ] Implement the device api for: `0x1 firmware`
 * [ ] Implement the device api for: `0x10 debug`
-* [ ] Implement the device api for: `0x11 selftest`
+* [ ] Optional: Implement the device api for: `0x11 selftest`
 * [ ] Implement the device api for: `0x10A leds`
 * [ ] Implement the device api for: `0x120 moondancer`
+* [ ] Investigate existing USBProxy implementation for GreatFET/Facedancer.
 * [ ] Implement the device api for: `0x10F usbproxy`
 
 
@@ -465,12 +472,12 @@ Gateware shall be implemented in [Amaranth](https://github.com/amaranth-lang/ama
 #### Implement additional Peripherals
 
 * [ ] GpioPeripheral
-* [ ] SPIFlashPeripheral ?
+* [ ] Optional: SPIFlashPeripheral
 
 #### Wire up additional Peripherals
 
 * [ ] GpioPeripheral
-* [ ] SPIFlashPeripheral / ECP5ConfigurationFlashInterface ?
+* [ ] Optional: SPIFlashPeripheral / ECP5ConfigurationFlashInterface
 * [ ] USBDeviceController
 * [ ] HyperRAMInterface
 
@@ -729,14 +736,18 @@ A strategy of escalation for dependencies that exist as git submodules:
 
 This strategy is hard work that can cost a couple days work but we pay it forward because, in Glorious Socialist Federation of Neighbours, upstream project take care of you!
 
+### 9.5 Facedancer "Applets"
+
+Replace the term Facedancer "Applet" with the term Facedancer "Device Emulation".
 
 
 ---
 
 ## 10 Open Questions
 
-* [ ] are the Great Communication Protocol `0x105 usbhost` and `0x10F usbproxy` classes supported anywhere currently?
-    - if so, where are the implementations hiding?
+* [x] are the Great Communication Protocol `0x105 usbhost` and `0x10F usbproxy` classes supported anywhere currently?
+    - `0x105 usbhost`  - *no support planned at present*
+    - `0x10F usbproxy` - investigate current GreatFET/Facedancer implementation.
 
 * [ ] how do we want to manage SoC firmware uploads to SPI flash
     - appended to the bitstream uploaded to SPI flash?
@@ -750,9 +761,10 @@ This strategy is hard work that can cost a couple days work but we pay it forwar
 
 * [ ] are there any constraints on the "Great Communications Protocol" implementation that will place limits on what we can do with Luna vs GreatFET?
 
-* [ ] `libgreat-rs.git` -> `libgreat.git/firmware-rs/greatsoc-hal, greatsoc-pac` etc. or somesuch ?
+* [x] `libgreat-rs.git` -> `libgreat.git/firmware-rs/greatsoc-hal, greatsoc-pac` etc. or somesuch ?
     - the problem with having two repo's that both start with libgreat is that it may not be clear which one to look in?
     - on the other hand, nervous about putting the rust crate into libgreat because more complex CI and releases might ensue ?
+    - Decided: There are more big reasons to stick to a single repo than small reasons not to.
 
 * [ ] Should we implement the main device firmware in a pure Rust `no_std` environment without the use of the `alloc` feature?
     - `alloc` comes with its own share of problems in the form of memory fragmentation and unpredictable latency.

@@ -23,7 +23,7 @@ img { max-width: 1024; }
 <p>This should:</p>
 
 <ul>
-<li>[ ] Include plans for the core backend.</li>
+<li>[x] Include plans for the core backend.</li>
 <li>[ ] Accommodate future FPGA acceleration, where possible.</li>
 <li>[ ] Accommodate fancy USBProxy enhancements.</li>
 </ul>
@@ -107,7 +107,7 @@ TODO split into individual diagrams for each section
 <li><a href="https://github.com/greatscottgadgets/Facedancer/blob/master/facedancer/devices/keyboard.py"><code>USBKeyboardDevice</code></a> - Simple USB Keyboard device.</li>
 </ul>
 
-<p>There are also a number of legacy Applets available that we will talk about more in <a href="">Section 5.5</a>.</p>
+<p>There are also a number of legacy Applets available that we will talk about more in <a href="#61-additional-facedancer-applets">Section 6.1</a>.</p>
 
 <p>This user-facing scripting environment is abstracted away from any given Facedancer hardware allowing support to be extended for new devices.</p>
 
@@ -141,6 +141,22 @@ TODO split into individual diagrams for each section
 <figcaption>Diagram: Luna host-side Python Library</figcaption>
 </figure>
 
+<p>For ease of debugging we should investigate various strategies by which we can improve on the instrumentation offered by the existing mechanism. Specifically there are two areas that would benefit from enhancement:</p>
+
+<ol>
+<li>More readable stack traces.</li>
+<li>Better interoperability with host-side code.</li>
+</ol>
+
+<p>Strategies to investigate include:</p>
+
+<ul>
+<li>Appending metadata to API objects that can be used to generate better stack traces.</li>
+<li>Building host-side API's on stubs generated from a textual representation of the API rather than at runtime.</li>
+<li>The use and/or abuse of a tool such as <a href="https://github.com/PyO3/pyo3">PyO3</a>.</li>
+<li>Handrolled API implementation.</li>
+</ul>
+
 <h3 id="2.3commandserialisationandtransportlibrary">2.3 Command Serialisation and Transport Library</h3>
 
 <p>Luna uses USB as the transport for GCP messages.</p>
@@ -152,6 +168,7 @@ TODO split into individual diagrams for each section
 <ul>
 <li>[ ] Derive a new Luna Facedancer Backend from <a href="https://github.com/greatscottgadgets/Facedancer/blob/master/facedancer/backends/greatdancer.py">facedancer.git:/facedancer/backends/greatdancer.py</a></li>
 <li>[ ] Derive a new Luna host-side Python Library from <a href="https://github.com/greatscottgadgets/greatfet/tree/master/host/greatfet/">greatfet.git:/ host/greatfet/</a></li>
+<li>[ ] Investigate strategies for improving the existing host-side Python Libary implementation.</li>
 <li>[ ] Integrate the Command Serialisation and Transport Library from: <a href="https://github.com/greatscottgadgets/libgreat/blob/master/host/pygreat/comms_backends/usb.py">libgreat.git:/host/pygreat/comms_backends/usb.py</a></li>
 </ul>
 
@@ -289,6 +306,11 @@ TODO split into individual diagrams for each section
 <ul>
 <li>utilities for self-testing libgreat-based boards</li>
 </ul></li>
+<li><del>0x105 usbhost</del> <em>no support planned at present</em>
+
+<ul>
+<li>remote control over Luna's USB ports in host mode, for e.g. FaceDancer</li>
+</ul></li>
 <li><code>0x10A leds</code>
 
 <ul>
@@ -299,7 +321,7 @@ TODO split into individual diagrams for each section
 <ul>
 <li>remote control over Luna's USB ports in device mode, for e.g. FaceDancer</li>
 </ul></li>
-<li><code>0x10F usbproxy</code>
+<li><code>0x10F usbproxy</code> <em>(is this currently supported ? see <a href="#10-open-questions">Open Questions</a>)</em>
 
 <ul>
 <li>Firmware functionality supporting USBProxy</li>
@@ -318,11 +340,6 @@ TODO split into individual diagrams for each section
 
 <ul>
 <li>control the GreatFET’s idle/”heartbeat” LED</li>
-</ul></li>
-<li><code>0x105 usbhost</code> <em>(is this supported ? see <a href="">Open Questions</a>)</em>
-
-<ul>
-<li>remote control over Luna's USB ports in host mode, for e.g. FaceDancer</li>
 </ul></li>
 <li><code>0x107 glitchkit_usb</code>
 
@@ -397,7 +414,7 @@ TODO split into individual diagrams for each section
 
 <p>Remote control over Luna's USB ports in host mode, for e.g. FaceDancer</p>
 
-<p><em>(is this currently supported ? see <a href="">Open Questions</a>)</em></p>
+<p><em>(is this currently supported ? see <a href="#10-open-questions">Open Questions</a>)</em></p>
 
 <!--
 *``
@@ -457,7 +474,7 @@ TODO split into individual diagrams for each section
 
 <p>Firmware functionality supporting USBProxy</p>
 
-<p><em>(is this supported ? see <a href="">Open Questions</a>)</em></p>
+<p><em>(is this currently supported ? see <a href="#10-open-questions">Open Questions</a>)</em></p>
 
 <!--
 *``
@@ -895,7 +912,7 @@ TODO split into individual diagrams for each section
 <h2 id="10openquestions">10 Open Questions</h2>
 
 <ul>
-<li><p>[ ] are the Great Communication Protocol <code>0x105 usbhost</code> and <code>0x10F subproxy</code> classes supported anywhere currently?</p>
+<li><p>[ ] are the Great Communication Protocol <code>0x105 usbhost</code> and <code>0x10F usbproxy</code> classes supported anywhere currently?</p>
 
 <ul>
 <li>if so, where are the implementations hiding?</li>
