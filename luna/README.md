@@ -15,6 +15,10 @@
     # pyenv
     curl https://pyenv.run | bash
 
+    # riscv-gnu-toolchain - https://github.com/riscv-software-src/homebrew-riscv
+    brew tap riscv-software-src/riscv
+    brew install riscv-gnu-toolchain
+
 ### Python Environments
 
     # x86_64/rosetta
