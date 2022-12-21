@@ -1,5 +1,5 @@
 # rust
-/target/
+**/target/
 Cargo.lock
 **/*.rs.bk
 
@@ -7,5 +7,5 @@ Cargo.lock
 **/.python-version
 
 # local files
-/luna/build/
-/luna/toolchain/
+/luna/**/build/
+/luna/toolchain
