@@ -120,7 +120,7 @@ if __name__ == "__main__":
         sys.exit()
 
     # TODO fix build
-    thirdparty = os.path.join(build_dir, "soc/lambdasoc.soc.cpu/bios/3rdparty/litex")
+    thirdparty = os.path.join(build_dir, "lambdasoc.soc.cpu/bios/3rdparty/litex")
     if not os.path.exists(thirdparty):
         logging.info("Fixing build, creating output directory: ", thirdparty)
         os.makedirs(thirdparty)
@@ -128,14 +128,18 @@ if __name__ == "__main__":
     # build bios
     logging.info("Building bios")
     design.soc.build(name="soc",
-                     build_dir=os.path.join(build_dir, "soc"),
-                     do_init=True) # TODO soc.soc -> soc
+                     build_dir=build_dir,
+                     do_init=True)
 
     # build soc
     logging.info("Building soc")
-    products = platform.build(design, do_program=True, build_dir=build_dir)
+    products = platform.build(design, do_program=False, build_dir=build_dir)
 
-    logging.info("Build completed with products: {}".format(products))
+    # Log resources
+    from lunasoc import Introspect
+    Introspect(design.soc).log_resources()
+
+    print("Build completed. Use 'make load' to load bitsream to device.")
 
     # TODO
     #top_level_cli(design)

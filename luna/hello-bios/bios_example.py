@@ -91,4 +91,12 @@ class LunaCPUExample(Elaboratable):
 
 if __name__ == "__main__":
     design = LunaCPUExample()
+
+    # TODO fix build
+    thirdparty = "build/soc/lambdasoc.soc.cpu/bios/3rdparty/litex"
+    import logging, os
+    if not os.path.exists(thirdparty):
+        logging.warning(f"Fixing build, creating output directory: {thirdparty}")
+        os.makedirs(thirdparty)
+
     top_level_cli(design, cli_soc=design.soc)

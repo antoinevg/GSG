@@ -60,7 +60,7 @@ clean:
 
 # Load our SoC onto the FPGA...
 configure: $(SOC)
-	AR=$(AR) python ./$(SOC)
+	AR=$(AR) python ./$(SOC) --keep-files
 
 # Flash the FPGA's ROM with our SoC.
 flash-soc: $(SOC)

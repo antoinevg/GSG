@@ -380,40 +380,37 @@ class Introspect:
         """ Logs a summary of our resource utilization to our running logs. """
 
         # Grab the memory map for this SoC...
-        memory_map = self._soc.bus_decoder.bus.memory_map
+        memory_map = self._soc._bus_decoder.bus.memory_map
 
         # Resource addresses:
         logging.info("Physical address allocations:")
-        #for peripheral, (start, end, _granularity) in memory_map.all_resources():
-        #    logging.info(f"    {start:08x}-{end:08x}: {peripheral}")
-
         resource_info: amaranth_soc.memory.ResourceInfo
         for resource_info in memory_map.all_resources():
             start = resource_info.start
             end = resource_info.end
+            name = "_".join(resource_info.name)
             peripheral = resource_info.resource
-            logging.info(f"    {start:08x}-{end:08x}: {peripheral}")
+            logging.info(f"    {start:08x}-{end:08x}: {name} {peripheral}")
 
         logging.info("")
 
         # IRQ numbers
         logging.info("IRQ allocations:")
-        for irq, peripheral in self._soc._irqs.items():
+        for irq, peripheral in self._soc._interrupt_map.items():
             logging.info(f"    {irq}: {peripheral.name}")
+
         logging.info("")
 
         # Main memory.
-        if self._build_bios:
-            memory_location = self.main_ram_address()
-
-            logging.info(f"Main memory at 0x{memory_location:08x}; upload using:")
-            logging.info(f"    flterm --kernel <your_firmware> --kernel-addr 0x{memory_location:08x} --speed {self._uart_baud}")
-            logging.info("or")
-            logging.info(f"    lxterm --kernel <your_firmware> --kernel-adr 0x{memory_location:08x} --speed {self._uart_baud}")
+        memory_location = self.main_ram_address()
+        logging.info(f"Main memory at 0x{memory_location:08x}; upload using:")
+        logging.info(f"    flterm --kernel <your_firmware> --kernel-addr 0x{memory_location:08x} --speed 115200")
+        logging.info("or")
+        logging.info(f"    lxterm --kernel <your_firmware> --kernel-adr 0x{memory_location:08x} --speed 115200")
 
         logging.info("")
 
     def main_ram_address(self):
         """ Returns the address of the main system RAM. """
-        start, _  = self.range_for_peripheral(self._main_ram)
+        start, _  = self.range_for_peripheral(self._soc.mainram)
         return start
