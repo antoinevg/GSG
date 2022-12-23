@@ -96,6 +96,8 @@ class LunaSoCExample(Elaboratable):
 # - main ----------------------------------------------------------------------
 
 if __name__ == "__main__":
+    from generate import Generate
+
     build_dir = os.path.join("build")
 
     # configure logging
@@ -134,6 +136,20 @@ if __name__ == "__main__":
     # build soc
     logging.info("Building soc")
     products = platform.build(design, do_program=False, build_dir=build_dir)
+
+    # generate c-header and ld-script
+    logging.info("Generating c-header and ld-script")
+    generate = Generate(design.soc)
+    with open("resources.h", "w") as f:
+        generate.c_header(platform_name=platform.name, file=f)
+    with open("soc.ld", "w") as f:
+        generate.ld_script(file=f)
+
+    # TODO generate svd
+    logging.info("Generating svd file")
+    generate = Generate(design.soc)
+    with open("lunasoc.svd", "w") as f:
+        generate.svd(file=f)
 
     # Log resources
     from lunasoc import Introspect
