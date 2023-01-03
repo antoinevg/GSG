@@ -1,0 +1,67 @@
+[package]
+name = "lunasoc-hal"
+version = "0.0.1"
+authors = ["Antoine van Gelder <antoine@greatscottgadgets.com>"]
+license-file = "LICENSE.txt"
+description = "Hardware Abstraction Layer implementation for LunaSoC cores"
+categories = ["embedded", "hardware-support", "no-std"]
+keywords = ["luna", "riscv", "hal", "embedded-hal"]
+repository = "https://github.com/greatscottgadgets/libgreat"
+documentation = "https://luna.readthedocs.io"
+edition = "2021"
+rust-version = "1.59"
+include = ["examples/**/*", "src/**/*", "README.md", "memory.x"]
+
+[lib]
+test = false
+bench = false
+
+
+# - features ------------------------------------------------------------------
+
+[features]
+default = ["gpio"]
+gpio = ["embedded-hal/unproven"]
+
+
+# - profiles ------------------------------------------------------------------
+
+[profile.release]
+codegen-units = 1
+debug = true
+debug-assertions = false
+incremental = false
+lto = true
+opt-level = "s"
+overflow-checks = false
+
+
+# - dependencies --------------------------------------------------------------
+
+[dependencies]
+embedded-hal = { version = "0.2" }
+nb = "1.0"
+
+
+# - dev-dependencies ----------------------------------------------------------
+
+[dev-dependencies]
+lunasoc-pac = { path = "../lunasoc-pac", features = ["critical-section", "rt"]}
+panic-halt = "0.2.0"
+riscv = { version = "=0.10.0", features = ["critical-section-single-hart"] }
+riscv-rt = { version = "=0.10.0" }
+
+
+# - examples ------------------------------------------------------------------
+
+[[example]]
+name = "blinky"
+required-features = ["gpio", "lunasoc-pac/rt"]
+
+[[example]]
+name = "blinky_pac"
+required-features = ["lunasoc-pac/rt"]
+
+[[example]]
+name = "uart"
+required-features = ["lunasoc-pac/rt"]
