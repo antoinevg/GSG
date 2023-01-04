@@ -1,5 +1,14 @@
 #![no_std]
 
-pub fn foo() -> u32 {
-    42
+// - aliases ------------------------------------------------------------------
+use lunasoc_pac as pac;
+
+
+// - modules ------------------------------------------------------------------
+
+// TODO move these into lunasoc-pac
+pub mod csr;
+pub mod minerva;
+pub mod register {
+    pub use crate::minerva;
 }

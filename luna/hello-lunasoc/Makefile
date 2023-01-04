@@ -12,6 +12,7 @@ OBJCOPY=riscv64-unknown-elf-objcopy
 CFLAGS	= -march=rv32im -mabi=ilp32 -g -Os
 LDFLAGS = -Tsoc.ld -Triscv_application.ld  -nostdlib
 
+LUNASOC_PAC := ../lunasoc-pac
 
 # - gateware ------------------------------------------------------------------
 
@@ -25,7 +26,7 @@ load2:
 	PATH=$(PATH):$(YOSYS_BIN) openFPGALoader --board ulx3s build/top.bit
 
 
-# - cbindgen ------------------------------------------------------------------
+# - cgen ----------------------------------------------------------------------
 
 blinky.elf: #soc.ld resources.h
 	$(CC) $(CFLAGS) $(LDFLAGS) start.S blinky.c -o $@
@@ -36,19 +37,31 @@ blinky.bin: blinky.elf
 flash: blinky.bin
 	lxterm --kernel ./blinky.bin --kernel-adr 0x40000000 --speed 115200 $(UART)
 
+timer.elf: timer.c timer.S soc.ld resources.h
+	$(CC) $(CFLAGS) $(LDFLAGS) timer.S timer.c -o $@
+
+timer.bin: timer.elf
+	$(OBJCOPY) -O binary $< $@
+
+flash_timer: timer.bin
+	lxterm --kernel ./timer.bin --kernel-adr 0x40000000 --speed 115200 $(UART)
+
+
 
 # - svdgen --------------------------------------------------------------------
 
 svd:
-	cp build/soc/soc.svd lunasoc-pac/svd/lunasoc.svd
-	rm -rf lunasoc-pac/src
-	mkdir lunasoc-pac/src
-	svd2rust -i lunasoc-pac/svd/lunasoc.svd -o build --target riscv
-	mv build/lib.rs lunasoc-pac/src
-	mv build/build.rs lunasoc-pac/
-	mv build/device.x lunasoc-pac/
-	form -i lunasoc-pac/src/lib.rs -o lunasoc-pac/src/
-	cd lunasoc-pac && cargo fmt -- --emit files
+	rm -rf $(LUNASOC_PAC)/svd
+	mkdir $(LUNASOC_PAC)/svd
+	cp build/svdgen/lunasoc.svd $(LUNASOC_PAC)/svd/lunasoc.svd
+	rm -rf $(LUNASOC_PAC)/src
+	mkdir $(LUNASOC_PAC)/src
+	svd2rust -i $(LUNASOC_PAC)/svd/lunasoc.svd -o build/svdgen --target riscv
+	mv build/svdgen/lib.rs $(LUNASOC_PAC)/src
+	mv build/svdgen/build.rs $(LUNASOC_PAC)/
+	mv build/svdgen/device.x $(LUNASOC_PAC)/
+	form -i $(LUNASOC_PAC)/src/lib.rs -o $(LUNASOC_PAC)/src/
+	cd $(LUNASOC_PAC) && cargo fmt -- --emit files
 
 
 # - helpers -------------------------------------------------------------------
@@ -60,4 +73,4 @@ console2:
 	picocom --imap lfcrlf -b 115200 /dev/cu.usbserial-D00137
 
 clean:
-	-rm -rf build/
+	-rm -rf build/ resources.h soc.ld

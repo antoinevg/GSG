@@ -13,9 +13,9 @@ import os
 import sys
 
 
-# - LEDPeripheral -------------------------------------------------------------
+# - LedPeripheral -------------------------------------------------------------
 
-class LEDPeripheral(Peripheral, Elaboratable):
+class LedPeripheral(Peripheral, Elaboratable):
     """ Example peripheral that controls the board's LEDs. """
 
     def __init__(self):
@@ -69,7 +69,7 @@ class LunaSoCExample(Elaboratable):
         # TODO soc.add_ram(0x4000, name="bulkram")
 
         # ... and add our LED peripheral.
-        self.leds = LEDPeripheral()
+        self.leds = LedPeripheral()
         # TODO soc.add_peripheral(leds)
         self.soc._bus_decoder.add(self.leds.bus)
 
@@ -146,9 +146,13 @@ if __name__ == "__main__":
         generate.ld_script(file=f)
 
     # TODO generate svd
-    logging.info("Generating svd file")
+    path = os.path.join(build_dir, "svdgen")
+    if not os.path.exists(path):
+        os.makedirs(path)
+    path = os.path.join(path, "lunasoc.svd")
+    logging.info("Generating svd file: {}".format(path))
     generate = Generate(design.soc)
-    with open("lunasoc.svd", "w") as f:
+    with open(path, "w") as f:
         generate.svd(file=f)
 
     # Log resources

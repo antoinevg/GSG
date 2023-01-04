@@ -73,13 +73,12 @@ class GenC():
         resource_info: amaranth_soc.memory.ResourceInfo
         for memory_map, resource_info, address, size in self._soc.resources():
             resource = resource_info.resource
-            #print("RESOURCE IS: ", resource_info.name)
 
             # Always generate a macro for the resource's ADDRESS and size.
             if memory_map.name is not None:
-                name = "{}_{}".format(memory_map.name, resource.name)
+                name = "{}_{}".format(memory_map.name, "_".join(resource_info.name))
             else:
-                name = resource.name
+                name =  "_".join(resource_info.name)
             emit(f"#define {name.upper()}_ADDRESS (0x{address:08x}U)")
             emit(f"#define {name.upper()}_SIZE ({size})")
 

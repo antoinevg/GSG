@@ -50,4 +50,4 @@ class Generate:
                           function. This can be used to generate file content instead of printing to the terminal.
         """
 
-        # TODO GenSVD(self._soc).generate_svd(file=file)
+        GenSVD(self._soc).generate_svd(file=file)
