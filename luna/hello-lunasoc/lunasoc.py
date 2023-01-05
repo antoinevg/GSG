@@ -5,20 +5,24 @@
 
 """Minerva SoC for LUNA firmware."""
 
-from generate import Introspect
+from generate                import Introspect
 
-from amaranth         import *
-from amaranth.build   import *
+from luna.gateware.utils.cdc import synchronize
+
+from amaranth                import *
+from amaranth.build          import *
 
 import amaranth_soc
-from amaranth_soc          import wishbone
-from amaranth_soc.periph   import ConstantMap
-from amaranth_stdio.serial import AsyncSerial
-from amaranth_boards.ulx3s import ULX3S_85F_Platform
+
+from amaranth_soc            import wishbone
+from amaranth_soc.periph     import ConstantMap
+from amaranth_stdio.serial   import AsyncSerial
+from amaranth_boards.ulx3s   import ULX3S_85F_Platform
 
 import lambdasoc
-from lambdasoc.cores       import litedram, liteeth
-from lambdasoc.cpu.minerva import MinervaCPU
+
+from lambdasoc.cores         import litedram, liteeth
+from lambdasoc.cpu.minerva   import MinervaCPU
 
 from lambdasoc.periph.intc   import GenericInterruptController
 from lambdasoc.periph.serial import AsyncSerialPeripheral
@@ -27,7 +31,7 @@ from lambdasoc.periph.timer  import TimerPeripheral
 from lambdasoc.periph.sdram  import SDRAMPeripheral
 from lambdasoc.periph.eth    import EthernetMACPeripheral
 
-from lambdasoc.soc.cpu import CPUSoC, BIOSBuilder
+from lambdasoc.soc.cpu       import CPUSoC, BIOSBuilder
 
 import logging
 
@@ -35,14 +39,14 @@ import logging
 # - CoreSoC -------------------------------------------------------------------
 
 class CoreSoC(CPUSoC, Elaboratable):
-    def __init__(self, clock_frequency=int(60e6)):
+    def __init__(self, clock_frequency=int(60e6), with_debug=False):
         super().__init__()
 
         # create cpu - TODO maybe do this _after_ we've added our RAM
         self.internal_sram_size = 8192
         self.internal_sram_addr = 0x40000000
         cpu = MinervaCPU(
-            with_debug    = False,
+            with_debug    = with_debug,
             with_icache   = True,
             icache_nlines = 16,
             icache_nwords = 4,
@@ -82,7 +86,9 @@ class CoreSoC(CPUSoC, Elaboratable):
         self.ethmac = None
 
         # random state it would be nice to get rid of
+        self._interrupt_index = 0
         self._interrupt_map = {}
+        self._peripherals = []
 
 
     # - CPUSoC @property overrides --
@@ -117,10 +123,22 @@ class CoreSoC(CPUSoC, Elaboratable):
         m.submodules.decoder    = self._bus_decoder
         m.submodules.intc       = self.intc
 
+        for peripheral in self._peripherals:
+            m.submodules += peripheral
+
         m.d.comb += [
             self._bus_arbiter.bus.connect(self._bus_decoder.bus),
             self.cpu.ip.eq(self.intc.ip),
         ]
+
+        # TODO this has changed in recent revisions
+        if False: #self._with_debug:
+            m.d.comb += [
+                self.cpu._cpu.jtag.tck  .eq(synchronize(m, platform.request("user_io", 0, dir="i").i)),
+                self.cpu._cpu.jtag.tms  .eq(synchronize(m, platform.request("user_io", 1, dir="i").i)),
+                self.cpu._cpu.jtag.tdi  .eq(synchronize(m, platform.request("user_io", 2, dir="i").i)),
+                platform.request("user_io", 3, dir="o").o  .eq(self.cpu._cpu.jtag.tdo)
+            ]
 
         return m
 
@@ -169,19 +187,21 @@ class LunaSoC(CoreSoC):
         internal_sram_size = self.internal_sram_size
         internal_sram_addr = self.internal_sram_addr
 
+        # timer
+        timer_addr  = 0x80001000
+        timer_width = 32
+        timer_irqno = self._interrupt_index
+        self._interrupt_index += 1
+
         # uart
         uart_addr  = 0x80000000
-        uart_irqno = 1
+        uart_irqno = self._interrupt_index
+        self._interrupt_index += 1
         uart_core  = AsyncSerial(
             data_bits = 8,
             divisor   = int(self.sync_clk_freq // uart_baud_rate),
             pins      = uart_pins,
         )
-
-        # timer
-        timer_addr  = 0x80001000
-        timer_width = 32
-        timer_irqno = 0
 
         # add bootrom, scratchpad, uart, timer, _internal_sram
         self.bootrom = SRAMPeripheral(size=bootrom_size, writable=False)
@@ -190,18 +210,18 @@ class LunaSoC(CoreSoC):
         self.scratchpad = SRAMPeripheral(size=scratchpad_size)
         self._bus_decoder.add(self.scratchpad.bus, addr=scratchpad_addr)
 
-        self.uart = AsyncSerialPeripheral(core=uart_core)
-        self._bus_decoder.add(self.uart.bus, addr=uart_addr)
-        self.intc.add_irq(self.uart.irq, index=uart_irqno)
-        self._interrupt_map[uart_irqno] = self.uart
+        self._internal_sram = SRAMPeripheral(size=internal_sram_size)
+        self._bus_decoder.add(self._internal_sram.bus, addr=internal_sram_addr)
 
         self.timer = TimerPeripheral(width=timer_width)
         self._bus_decoder.add(self.timer.bus, addr=timer_addr)
         self.intc.add_irq(self.timer.irq, index=timer_irqno)
         self._interrupt_map[timer_irqno] = self.timer
 
-        self._internal_sram = SRAMPeripheral(size=internal_sram_size)
-        self._bus_decoder.add(self._internal_sram.bus, addr=internal_sram_addr)
+        self.uart = AsyncSerialPeripheral(core=uart_core)
+        self._bus_decoder.add(self.uart.bus, addr=uart_addr)
+        self.intc.add_irq(self.uart.irq, index=uart_irqno)
+        self._interrupt_map[uart_irqno] = self.uart
 
 
     def add_rom(self, data, size, addr=0, is_main_rom=True):
@@ -225,13 +245,36 @@ class LunaSoC(CoreSoC):
         pass
 
 
-    def add_peripheral(self, p: lambdasoc.periph.Peripheral, *, as_submodule=True, **kwargs):
-        """ Adds a peripheral to the SoC.
+    def add_peripheral(self, peripheral: lambdasoc.periph.Peripheral, *, as_submodule=True, **kwargs) -> lambdasoc.periph.Peripheral:
+        """Helper function to add a peripheral to the SoC.
 
-        For now, this is identical to adding a peripheral to the SoC's wishbone bus.
-        For convenience, returns the peripheral provided.
+        This is identical to adding a peripheral to the SoC's wishbone
+        bus and adding any visible interrupt line to the interrupt
+        controller.
+
+        Returns the peripheral provided.
         """
-        pass
+        if not hasattr(peripheral, "bus"):
+            raise AttributeError(f"Peripheral '{peripheral}' has no bus interface.");
+
+        self._bus_decoder.add(peripheral.bus, **kwargs)
+
+        try:
+            index = self._interrupt_index
+            self._interrupt_index += 1
+
+            self.intc.add_irq(peripheral.irq, index)
+            self._interrupt_map[index] = peripheral
+        except (AttributeError, NotImplementedError):
+            # If the object has no associated IRQs, continue anyway.
+            # This allows us to add devices with only Wishbone interfaces to our SoC.
+            pass
+
+        if as_submodule:
+            self._peripherals.append(peripheral)
+
+        return peripheral
+
 
 
     # - LambdaSoC @property overrides --

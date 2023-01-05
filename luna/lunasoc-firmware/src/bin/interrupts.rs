@@ -38,7 +38,8 @@ fn main() -> ! {
     }
 
     loop {
-        unsafe { riscv::asm::nop(); }
+        unsafe { riscv::asm::delay(SYSTEM_CLOCK_FREQUENCY); }
+        uart_tx("Ping\n");
     }
 }
 

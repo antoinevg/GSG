@@ -4,6 +4,9 @@ from luna                              import configure_default_logging, top_lev
 from luna.gateware.platform.ulx3s      import ULX3S_85F_Platform
 from luna.gateware.platform.luna_r0_4  import LUNAPlatformRev0D4
 
+from luna.gateware.usb.usb2.device           import USBDevice, USBDeviceController
+from luna.gateware.usb.usb2.interfaces.eptri import SetupFIFOInterface, InFIFOInterface, OutFIFOInterface
+
 from amaranth                          import Elaboratable, Module, Cat
 from amaranth.hdl.rec                  import Record
 from lambdasoc.periph                  import Peripheral
@@ -12,6 +15,9 @@ import logging
 import os
 import sys
 
+CLOCK_FREQUENCIES_MHZ = {
+    'sync': 60
+}
 
 # - LedPeripheral -------------------------------------------------------------
 
@@ -68,17 +74,33 @@ class LunaSoCExample(Elaboratable):
         # ... add some bulk RAM ...
         # TODO soc.add_ram(0x4000, name="bulkram")
 
-        # ... and add our LED peripheral.
+        # ... a core USB controller ...
+        self.usb0 = USBDeviceController()
+        self.soc.add_peripheral(self.usb0, as_submodule=True, addr=0x50000000)
+
+        # ... our eptri peripherals.
+        self.usb0_setup = SetupFIFOInterface()
+        self.soc.add_peripheral(self.usb0_setup, as_submodule=False)
+
+        self.usb0_in_ep = InFIFOInterface()
+        self.soc.add_peripheral(self.usb0_in_ep, as_submodule=False)
+
+        self.usb0_out_ep = OutFIFOInterface()
+        self.soc.add_peripheral(self.usb0_out_ep, as_submodule=False)
+
+        # ... and our LED peripheral, for simple output.
         self.leds = LedPeripheral()
-        # TODO soc.add_peripheral(leds)
-        self.soc._bus_decoder.add(self.leds.bus)
+        self.soc.add_peripheral(self.leds)
 
 
     def elaborate(self, platform):
         m = Module()
         m.submodules.soc = self.soc
 
-        # Connect up our UART.
+        # generate our domain clocks/resets
+        m.submodules.car = platform.clock_domain_generator(clock_frequencies=CLOCK_FREQUENCIES_MHZ)
+
+        # connect up our UART
         uart_io = platform.request("uart", 0)
         m.d.comb += [
             uart_io.tx.o.eq(self.uart_pins.tx),
@@ -87,8 +109,18 @@ class LunaSoCExample(Elaboratable):
         if hasattr(uart_io.tx, 'oe'):
             m.d.comb += uart_io.tx.oe.eq(~self.soc.uart._phy.tx.rdy),
 
-        # Connect up our LED peripheral
-        m.submodules.leds = self.leds
+        # create our USB device
+        ulpi = platform.request(platform.default_usb_connection)
+        usb_device = USBDevice(bus=ulpi)
+        m.submodules.usb_device = usb_device
+
+        # connect up our device controller
+        m.d.comb += self.usb0.attach(usb_device)
+
+        # add our eptri endpoint handlers
+        usb_device.add_endpoint(self.usb0_setup)
+        usb_device.add_endpoint(self.usb0_in_ep)
+        usb_device.add_endpoint(self.usb0_out_ep)
 
         return m
 
