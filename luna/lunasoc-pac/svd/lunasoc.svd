@@ -1,0 +1,318 @@
+<?xml version="1.0" encoding="utf-8"?>
+<device xmlns:xs="http://www.w3.org/2001/XMLSchema-instance" schemaVersion="1.1" xs:noNamespaceSchemaLocation="CMSIS-SVD.xsd">
+  <vendor>amaranth-soc</vendor>
+  <name>SOC</name>
+  <description>TODO device.description</description>
+  <addressUnitBits>8</addressUnitBits>
+  <width>32</width>
+  <size>32</size>
+  <access>read-write</access>
+  <resetValue>0x00000000</resetValue>
+  <resetMask>0xFFFFFFFF</resetMask>
+  <peripherals>
+    <peripheral>
+      <name>TIMER</name>
+      <groupName>TIMER</groupName>
+      <baseAddress>0x80001000</baseAddress>
+      <addressBlock>
+        <offset>0</offset>
+        <size>0x20</size>
+        <usage>registers</usage>
+      </addressBlock>
+      <interrupt>
+        <name>timer</name>
+        <value>0</value>
+      </interrupt>
+      <registers>
+        <register>
+          <name>reload</name>
+          <description>timer reload register</description>
+          <addressOffset>0x0000</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-write</access>
+          <fields>
+            <field>
+              <name>reload</name>
+              <description>timer reload register field</description>
+              <bitRange>[31:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>en</name>
+          <description>timer en register</description>
+          <addressOffset>0x0004</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-write</access>
+          <fields>
+            <field>
+              <name>en</name>
+              <description>timer en register field</description>
+              <bitRange>[0:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>ctr</name>
+          <description>timer ctr register</description>
+          <addressOffset>0x0008</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-write</access>
+          <fields>
+            <field>
+              <name>ctr</name>
+              <description>timer ctr register field</description>
+              <bitRange>[31:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>ev_status</name>
+          <description>timer ev_status register</description>
+          <addressOffset>0x0010</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-only</access>
+          <fields>
+            <field>
+              <name>status</name>
+              <description>timer status register field</description>
+              <bitRange>[0:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>ev_pending</name>
+          <description>timer ev_pending register</description>
+          <addressOffset>0x0014</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-write</access>
+          <fields>
+            <field>
+              <name>pending</name>
+              <description>timer pending register field</description>
+              <bitRange>[0:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>ev_enable</name>
+          <description>timer ev_enable register</description>
+          <addressOffset>0x0018</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-write</access>
+          <fields>
+            <field>
+              <name>enable</name>
+              <description>timer enable register field</description>
+              <bitRange>[0:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+      </registers>
+    </peripheral>
+    <peripheral>
+      <name>UART</name>
+      <groupName>UART</groupName>
+      <baseAddress>0x80000000</baseAddress>
+      <addressBlock>
+        <offset>0</offset>
+        <size>0x40</size>
+        <usage>registers</usage>
+      </addressBlock>
+      <interrupt>
+        <name>uart</name>
+        <value>1</value>
+      </interrupt>
+      <registers>
+        <register>
+          <name>divisor</name>
+          <description>uart divisor register</description>
+          <addressOffset>0x0000</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-write</access>
+          <fields>
+            <field>
+              <name>divisor</name>
+              <description>uart divisor register field</description>
+              <bitRange>[9:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>rx_data</name>
+          <description>uart rx_data register</description>
+          <addressOffset>0x0004</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-only</access>
+          <fields>
+            <field>
+              <name>rx_data</name>
+              <description>uart rx_data register field</description>
+              <bitRange>[7:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>rx_rdy</name>
+          <description>uart rx_rdy register</description>
+          <addressOffset>0x0008</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-only</access>
+          <fields>
+            <field>
+              <name>rx_rdy</name>
+              <description>uart rx_rdy register field</description>
+              <bitRange>[0:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>rx_err</name>
+          <description>uart rx_err register</description>
+          <addressOffset>0x000c</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-only</access>
+          <fields>
+            <field>
+              <name>rx_err</name>
+              <description>uart rx_err register field</description>
+              <bitRange>[2:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>tx_data</name>
+          <description>uart tx_data register</description>
+          <addressOffset>0x0010</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>write-only</access>
+          <fields>
+            <field>
+              <name>tx_data</name>
+              <description>uart tx_data register field</description>
+              <bitRange>[7:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>tx_rdy</name>
+          <description>uart tx_rdy register</description>
+          <addressOffset>0x0014</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-only</access>
+          <fields>
+            <field>
+              <name>tx_rdy</name>
+              <description>uart tx_rdy register field</description>
+              <bitRange>[0:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>ev_status</name>
+          <description>uart ev_status register</description>
+          <addressOffset>0x0020</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-only</access>
+          <fields>
+            <field>
+              <name>status</name>
+              <description>uart status register field</description>
+              <bitRange>[2:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>ev_pending</name>
+          <description>uart ev_pending register</description>
+          <addressOffset>0x0024</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-write</access>
+          <fields>
+            <field>
+              <name>pending</name>
+              <description>uart pending register field</description>
+              <bitRange>[2:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>ev_enable</name>
+          <description>uart ev_enable register</description>
+          <addressOffset>0x0028</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-write</access>
+          <fields>
+            <field>
+              <name>enable</name>
+              <description>uart enable register field</description>
+              <bitRange>[2:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+      </registers>
+    </peripheral>
+    <peripheral>
+      <name>LEDS</name>
+      <groupName>LEDS</groupName>
+      <baseAddress>0x50000180</baseAddress>
+      <addressBlock>
+        <offset>0</offset>
+        <size>0x08</size>
+        <usage>registers</usage>
+      </addressBlock>
+      <registers>
+        <register>
+          <name>output</name>
+          <description>leds output register</description>
+          <addressOffset>0x0000</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>write-only</access>
+          <fields>
+            <field>
+              <name>output</name>
+              <description>leds output register field</description>
+              <bitRange>[5:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+      </registers>
+    </peripheral>
+  </peripherals>
+  <vendorExtensions>
+    <memoryRegions>
+      <memoryRegion>
+        <name>BOOTROM</name>
+        <baseAddress>0x00000000</baseAddress>
+        <size>0x00004000</size>
+      </memoryRegion>
+      <memoryRegion>
+        <name>SCRATCHPAD</name>
+        <baseAddress>0x00004000</baseAddress>
+        <size>0x00001000</size>
+      </memoryRegion>
+      <memoryRegion>
+        <name>INTERNAL_SRAM</name>
+        <baseAddress>0x40000000</baseAddress>
+        <size>0x00002000</size>
+      </memoryRegion>
+    </memoryRegions>
+    <constants/>
+  </vendorExtensions>
+</device>

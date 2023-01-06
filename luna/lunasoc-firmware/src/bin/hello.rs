@@ -6,19 +6,14 @@ use riscv_rt::entry;
 
 use core::fmt::Write;
 
-use lunasoc_pac as pac;
-use lunasoc_hal as hal;
+use lunasoc_firmware as firmware;
+
+use firmware::pac;
+use firmware::hal;
 use hal::prelude::*;
 
-lunasoc_hal::uart! {
-    Uart: lunasoc_pac::UART,
-}
-
-lunasoc_hal::timer! {
-    Timer: lunasoc_pac::TIMER,
-}
-
-const SYSTEM_CLOCK_FREQUENCY: u32 = 10_000_000;
+use firmware::{Timer, Uart};
+use firmware::SYSTEM_CLOCK_FREQUENCY;
 
 
 #[entry]
