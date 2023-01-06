@@ -390,8 +390,8 @@ TODO Investigate existing USBProxy implementation for GreatFET/Facedancer.
 
 #### Initial Bring-up
 
-* [ ] Implement `hello-blinky` for LunaSoC.
-* [ ] Implement `hello-uart` for LunaSoC.
+* [x] Implement `hello-blinky` for LunaSoC.
+* [x] Implement `hello-uart` for LunaSoC.
 
 #### Luna SoC Firmware
 
@@ -470,8 +470,8 @@ Gateware shall be implemented in [Amaranth](https://github.com/amaranth-lang/ama
 
 #### Initial Bring-Up
 
-* [ ] Update the `simplesoc.py` placeholder to the latest versions of the `amaranth-soc` and `lambdasoc` libraries.
-* [ ] Implement SVD export for SoC designs
+* [x] Update the `simplesoc.py` placeholder to the latest versions of the `amaranth-soc` and `lambdasoc` libraries.
+* [x] Implement SVD export for SoC designs
     - Bear in mind that this would benefit from finding a cosy home upstream.
 
 #### Implement additional Peripherals
