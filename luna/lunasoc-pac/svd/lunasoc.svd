@@ -268,6 +268,655 @@
       </registers>
     </peripheral>
     <peripheral>
+      <name>USB0</name>
+      <groupName>USB0</groupName>
+      <baseAddress>0x50000000</baseAddress>
+      <addressBlock>
+        <offset>0</offset>
+        <size>0x40</size>
+        <usage>registers</usage>
+      </addressBlock>
+      <interrupt>
+        <name>usb0</name>
+        <value>2</value>
+      </interrupt>
+      <registers>
+        <register>
+          <name>connect</name>
+          <description>usb0 connect register</description>
+          <addressOffset>0x0000</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-write</access>
+          <fields>
+            <field>
+              <name>connect</name>
+              <description>usb0 connect register field</description>
+              <bitRange>[0:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>speed</name>
+          <description>usb0 speed register</description>
+          <addressOffset>0x0004</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-only</access>
+          <fields>
+            <field>
+              <name>speed</name>
+              <description>usb0 speed register field</description>
+              <bitRange>[1:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>ev_status</name>
+          <description>usb0 ev_status register</description>
+          <addressOffset>0x0010</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-only</access>
+          <fields>
+            <field>
+              <name>status</name>
+              <description>usb0 status register field</description>
+              <bitRange>[0:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>ev_pending</name>
+          <description>usb0 ev_pending register</description>
+          <addressOffset>0x0014</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-write</access>
+          <fields>
+            <field>
+              <name>pending</name>
+              <description>usb0 pending register field</description>
+              <bitRange>[0:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>ev_enable</name>
+          <description>usb0 ev_enable register</description>
+          <addressOffset>0x0018</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-write</access>
+          <fields>
+            <field>
+              <name>enable</name>
+              <description>usb0 enable register field</description>
+              <bitRange>[0:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+      </registers>
+    </peripheral>
+    <peripheral>
+      <name>USB0_SETUP</name>
+      <groupName>USB0_SETUP</groupName>
+      <baseAddress>0x50000040</baseAddress>
+      <addressBlock>
+        <offset>0</offset>
+        <size>0x40</size>
+        <usage>registers</usage>
+      </addressBlock>
+      <interrupt>
+        <name>usb0_setup</name>
+        <value>3</value>
+      </interrupt>
+      <registers>
+        <register>
+          <name>data</name>
+          <description>usb0_setup data register</description>
+          <addressOffset>0x0000</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-only</access>
+          <fields>
+            <field>
+              <name>data</name>
+              <description>usb0_setup data register field</description>
+              <bitRange>[7:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>reset</name>
+          <description>usb0_setup reset register</description>
+          <addressOffset>0x0004</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>write-only</access>
+          <fields>
+            <field>
+              <name>reset</name>
+              <description>usb0_setup reset register field</description>
+              <bitRange>[0:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>epno</name>
+          <description>usb0_setup epno register</description>
+          <addressOffset>0x0008</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-only</access>
+          <fields>
+            <field>
+              <name>epno</name>
+              <description>usb0_setup epno register field</description>
+              <bitRange>[3:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>have</name>
+          <description>usb0_setup have register</description>
+          <addressOffset>0x000c</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-only</access>
+          <fields>
+            <field>
+              <name>have</name>
+              <description>usb0_setup have register field</description>
+              <bitRange>[0:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>pend</name>
+          <description>usb0_setup pend register</description>
+          <addressOffset>0x0010</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-only</access>
+          <fields>
+            <field>
+              <name>pend</name>
+              <description>usb0_setup pend register field</description>
+              <bitRange>[0:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>address</name>
+          <description>usb0_setup address register</description>
+          <addressOffset>0x0014</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-write</access>
+          <fields>
+            <field>
+              <name>address</name>
+              <description>usb0_setup address register field</description>
+              <bitRange>[7:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>ev_status</name>
+          <description>usb0_setup ev_status register</description>
+          <addressOffset>0x0020</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-only</access>
+          <fields>
+            <field>
+              <name>status</name>
+              <description>usb0_setup status register field</description>
+              <bitRange>[0:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>ev_pending</name>
+          <description>usb0_setup ev_pending register</description>
+          <addressOffset>0x0024</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-write</access>
+          <fields>
+            <field>
+              <name>pending</name>
+              <description>usb0_setup pending register field</description>
+              <bitRange>[0:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>ev_enable</name>
+          <description>usb0_setup ev_enable register</description>
+          <addressOffset>0x0028</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-write</access>
+          <fields>
+            <field>
+              <name>enable</name>
+              <description>usb0_setup enable register field</description>
+              <bitRange>[0:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+      </registers>
+    </peripheral>
+    <peripheral>
+      <name>USB0_IN_EP</name>
+      <groupName>USB0_IN_EP</groupName>
+      <baseAddress>0x50000080</baseAddress>
+      <addressBlock>
+        <offset>0</offset>
+        <size>0x40</size>
+        <usage>registers</usage>
+      </addressBlock>
+      <interrupt>
+        <name>usb0_in_ep</name>
+        <value>4</value>
+      </interrupt>
+      <registers>
+        <register>
+          <name>data</name>
+          <description>usb0_in_ep data register</description>
+          <addressOffset>0x0000</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>write-only</access>
+          <fields>
+            <field>
+              <name>data</name>
+              <description>usb0_in_ep data register field</description>
+              <bitRange>[7:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>epno</name>
+          <description>usb0_in_ep epno register</description>
+          <addressOffset>0x0004</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-write</access>
+          <fields>
+            <field>
+              <name>epno</name>
+              <description>usb0_in_ep epno register field</description>
+              <bitRange>[3:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>reset</name>
+          <description>usb0_in_ep reset register</description>
+          <addressOffset>0x0008</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>write-only</access>
+          <fields>
+            <field>
+              <name>reset</name>
+              <description>usb0_in_ep reset register field</description>
+              <bitRange>[0:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>stall</name>
+          <description>usb0_in_ep stall register</description>
+          <addressOffset>0x000c</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-write</access>
+          <fields>
+            <field>
+              <name>stall</name>
+              <description>usb0_in_ep stall register field</description>
+              <bitRange>[0:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>idle</name>
+          <description>usb0_in_ep idle register</description>
+          <addressOffset>0x0010</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-only</access>
+          <fields>
+            <field>
+              <name>idle</name>
+              <description>usb0_in_ep idle register field</description>
+              <bitRange>[0:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>have</name>
+          <description>usb0_in_ep have register</description>
+          <addressOffset>0x0014</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-only</access>
+          <fields>
+            <field>
+              <name>have</name>
+              <description>usb0_in_ep have register field</description>
+              <bitRange>[0:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>pend</name>
+          <description>usb0_in_ep pend register</description>
+          <addressOffset>0x0018</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-only</access>
+          <fields>
+            <field>
+              <name>pend</name>
+              <description>usb0_in_ep pend register field</description>
+              <bitRange>[0:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>pid</name>
+          <description>usb0_in_ep pid register</description>
+          <addressOffset>0x001c</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-write</access>
+          <fields>
+            <field>
+              <name>pid</name>
+              <description>usb0_in_ep pid register field</description>
+              <bitRange>[0:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>ev_status</name>
+          <description>usb0_in_ep ev_status register</description>
+          <addressOffset>0x0020</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-only</access>
+          <fields>
+            <field>
+              <name>status</name>
+              <description>usb0_in_ep status register field</description>
+              <bitRange>[0:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>ev_pending</name>
+          <description>usb0_in_ep ev_pending register</description>
+          <addressOffset>0x0024</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-write</access>
+          <fields>
+            <field>
+              <name>pending</name>
+              <description>usb0_in_ep pending register field</description>
+              <bitRange>[0:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>ev_enable</name>
+          <description>usb0_in_ep ev_enable register</description>
+          <addressOffset>0x0028</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-write</access>
+          <fields>
+            <field>
+              <name>enable</name>
+              <description>usb0_in_ep enable register field</description>
+              <bitRange>[0:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+      </registers>
+    </peripheral>
+    <peripheral>
+      <name>USB0_OUT_EP</name>
+      <groupName>USB0_OUT_EP</groupName>
+      <baseAddress>0x50000100</baseAddress>
+      <addressBlock>
+        <offset>0</offset>
+        <size>0x80</size>
+        <usage>registers</usage>
+      </addressBlock>
+      <interrupt>
+        <name>usb0_out_ep</name>
+        <value>5</value>
+      </interrupt>
+      <registers>
+        <register>
+          <name>data</name>
+          <description>usb0_out_ep data register</description>
+          <addressOffset>0x0000</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-only</access>
+          <fields>
+            <field>
+              <name>data</name>
+              <description>usb0_out_ep data register field</description>
+              <bitRange>[7:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>data_ep</name>
+          <description>usb0_out_ep data_ep register</description>
+          <addressOffset>0x0004</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-only</access>
+          <fields>
+            <field>
+              <name>data_ep</name>
+              <description>usb0_out_ep data_ep register field</description>
+              <bitRange>[3:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>reset</name>
+          <description>usb0_out_ep reset register</description>
+          <addressOffset>0x0008</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>write-only</access>
+          <fields>
+            <field>
+              <name>reset</name>
+              <description>usb0_out_ep reset register field</description>
+              <bitRange>[0:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>epno</name>
+          <description>usb0_out_ep epno register</description>
+          <addressOffset>0x000c</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-write</access>
+          <fields>
+            <field>
+              <name>epno</name>
+              <description>usb0_out_ep epno register field</description>
+              <bitRange>[3:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>enable</name>
+          <description>usb0_out_ep enable register</description>
+          <addressOffset>0x0010</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-write</access>
+          <fields>
+            <field>
+              <name>enable</name>
+              <description>usb0_out_ep enable register field</description>
+              <bitRange>[0:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>prime</name>
+          <description>usb0_out_ep prime register</description>
+          <addressOffset>0x0014</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>write-only</access>
+          <fields>
+            <field>
+              <name>prime</name>
+              <description>usb0_out_ep prime register field</description>
+              <bitRange>[0:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>stall</name>
+          <description>usb0_out_ep stall register</description>
+          <addressOffset>0x0018</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-write</access>
+          <fields>
+            <field>
+              <name>stall</name>
+              <description>usb0_out_ep stall register field</description>
+              <bitRange>[0:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>have</name>
+          <description>usb0_out_ep have register</description>
+          <addressOffset>0x001c</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-only</access>
+          <fields>
+            <field>
+              <name>have</name>
+              <description>usb0_out_ep have register field</description>
+              <bitRange>[0:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>pend</name>
+          <description>usb0_out_ep pend register</description>
+          <addressOffset>0x0020</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-only</access>
+          <fields>
+            <field>
+              <name>pend</name>
+              <description>usb0_out_ep pend register field</description>
+              <bitRange>[0:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>address</name>
+          <description>usb0_out_ep address register</description>
+          <addressOffset>0x0024</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-write</access>
+          <fields>
+            <field>
+              <name>address</name>
+              <description>usb0_out_ep address register field</description>
+              <bitRange>[7:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>pid</name>
+          <description>usb0_out_ep pid register</description>
+          <addressOffset>0x0028</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-write</access>
+          <fields>
+            <field>
+              <name>pid</name>
+              <description>usb0_out_ep pid register field</description>
+              <bitRange>[0:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>ev_status</name>
+          <description>usb0_out_ep ev_status register</description>
+          <addressOffset>0x0040</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-only</access>
+          <fields>
+            <field>
+              <name>status</name>
+              <description>usb0_out_ep status register field</description>
+              <bitRange>[0:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>ev_pending</name>
+          <description>usb0_out_ep ev_pending register</description>
+          <addressOffset>0x0044</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-write</access>
+          <fields>
+            <field>
+              <name>pending</name>
+              <description>usb0_out_ep pending register field</description>
+              <bitRange>[0:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>ev_enable</name>
+          <description>usb0_out_ep ev_enable register</description>
+          <addressOffset>0x0048</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-write</access>
+          <fields>
+            <field>
+              <name>enable</name>
+              <description>usb0_out_ep enable register field</description>
+              <bitRange>[0:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+      </registers>
+    </peripheral>
+    <peripheral>
       <name>LEDS</name>
       <groupName>LEDS</groupName>
       <baseAddress>0x50000180</baseAddress>

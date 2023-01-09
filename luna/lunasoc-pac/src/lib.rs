@@ -27,6 +27,10 @@ pub mod generic;
 extern "C" {
     fn TIMER();
     fn UART();
+    fn USB0();
+    fn USB0_SETUP();
+    fn USB0_IN_EP();
+    fn USB0_OUT_EP();
 }
 #[doc(hidden)]
 pub union Vector {
@@ -36,8 +40,20 @@ pub union Vector {
 #[cfg(feature = "rt")]
 #[doc(hidden)]
 #[no_mangle]
-pub static __EXTERNAL_INTERRUPTS: [Vector; 2] =
-    [Vector { _handler: TIMER }, Vector { _handler: UART }];
+pub static __EXTERNAL_INTERRUPTS: [Vector; 6] = [
+    Vector { _handler: TIMER },
+    Vector { _handler: UART },
+    Vector { _handler: USB0 },
+    Vector {
+        _handler: USB0_SETUP,
+    },
+    Vector {
+        _handler: USB0_IN_EP,
+    },
+    Vector {
+        _handler: USB0_OUT_EP,
+    },
+];
 #[doc(hidden)]
 pub mod interrupt;
 pub use self::interrupt::Interrupt;
@@ -97,6 +113,118 @@ impl core::fmt::Debug for UART {
 }
 #[doc = "UART"]
 pub mod uart;
+#[doc = "USB0"]
+pub struct USB0 {
+    _marker: PhantomData<*const ()>,
+}
+unsafe impl Send for USB0 {}
+impl USB0 {
+    #[doc = r"Pointer to the register block"]
+    pub const PTR: *const usb0::RegisterBlock = 0x5000_0000 as *const _;
+    #[doc = r"Return the pointer to the register block"]
+    #[inline(always)]
+    pub const fn ptr() -> *const usb0::RegisterBlock {
+        Self::PTR
+    }
+}
+impl Deref for USB0 {
+    type Target = usb0::RegisterBlock;
+    #[inline(always)]
+    fn deref(&self) -> &Self::Target {
+        unsafe { &*Self::PTR }
+    }
+}
+impl core::fmt::Debug for USB0 {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        f.debug_struct("USB0").finish()
+    }
+}
+#[doc = "USB0"]
+pub mod usb0;
+#[doc = "USB0_SETUP"]
+pub struct USB0_SETUP {
+    _marker: PhantomData<*const ()>,
+}
+unsafe impl Send for USB0_SETUP {}
+impl USB0_SETUP {
+    #[doc = r"Pointer to the register block"]
+    pub const PTR: *const usb0_setup::RegisterBlock = 0x5000_0040 as *const _;
+    #[doc = r"Return the pointer to the register block"]
+    #[inline(always)]
+    pub const fn ptr() -> *const usb0_setup::RegisterBlock {
+        Self::PTR
+    }
+}
+impl Deref for USB0_SETUP {
+    type Target = usb0_setup::RegisterBlock;
+    #[inline(always)]
+    fn deref(&self) -> &Self::Target {
+        unsafe { &*Self::PTR }
+    }
+}
+impl core::fmt::Debug for USB0_SETUP {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        f.debug_struct("USB0_SETUP").finish()
+    }
+}
+#[doc = "USB0_SETUP"]
+pub mod usb0_setup;
+#[doc = "USB0_IN_EP"]
+pub struct USB0_IN_EP {
+    _marker: PhantomData<*const ()>,
+}
+unsafe impl Send for USB0_IN_EP {}
+impl USB0_IN_EP {
+    #[doc = r"Pointer to the register block"]
+    pub const PTR: *const usb0_in_ep::RegisterBlock = 0x5000_0080 as *const _;
+    #[doc = r"Return the pointer to the register block"]
+    #[inline(always)]
+    pub const fn ptr() -> *const usb0_in_ep::RegisterBlock {
+        Self::PTR
+    }
+}
+impl Deref for USB0_IN_EP {
+    type Target = usb0_in_ep::RegisterBlock;
+    #[inline(always)]
+    fn deref(&self) -> &Self::Target {
+        unsafe { &*Self::PTR }
+    }
+}
+impl core::fmt::Debug for USB0_IN_EP {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        f.debug_struct("USB0_IN_EP").finish()
+    }
+}
+#[doc = "USB0_IN_EP"]
+pub mod usb0_in_ep;
+#[doc = "USB0_OUT_EP"]
+pub struct USB0_OUT_EP {
+    _marker: PhantomData<*const ()>,
+}
+unsafe impl Send for USB0_OUT_EP {}
+impl USB0_OUT_EP {
+    #[doc = r"Pointer to the register block"]
+    pub const PTR: *const usb0_out_ep::RegisterBlock = 0x5000_0100 as *const _;
+    #[doc = r"Return the pointer to the register block"]
+    #[inline(always)]
+    pub const fn ptr() -> *const usb0_out_ep::RegisterBlock {
+        Self::PTR
+    }
+}
+impl Deref for USB0_OUT_EP {
+    type Target = usb0_out_ep::RegisterBlock;
+    #[inline(always)]
+    fn deref(&self) -> &Self::Target {
+        unsafe { &*Self::PTR }
+    }
+}
+impl core::fmt::Debug for USB0_OUT_EP {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        f.debug_struct("USB0_OUT_EP").finish()
+    }
+}
+#[doc = "USB0_OUT_EP"]
+pub mod usb0_out_ep;
 #[doc = "LEDS"]
 pub struct LEDS {
     _marker: PhantomData<*const ()>,
@@ -134,6 +262,14 @@ pub struct Peripherals {
     pub TIMER: TIMER,
     #[doc = "UART"]
     pub UART: UART,
+    #[doc = "USB0"]
+    pub USB0: USB0,
+    #[doc = "USB0_SETUP"]
+    pub USB0_SETUP: USB0_SETUP,
+    #[doc = "USB0_IN_EP"]
+    pub USB0_IN_EP: USB0_IN_EP,
+    #[doc = "USB0_OUT_EP"]
+    pub USB0_OUT_EP: USB0_OUT_EP,
     #[doc = "LEDS"]
     pub LEDS: LEDS,
 }
@@ -162,6 +298,18 @@ impl Peripherals {
                 _marker: PhantomData,
             },
             UART: UART {
+                _marker: PhantomData,
+            },
+            USB0: USB0 {
+                _marker: PhantomData,
+            },
+            USB0_SETUP: USB0_SETUP {
+                _marker: PhantomData,
+            },
+            USB0_IN_EP: USB0_IN_EP {
+                _marker: PhantomData,
+            },
+            USB0_OUT_EP: USB0_OUT_EP {
                 _marker: PhantomData,
             },
             LEDS: LEDS {

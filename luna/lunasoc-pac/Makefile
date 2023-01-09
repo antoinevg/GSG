@@ -1,4 +1,4 @@
-SVD := ../hello-lunasoc/build/svdgen/lunasoc.svd
+SVD := ../hello-lunasoc/build/gensvd/lunasoc.svd
 
 
 svd2rust:
