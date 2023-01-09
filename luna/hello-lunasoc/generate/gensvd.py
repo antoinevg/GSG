@@ -17,6 +17,7 @@ from xml.etree import ElementTree
 from xml.etree.ElementTree import Element, SubElement, Comment, tostring
 
 from os import path
+import logging
 
 #from ..lunasoc import LunaSoC
 
@@ -42,7 +43,7 @@ class GenSVD:
         window: MemoryMap
         for window, (start, stop, ratio) in self._soc.memory_map.windows():
             if window.name in ["bootrom", "scratchpad", "internal_sram"]:
-                print("Skipping non-peripheral resource: ", window.name)
+                logging.info("Skipping non-peripheral resource: {}".format(window.name))
                 continue
 
             peripheral = _generate_section_peripheral(peripherals, self._soc, window, start, stop, ratio)
@@ -88,7 +89,6 @@ class GenSVD:
         constants = SubElement(vendorExtensions, "constants")  # TODO
 
         # dump
-        print("\n")
         output = ElementTree.tostring(device, 'utf-8')
         output = minidom.parseString(output)
         #output = output.toprettyxml(indent="  ")
@@ -195,6 +195,13 @@ def _generate_section_field(fields: Element, window: MemoryMap, resource_info: R
     resource: amaranth_soc.csr.bus.Element = resource_info.resource
     assert type(resource) == amaranth_soc.csr.bus.Element
 
+    logging.debug("Generating register field for window: {} resource_info: {}  resource: {} width: {}".format(
+        window.name,
+        resource_info.name,
+        resource_info.resource.name,
+        resource_info.resource.width
+    ))
+
     field =  SubElement(fields, "field")
     el = SubElement(field, "name")
     el.text = resource.name
@@ -206,7 +213,6 @@ def _generate_section_field(fields: Element, window: MemoryMap, resource_info: R
     )
     el.text = description
     el = SubElement(field, "bitRange")
-    #el.text = "[31:0]" # TODO
     el.text = "[{:d}:0]".format(resource.width - 1)
 
     return field

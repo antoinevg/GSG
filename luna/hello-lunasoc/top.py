@@ -130,6 +130,10 @@ class LunaSoCExample(Elaboratable):
 if __name__ == "__main__":
     from generate import Generate
 
+    # Disable UnusedElaboarable warnings
+    from amaranth._unused   import MustUse
+    MustUse._MustUse__silence = True
+
     build_dir = os.path.join("build")
 
     # configure logging
@@ -160,7 +164,7 @@ if __name__ == "__main__":
         os.makedirs(thirdparty)
 
     # build bios
-    logging.info("Building bios")
+    #logging.info("Building bios")
     design.soc.build(name="soc",
                      build_dir=build_dir,
                      do_init=True)
@@ -169,27 +173,33 @@ if __name__ == "__main__":
     logging.info("Building soc")
     products = platform.build(design, do_program=False, build_dir=build_dir)
 
-    # generate c-header and ld-script
-    logging.info("Generating c-header and ld-script")
-    generate = Generate(design.soc)
-    with open("resources.h", "w") as f:
-        generate.c_header(platform_name=platform.name, file=f)
-    with open("soc.ld", "w") as f:
-        generate.ld_script(file=f)
-
-    # TODO generate svd
-    path = os.path.join(build_dir, "svdgen")
-    if not os.path.exists(path):
-        os.makedirs(path)
-    path = os.path.join(path, "lunasoc.svd")
-    logging.info("Generating svd file: {}".format(path))
-    generate = Generate(design.soc)
-    with open(path, "w") as f:
-        generate.svd(file=f)
-
     # Log resources
     from lunasoc import Introspect
     Introspect(design.soc).log_resources()
+
+    # generate artifacts
+    generate = Generate(design.soc)
+
+    # generate: c-header and ld-script
+    path = os.path.join(build_dir, "genc")
+    if not os.path.exists(path):
+        os.makedirs(path)
+
+    logging.info("Generating c-header and ld-script: {}".format(path))
+    with open(os.path.join(path, "resources.h"), "w") as f:
+        generate.c_header(platform_name=platform.name, file=f)
+    with open(os.path.join(path, "soc.ld"), "w") as f:
+        generate.ld_script(file=f)
+
+    # generate: svd
+    path = os.path.join(build_dir, "gensvd")
+    if not os.path.exists(path):
+        os.makedirs(path)
+
+    logging.info("Generating svd file: {}".format(path))
+    with open(os.path.join(path, "lunasoc.svd"), "w") as f:
+        generate.svd(file=f)
+
 
     print("Build completed. Use 'make load' to load bitsream to device.")
 
