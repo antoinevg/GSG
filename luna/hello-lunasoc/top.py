@@ -164,7 +164,7 @@ if __name__ == "__main__":
         os.makedirs(thirdparty)
 
     # build bios
-    #logging.info("Building bios")
+    logging.info("Building bios")
     design.soc.build(name="soc",
                      build_dir=build_dir,
                      do_init=True)

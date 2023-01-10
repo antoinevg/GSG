@@ -11,14 +11,7 @@ pub use lunasoc_hal as hal;
 pub const SYSTEM_CLOCK_FREQUENCY: u32 = 10_000_000;
 
 
-// - modules ------------------------------------------------------------------
-
-// TODO move these into lunasoc-pac
-pub mod csr;
-pub mod minerva;
-pub mod register {
-    pub use crate::minerva;
-}
+// - peripherals --------------------------------------------------------------
 
 // TODO move these into lunasoc-hal
 hal::timer! { Timer: pac::TIMER, }

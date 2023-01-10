@@ -3,11 +3,11 @@
 #![no_std]
 #![no_main]
 
-use lunasoc_pac as pac;
-use panic_halt as _;
 use riscv_rt::entry;
+use panic_halt as _;
 
-use lunasoc_firmware::csr;
+use lunasoc_pac as pac;
+use pac::csr;
 
 const SYSTEM_CLOCK_FREQUENCY: u32 = 60_000_000;
 
