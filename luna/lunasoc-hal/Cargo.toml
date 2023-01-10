@@ -40,14 +40,17 @@ overflow-checks = false
 
 [dependencies]
 embedded-hal = { version = "0.2" }
-nb = "1.0"
+fugit = "=0.3.6"
+lunasoc-pac = { path = "../lunasoc-pac", default-features = false}
+nb = "=1.0.0"
+riscv = { version = "=0.10.0", default-features = false }
 
 
 # - dev-dependencies ----------------------------------------------------------
 
 [dev-dependencies]
 lunasoc-pac = { path = "../lunasoc-pac", features = ["critical-section", "rt"]}
-panic-halt = "0.2.0"
+panic-halt = "=0.2.0"
 riscv = { version = "=0.10.0", features = ["critical-section-single-hart"] }
 riscv-rt = { version = "=0.10.0" }
 

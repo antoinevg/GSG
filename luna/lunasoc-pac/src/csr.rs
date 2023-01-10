@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+pub struct CSR;
 
 pub mod interrupt {
     //! CSR access methods.

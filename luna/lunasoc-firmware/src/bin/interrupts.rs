@@ -6,24 +6,30 @@
 use riscv_rt::entry;
 use panic_halt as _;
 
+use core::fmt::Write;
+
+use lunasoc_hal as hal;
+use hal::{Timer, Uart};
+
 use lunasoc_pac as pac;
-use pac::csr;
+
 
 const SYSTEM_CLOCK_FREQUENCY: u32 = 60_000_000;
 
 #[entry]
 fn main() -> ! {
     let peripherals = pac::Peripherals::take().unwrap() ;
+
     let leds = &peripherals.LEDS;
-    let timer = &peripherals.TIMER;
-    let uart = &peripherals.UART;
+    let mut timer = Timer::new(peripherals.TIMER, SYSTEM_CLOCK_FREQUENCY);
+    let mut uart = Uart::new(peripherals.UART);
 
     // configure and enable timer
-    timer.reload.write(|w| unsafe { w.reload().bits(SYSTEM_CLOCK_FREQUENCY / 2) });
-    timer.en.write(|w| w.en().bit(true));
+    timer.set_timeout_ticks(SYSTEM_CLOCK_FREQUENCY / 2);
+    timer.enable();
 
     // enable timer events
-    timer.ev_enable.write(|w| w.enable().bit(true));
+    timer.listen(hal::timer::Event::TimeOut);
 
     // enable interrupts
     unsafe {
@@ -34,12 +40,12 @@ fn main() -> ! {
         riscv::register::mie::set_mext();
 
         // write csr: enable timer interrupt
-        csr::interrupt::enable(pac::Interrupt::TIMER)
+        pac::csr::interrupt::enable(pac::Interrupt::TIMER)
     }
 
     loop {
         unsafe { riscv::asm::delay(SYSTEM_CLOCK_FREQUENCY); }
-        uart_tx("Ping\n");
+        writeln!(uart, "Ping").unwrap();
     }
 }
 
@@ -48,52 +54,26 @@ fn main() -> ! {
 
 #[allow(non_snake_case)]
 #[no_mangle]
-unsafe fn MachineExternal() {
+fn MachineExternal() {
     static mut TOGGLE: bool = true;
 
-    let peripherals = unsafe { pac::Peripherals::steal() };
-    let leds = &peripherals.LEDS;
-    let timer = &peripherals.TIMER;
-
-    if csr::interrupt::pending(pac::Interrupt::TIMER) {
-        // clear interrupt
-        let pending = timer.ev_pending.read().pending().bit();
-        timer.ev_pending.write(|w| w.pending().bit(pending));
+    if unsafe { pac::csr::interrupt::pending(pac::Interrupt::TIMER) } {
+        let mut timer = unsafe { Timer::summon() };
+        timer.clear_irq();
 
         // blinkenlights
-        if TOGGLE {
+        let peripherals = unsafe { pac::Peripherals::steal() };
+        let leds = &peripherals.LEDS;
+
+        if unsafe { TOGGLE } {
             leds.output.write(|w| unsafe { w.output().bits(255) });
         } else {
             leds.output.write(|w| unsafe { w.output().bits(0) });
         }
-        TOGGLE = !TOGGLE;
+        unsafe { TOGGLE = !TOGGLE };
 
     } else {
-        uart_tx("MachineExternal - unknown interrupt\n");
-    }
-}
-
-
-// - exception handler --------------------------------------------------------
-
-#[allow(non_snake_case)]
-#[no_mangle]
-unsafe fn ExceptionHandler(trap_frame: &riscv_rt::TrapFrame) -> ! {
-    uart_tx("ExceptionHandler\n");
-    loop {}
-}
-
-
-// - helpers ------------------------------------------------------------------
-
-fn uart_tx(string: &str) {
-    let peripherals = unsafe { pac::Peripherals::steal() };
-    let uart = &peripherals.UART;
-
-    for c in string.chars() {
-        while uart.tx_rdy.read().tx_rdy().bit() == false {
-            unsafe { riscv::asm::nop(); }
-        }
-        uart.tx_data.write(|w| unsafe { w.tx_data().bits(c as u8) })
+        let mut uart = unsafe { Uart::summon() };
+        writeln!(uart, "MachineExternal - unknown interrupt").unwrap();
     }
 }
