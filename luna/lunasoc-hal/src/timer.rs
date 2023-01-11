@@ -7,7 +7,7 @@ pub enum Event {
 }
 
 #[macro_export]
-macro_rules! timer {
+macro_rules! impl_timer {
     ($(
         $TIMERX:ident: $PACTIMERX:ty,
     )+) => {
@@ -37,7 +37,7 @@ macro_rules! timer {
                 /// 'Tis thine responsibility, that which thou doth summon.
                 pub unsafe fn summon() -> Self {
                     Self {
-                        registers: crate::pac::Peripherals::steal().TIMER,
+                        registers: $crate::pac::Peripherals::steal().TIMER,
                         clk: 0, // TODO
                     }
                 }
@@ -118,26 +118,29 @@ macro_rules! timer {
                 }
             }
 
-            // original implementation
-            impl<UXX: core::convert::Into<u32>> $crate::hal::blocking::delay::DelayMs<UXX> for $TIMERX {
-                fn delay_ms(&mut self, ms: UXX) -> () {
-                    let value: u32 = self.clk / 1_000 * ms.into();
-                    unsafe {
-                        // start timer
-                        self.registers.en.write(|w| w.en().bit(true));
-                        self.registers.reload.write(|w| w.reload().bits(value));
-                        while self.registers.ctr.read().ctr().bits() > 0 {
-                            riscv::asm::nop();
-                        }
+            // trait: hal::delay::DelayUs
+            impl $crate::hal::delay::DelayUs for $TIMERX {
+                type Error = core::convert::Infallible;
 
-                        // reset timer
-                        self.registers.en.write(|w| w.en().bit(false));
-                        self.registers.reload.write(|w| w.reload().bits(0));
+                fn delay_us(&mut self, us: u32) -> Result<(), Self::Error> {
+                    let ticks: u32 = (self.clk / 1_000_000) * us;
+
+                    // start timer
+                    self.registers.en.write(|w| w.en().bit(true));
+                    self.registers.reload.write(|w| unsafe { w.reload().bits(ticks) });
+                    while self.registers.ctr.read().ctr().bits() > 0 {
+                        unsafe { riscv::asm::nop(); }
                     }
+
+                    // reset timer
+                    self.registers.en.write(|w| w.en().bit(false));
+                    self.registers.reload.write(|w| unsafe { w.reload().bits(0) });
+
+                    Ok(())
                 }
             }
         )+
     }
 }
 
-crate::timer! { Timer: crate::pac::TIMER, }
+crate::impl_timer! { Timer: crate::pac::TIMER, }

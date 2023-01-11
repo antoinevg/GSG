@@ -2,9 +2,8 @@
 
 // - aliases ------------------------------------------------------------------
 
-pub use lunasoc_pac as pac;
 pub use lunasoc_hal as hal;
-
+pub use lunasoc_pac as pac;
 
 // - constants ----------------------------------------------------------------
 

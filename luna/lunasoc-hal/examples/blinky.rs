@@ -2,17 +2,13 @@
 #![no_main]
 
 use panic_halt as _;
+use riscv_rt::entry;
 
 use lunasoc_hal as hal;
 use lunasoc_pac as pac;
 
-use hal::prelude::*;
-
-use riscv_rt::entry;
-
-hal::timer! {
-    Timer: pac::TIMER,
-}
+use hal::hal::delay::DelayUs;
+use hal::Timer;
 
 const SYSTEM_CLOCK_FREQUENCY: u32 = 10_000_000;
 
@@ -27,7 +23,7 @@ fn main() -> ! {
     let mut led_state = 0b11000000;
 
     loop {
-        timer.delay_ms(100_u32);
+        timer.delay_ms(100_u32).unwrap();
 
         if direction {
             led_state >>= 1;

@@ -50,18 +50,8 @@ flash_timer: timer.bin
 
 # - gensvd --------------------------------------------------------------------
 
-svd2rust:
-	rm -rf $(LUNASOC_PAC)/svd
-	mkdir $(LUNASOC_PAC)/svd
-	cp build/gensvd/lunasoc.svd $(LUNASOC_PAC)/svd/lunasoc.svd
-	rm -rf $(LUNASOC_PAC)/src
-	mkdir $(LUNASOC_PAC)/src
-	svd2rust -i $(LUNASOC_PAC)/svd/lunasoc.svd -o build/gensvd --target riscv
-	mv build/gensvd/lib.rs $(LUNASOC_PAC)/src
-	mv build/gensvd/build.rs $(LUNASOC_PAC)/
-	mv build/gensvd/device.x $(LUNASOC_PAC)/
-	form -i $(LUNASOC_PAC)/src/lib.rs -o $(LUNASOC_PAC)/src/
-	cd $(LUNASOC_PAC) && cargo fmt -- --emit files
+rs-blinky:
+	@echo "TODO"
 
 
 # - helpers -------------------------------------------------------------------

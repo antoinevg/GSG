@@ -1,23 +1,18 @@
 #![no_std]
 
-pub mod csr;
-
-#[cfg(feature = "gpio")]
 pub mod gpio;
+pub mod serial;
 pub mod timer;
-pub mod uart;
 
-//pub mod time;
+// export peripherals
+pub use serial::Serial;
+pub use timer::Timer;
 
-// re-exports
+// re-export dependencies
 pub use lunasoc_pac as pac;
+pub use nb;
 
 pub use embedded_hal as hal;
-pub use nb;
-pub mod prelude {
-    pub use embedded_hal::prelude::*;
-}
+pub(crate) use embedded_hal_nb as hal_nb;
 
-// peripherals
-pub use timer::Timer;
-pub use uart::Uart;
+pub use embedded_hal_0 as hal_0;

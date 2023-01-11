@@ -9,7 +9,7 @@ const SYSTEM_CLOCK_FREQUENCY: u32 = 10_000_000;
 
 #[entry]
 fn main() -> ! {
-    let peripherals = pac::Peripherals::take().unwrap() ;
+    let peripherals = pac::Peripherals::take().unwrap();
     let leds = &peripherals.LEDS;
 
     let mut direction = true;
@@ -46,7 +46,9 @@ fn delay_ms(sys_clk: u32, ms: u32) {
     timer.reload.write(|w| unsafe { w.reload().bits(cycles) });
 
     while timer.ctr.read().ctr().bits() > 0 {
-        unsafe { riscv::asm::nop(); }
+        unsafe {
+            riscv::asm::nop();
+        }
     }
 
     timer.en.write(|w| w.en().bit(false));
@@ -59,7 +61,9 @@ fn uart_tx(string: &str) {
 
     for c in string.chars() {
         while uart.tx_rdy.read().tx_rdy().bit() == false {
-            unsafe { riscv::asm::nop(); }
+            unsafe {
+                riscv::asm::nop();
+            }
         }
         uart.tx_data.write(|w| unsafe { w.tx_data().bits(c as u8) })
     }

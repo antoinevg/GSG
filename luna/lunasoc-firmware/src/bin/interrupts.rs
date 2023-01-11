@@ -1,28 +1,27 @@
 #![allow(dead_code, unused_mut, unused_variables)]
-
 #![no_std]
 #![no_main]
 
-use riscv_rt::entry;
 use panic_halt as _;
-
-use core::fmt::Write;
+use riscv_rt::entry;
 
 use lunasoc_hal as hal;
-use hal::{Timer, Uart};
-
 use lunasoc_pac as pac;
 
+use hal::Serial;
+use hal::Timer;
+
+use core::fmt::Write;
 
 const SYSTEM_CLOCK_FREQUENCY: u32 = 60_000_000;
 
 #[entry]
 fn main() -> ! {
-    let peripherals = pac::Peripherals::take().unwrap() ;
+    let peripherals = pac::Peripherals::take().unwrap();
 
     let leds = &peripherals.LEDS;
     let mut timer = Timer::new(peripherals.TIMER, SYSTEM_CLOCK_FREQUENCY);
-    let mut uart = Uart::new(peripherals.UART);
+    let mut uart = Serial::new(peripherals.UART);
 
     // configure and enable timer
     timer.set_timeout_ticks(SYSTEM_CLOCK_FREQUENCY / 2);
@@ -44,14 +43,14 @@ fn main() -> ! {
     }
 
     loop {
-        unsafe { riscv::asm::delay(SYSTEM_CLOCK_FREQUENCY); }
+        unsafe {
+            riscv::asm::delay(SYSTEM_CLOCK_FREQUENCY);
+        }
         writeln!(uart, "Ping").unwrap();
     }
 }
 
-
-// - interrupt handler --------------------------------------------------------
-
+// interrupt handler
 #[allow(non_snake_case)]
 #[no_mangle]
 fn MachineExternal() {
@@ -71,9 +70,8 @@ fn MachineExternal() {
             leds.output.write(|w| unsafe { w.output().bits(0) });
         }
         unsafe { TOGGLE = !TOGGLE };
-
     } else {
-        let mut uart = unsafe { Uart::summon() };
+        let mut uart = unsafe { Serial::summon() };
         writeln!(uart, "MachineExternal - unknown interrupt").unwrap();
     }
 }

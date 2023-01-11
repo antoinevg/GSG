@@ -7,7 +7,7 @@ svd2rust:
 	mkdir build
 
 	cp $(SVD) svd/lunasoc.svd
-	svd2rust -i svd/lunasoc.svd -o build/ --target riscv --make_mod
+	svd2rust -i svd/lunasoc.svd -o build/ --target riscv --const_generic --make_mod
 	mv build/mod.rs src/generated.rs
 	mv build/build.rs .
 	mv build/device.x .

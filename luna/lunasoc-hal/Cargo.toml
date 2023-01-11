@@ -20,8 +20,7 @@ bench = false
 # - features ------------------------------------------------------------------
 
 [features]
-default = ["gpio"]
-gpio = ["embedded-hal/unproven"]
+default = []
 
 
 # - profiles ------------------------------------------------------------------
@@ -39,7 +38,9 @@ overflow-checks = false
 # - dependencies --------------------------------------------------------------
 
 [dependencies]
-embedded-hal = { version = "0.2" }
+embedded-hal = "=1.0.0-alpha.9"
+embedded-hal-0 = { package = "embedded-hal", version = "=0.2.7", features = ["unproven"] }
+embedded-hal-nb = "=1.0.0-alpha.1"
 fugit = "=0.3.6"
 lunasoc-pac = { path = "../lunasoc-pac", default-features = false}
 nb = "=1.0.0"
@@ -59,7 +60,7 @@ riscv-rt = { version = "=0.10.0" }
 
 [[example]]
 name = "blinky"
-required-features = ["gpio", "lunasoc-pac/rt"]
+required-features = ["lunasoc-pac/rt"]
 
 [[example]]
 name = "blinky_pac"

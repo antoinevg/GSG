@@ -1,10 +1,9 @@
 #![allow(dead_code, unused_mut, unused_variables)]
-
 #![no_std]
 #![no_main]
 
-use riscv_rt::entry;
 use panic_halt as _;
+use riscv_rt::entry;
 
 use lunasoc_pac as pac;
 use pac::csr;
@@ -13,13 +12,15 @@ const SYSTEM_CLOCK_FREQUENCY: u32 = 60_000_000;
 
 #[entry]
 fn main() -> ! {
-    let peripherals = pac::Peripherals::take().unwrap() ;
+    let peripherals = pac::Peripherals::take().unwrap();
     let leds = &peripherals.LEDS;
     let timer = &peripherals.TIMER;
     let uart = &peripherals.UART;
 
     // configure and enable timer
-    timer.reload.write(|w| unsafe { w.reload().bits(SYSTEM_CLOCK_FREQUENCY / 2) });
+    timer
+        .reload
+        .write(|w| unsafe { w.reload().bits(SYSTEM_CLOCK_FREQUENCY / 2) });
     timer.en.write(|w| w.en().bit(true));
 
     // enable timer events
@@ -38,11 +39,12 @@ fn main() -> ! {
     }
 
     loop {
-        unsafe { riscv::asm::delay(SYSTEM_CLOCK_FREQUENCY); }
+        unsafe {
+            riscv::asm::delay(SYSTEM_CLOCK_FREQUENCY);
+        }
         uart_tx("Ping\n");
     }
 }
-
 
 // - interrupt handler --------------------------------------------------------
 
@@ -67,12 +69,10 @@ unsafe fn MachineExternal() {
             leds.output.write(|w| unsafe { w.output().bits(0) });
         }
         TOGGLE = !TOGGLE;
-
     } else {
         uart_tx("MachineExternal - unknown interrupt\n");
     }
 }
-
 
 // - exception handler --------------------------------------------------------
 
@@ -83,7 +83,6 @@ unsafe fn ExceptionHandler(trap_frame: &riscv_rt::TrapFrame) -> ! {
     loop {}
 }
 
-
 // - helpers ------------------------------------------------------------------
 
 fn uart_tx(string: &str) {
@@ -92,7 +91,9 @@ fn uart_tx(string: &str) {
 
     for c in string.chars() {
         while uart.tx_rdy.read().tx_rdy().bit() == false {
-            unsafe { riscv::asm::nop(); }
+            unsafe {
+                riscv::asm::nop();
+            }
         }
         uart.tx_data.write(|w| unsafe { w.tx_data().bits(c as u8) })
     }
