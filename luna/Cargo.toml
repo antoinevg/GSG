@@ -1,0 +1,26 @@
+[workspace]
+members = [
+    "lunasoc-firmware",
+    "lunasoc-hal",
+    "lunasoc-pac",
+]
+
+exclude = [
+    "design",
+    "hello-bios",
+    "hello-lunasoc",
+    "hello-r04",
+    "hello-rust",
+    "toolchain",
+]
+
+# - profiles ------------------------------------------------------------------
+
+[profile.release]
+codegen-units = 1
+debug = true
+debug-assertions = false
+incremental = false
+lto = true
+opt-level = "s"
+overflow-checks = false

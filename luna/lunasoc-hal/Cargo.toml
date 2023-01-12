@@ -23,18 +23,6 @@ bench = false
 default = []
 
 
-# - profiles ------------------------------------------------------------------
-
-[profile.release]
-codegen-units = 1
-debug = true
-debug-assertions = false
-incremental = false
-lto = true
-opt-level = "s"
-overflow-checks = false
-
-
 # - dependencies --------------------------------------------------------------
 
 [dependencies]
