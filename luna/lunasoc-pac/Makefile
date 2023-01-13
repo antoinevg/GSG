@@ -13,7 +13,7 @@ svd2rust:
 	mv build/device.x .
 
 	form -i src/generated.rs -o src/generated/
-	cd src/ && cargo fmt -- --emit files
+	cargo fmt -- --emit files
 
 
 

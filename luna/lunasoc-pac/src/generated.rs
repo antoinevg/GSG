@@ -693,8 +693,8 @@ extern "C" {
     fn UART();
     fn USB0();
     fn USB0_SETUP();
-    fn USB0_IN_EP();
-    fn USB0_OUT_EP();
+    fn USB0_EP0_IN();
+    fn USB0_EP0_OUT();
 }
 #[doc(hidden)]
 pub union Vector {
@@ -712,10 +712,10 @@ pub static __EXTERNAL_INTERRUPTS: [Vector; 6] = [
         _handler: USB0_SETUP,
     },
     Vector {
-        _handler: USB0_IN_EP,
+        _handler: USB0_EP0_IN,
     },
     Vector {
-        _handler: USB0_OUT_EP,
+        _handler: USB0_EP0_OUT,
     },
 ];
 #[doc(hidden)]
@@ -732,10 +732,10 @@ pub mod interrupt {
         USB0 = 2,
         #[doc = "3 - usb0_setup"]
         USB0_SETUP = 3,
-        #[doc = "4 - usb0_in_ep"]
-        USB0_IN_EP = 4,
-        #[doc = "5 - usb0_out_ep"]
-        USB0_OUT_EP = 5,
+        #[doc = "4 - usb0_ep0_in"]
+        USB0_EP0_IN = 4,
+        #[doc = "5 - usb0_ep0_out"]
+        USB0_EP0_OUT = 5,
     }
     #[doc = r" TryFromInterruptError"]
     #[derive(Debug, Copy, Clone)]
@@ -749,8 +749,8 @@ pub mod interrupt {
                 1 => Ok(Interrupt::UART),
                 2 => Ok(Interrupt::USB0),
                 3 => Ok(Interrupt::USB0_SETUP),
-                4 => Ok(Interrupt::USB0_IN_EP),
-                5 => Ok(Interrupt::USB0_OUT_EP),
+                4 => Ok(Interrupt::USB0_EP0_IN),
+                5 => Ok(Interrupt::USB0_EP0_OUT),
                 _ => Err(TryFromInterruptError(())),
             }
         }
@@ -2850,63 +2850,63 @@ pub mod usb0_setup {
         }
     }
 }
-#[doc = "USB0_IN_EP"]
-pub struct USB0_IN_EP {
+#[doc = "USB0_EP0_IN"]
+pub struct USB0_EP0_IN {
     _marker: PhantomData<*const ()>,
 }
-unsafe impl Send for USB0_IN_EP {}
-impl USB0_IN_EP {
+unsafe impl Send for USB0_EP0_IN {}
+impl USB0_EP0_IN {
     #[doc = r"Pointer to the register block"]
-    pub const PTR: *const usb0_in_ep::RegisterBlock = 0x5000_0080 as *const _;
+    pub const PTR: *const usb0_ep0_in::RegisterBlock = 0x5000_0080 as *const _;
     #[doc = r"Return the pointer to the register block"]
     #[inline(always)]
-    pub const fn ptr() -> *const usb0_in_ep::RegisterBlock {
+    pub const fn ptr() -> *const usb0_ep0_in::RegisterBlock {
         Self::PTR
     }
 }
-impl Deref for USB0_IN_EP {
-    type Target = usb0_in_ep::RegisterBlock;
+impl Deref for USB0_EP0_IN {
+    type Target = usb0_ep0_in::RegisterBlock;
     #[inline(always)]
     fn deref(&self) -> &Self::Target {
         unsafe { &*Self::PTR }
     }
 }
-impl core::fmt::Debug for USB0_IN_EP {
+impl core::fmt::Debug for USB0_EP0_IN {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        f.debug_struct("USB0_IN_EP").finish()
+        f.debug_struct("USB0_EP0_IN").finish()
     }
 }
-#[doc = "USB0_IN_EP"]
-pub mod usb0_in_ep {
+#[doc = "USB0_EP0_IN"]
+pub mod usb0_ep0_in {
     #[doc = r"Register block"]
     #[repr(C)]
     pub struct RegisterBlock {
-        #[doc = "0x00 - usb0_in_ep data register"]
+        #[doc = "0x00 - usb0_ep0_in data register"]
         pub data: DATA,
-        #[doc = "0x04 - usb0_in_ep epno register"]
+        #[doc = "0x04 - usb0_ep0_in epno register"]
         pub epno: EPNO,
-        #[doc = "0x08 - usb0_in_ep reset register"]
+        #[doc = "0x08 - usb0_ep0_in reset register"]
         pub reset: RESET,
-        #[doc = "0x0c - usb0_in_ep stall register"]
+        #[doc = "0x0c - usb0_ep0_in stall register"]
         pub stall: STALL,
-        #[doc = "0x10 - usb0_in_ep idle register"]
+        #[doc = "0x10 - usb0_ep0_in idle register"]
         pub idle: IDLE,
-        #[doc = "0x14 - usb0_in_ep have register"]
+        #[doc = "0x14 - usb0_ep0_in have register"]
         pub have: HAVE,
-        #[doc = "0x18 - usb0_in_ep pend register"]
+        #[doc = "0x18 - usb0_ep0_in pend register"]
         pub pend: PEND,
-        #[doc = "0x1c - usb0_in_ep pid register"]
+        #[doc = "0x1c - usb0_ep0_in pid register"]
         pub pid: PID,
-        #[doc = "0x20 - usb0_in_ep ev_status register"]
+        #[doc = "0x20 - usb0_ep0_in ev_status register"]
         pub ev_status: EV_STATUS,
-        #[doc = "0x24 - usb0_in_ep ev_pending register"]
+        #[doc = "0x24 - usb0_ep0_in ev_pending register"]
         pub ev_pending: EV_PENDING,
-        #[doc = "0x28 - usb0_in_ep ev_enable register"]
+        #[doc = "0x28 - usb0_ep0_in ev_enable register"]
         pub ev_enable: EV_ENABLE,
     }
     #[doc = "data (w) register accessor: an alias for `Reg<DATA_SPEC>`"]
     pub type DATA = crate::Reg<data::DATA_SPEC>;
-    #[doc = "usb0_in_ep data register"]
+    #[doc = "usb0_ep0_in data register"]
     pub mod data {
         #[doc = "Register `data` writer"]
         pub struct W(crate::W<DATA_SPEC>);
@@ -2929,10 +2929,10 @@ pub mod usb0_in_ep {
                 W(writer)
             }
         }
-        #[doc = "Field `data` writer - usb0_in_ep data register field"]
+        #[doc = "Field `data` writer - usb0_ep0_in data register field"]
         pub type DATA_W<'a, const O: u8> = crate::FieldWriter<'a, u32, DATA_SPEC, u8, u8, 8, O>;
         impl W {
-            #[doc = "Bits 0:7 - usb0_in_ep data register field"]
+            #[doc = "Bits 0:7 - usb0_ep0_in data register field"]
             #[inline(always)]
             #[must_use]
             pub fn data(&mut self) -> DATA_W<0> {
@@ -2945,7 +2945,7 @@ pub mod usb0_in_ep {
                 self
             }
         }
-        #[doc = "usb0_in_ep data register\n\nThis register you can [`write_with_zero`](crate::generic::Reg::write_with_zero), [`reset`](crate::generic::Reg::reset), [`write`](crate::generic::Reg::write). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [data](index.html) module"]
+        #[doc = "usb0_ep0_in data register\n\nThis register you can [`write_with_zero`](crate::generic::Reg::write_with_zero), [`reset`](crate::generic::Reg::reset), [`write`](crate::generic::Reg::write). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [data](index.html) module"]
         pub struct DATA_SPEC;
         impl crate::RegisterSpec for DATA_SPEC {
             type Ux = u32;
@@ -2963,7 +2963,7 @@ pub mod usb0_in_ep {
     }
     #[doc = "epno (rw) register accessor: an alias for `Reg<EPNO_SPEC>`"]
     pub type EPNO = crate::Reg<epno::EPNO_SPEC>;
-    #[doc = "usb0_in_ep epno register"]
+    #[doc = "usb0_ep0_in epno register"]
     pub mod epno {
         #[doc = "Register `epno` reader"]
         pub struct R(crate::R<EPNO_SPEC>);
@@ -3001,19 +3001,19 @@ pub mod usb0_in_ep {
                 W(writer)
             }
         }
-        #[doc = "Field `epno` reader - usb0_in_ep epno register field"]
+        #[doc = "Field `epno` reader - usb0_ep0_in epno register field"]
         pub type EPNO_R = crate::FieldReader<u8, u8>;
-        #[doc = "Field `epno` writer - usb0_in_ep epno register field"]
+        #[doc = "Field `epno` writer - usb0_ep0_in epno register field"]
         pub type EPNO_W<'a, const O: u8> = crate::FieldWriter<'a, u32, EPNO_SPEC, u8, u8, 4, O>;
         impl R {
-            #[doc = "Bits 0:3 - usb0_in_ep epno register field"]
+            #[doc = "Bits 0:3 - usb0_ep0_in epno register field"]
             #[inline(always)]
             pub fn epno(&self) -> EPNO_R {
                 EPNO_R::new((self.bits & 0x0f) as u8)
             }
         }
         impl W {
-            #[doc = "Bits 0:3 - usb0_in_ep epno register field"]
+            #[doc = "Bits 0:3 - usb0_ep0_in epno register field"]
             #[inline(always)]
             #[must_use]
             pub fn epno(&mut self) -> EPNO_W<0> {
@@ -3026,7 +3026,7 @@ pub mod usb0_in_ep {
                 self
             }
         }
-        #[doc = "usb0_in_ep epno register\n\nThis register you can [`read`](crate::generic::Reg::read), [`write_with_zero`](crate::generic::Reg::write_with_zero), [`reset`](crate::generic::Reg::reset), [`write`](crate::generic::Reg::write), [`modify`](crate::generic::Reg::modify). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [epno](index.html) module"]
+        #[doc = "usb0_ep0_in epno register\n\nThis register you can [`read`](crate::generic::Reg::read), [`write_with_zero`](crate::generic::Reg::write_with_zero), [`reset`](crate::generic::Reg::reset), [`write`](crate::generic::Reg::write), [`modify`](crate::generic::Reg::modify). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [epno](index.html) module"]
         pub struct EPNO_SPEC;
         impl crate::RegisterSpec for EPNO_SPEC {
             type Ux = u32;
@@ -3048,7 +3048,7 @@ pub mod usb0_in_ep {
     }
     #[doc = "reset (w) register accessor: an alias for `Reg<RESET_SPEC>`"]
     pub type RESET = crate::Reg<reset::RESET_SPEC>;
-    #[doc = "usb0_in_ep reset register"]
+    #[doc = "usb0_ep0_in reset register"]
     pub mod reset {
         #[doc = "Register `reset` writer"]
         pub struct W(crate::W<RESET_SPEC>);
@@ -3071,10 +3071,10 @@ pub mod usb0_in_ep {
                 W(writer)
             }
         }
-        #[doc = "Field `reset` writer - usb0_in_ep reset register field"]
+        #[doc = "Field `reset` writer - usb0_ep0_in reset register field"]
         pub type RESET_W<'a, const O: u8> = crate::BitWriter<'a, u32, RESET_SPEC, bool, O>;
         impl W {
-            #[doc = "Bit 0 - usb0_in_ep reset register field"]
+            #[doc = "Bit 0 - usb0_ep0_in reset register field"]
             #[inline(always)]
             #[must_use]
             pub fn reset(&mut self) -> RESET_W<0> {
@@ -3087,7 +3087,7 @@ pub mod usb0_in_ep {
                 self
             }
         }
-        #[doc = "usb0_in_ep reset register\n\nThis register you can [`write_with_zero`](crate::generic::Reg::write_with_zero), [`reset`](crate::generic::Reg::reset), [`write`](crate::generic::Reg::write). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [reset](index.html) module"]
+        #[doc = "usb0_ep0_in reset register\n\nThis register you can [`write_with_zero`](crate::generic::Reg::write_with_zero), [`reset`](crate::generic::Reg::reset), [`write`](crate::generic::Reg::write). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [reset](index.html) module"]
         pub struct RESET_SPEC;
         impl crate::RegisterSpec for RESET_SPEC {
             type Ux = u32;
@@ -3105,7 +3105,7 @@ pub mod usb0_in_ep {
     }
     #[doc = "stall (rw) register accessor: an alias for `Reg<STALL_SPEC>`"]
     pub type STALL = crate::Reg<stall::STALL_SPEC>;
-    #[doc = "usb0_in_ep stall register"]
+    #[doc = "usb0_ep0_in stall register"]
     pub mod stall {
         #[doc = "Register `stall` reader"]
         pub struct R(crate::R<STALL_SPEC>);
@@ -3143,19 +3143,19 @@ pub mod usb0_in_ep {
                 W(writer)
             }
         }
-        #[doc = "Field `stall` reader - usb0_in_ep stall register field"]
+        #[doc = "Field `stall` reader - usb0_ep0_in stall register field"]
         pub type STALL_R = crate::BitReader<bool>;
-        #[doc = "Field `stall` writer - usb0_in_ep stall register field"]
+        #[doc = "Field `stall` writer - usb0_ep0_in stall register field"]
         pub type STALL_W<'a, const O: u8> = crate::BitWriter<'a, u32, STALL_SPEC, bool, O>;
         impl R {
-            #[doc = "Bit 0 - usb0_in_ep stall register field"]
+            #[doc = "Bit 0 - usb0_ep0_in stall register field"]
             #[inline(always)]
             pub fn stall(&self) -> STALL_R {
                 STALL_R::new((self.bits & 1) != 0)
             }
         }
         impl W {
-            #[doc = "Bit 0 - usb0_in_ep stall register field"]
+            #[doc = "Bit 0 - usb0_ep0_in stall register field"]
             #[inline(always)]
             #[must_use]
             pub fn stall(&mut self) -> STALL_W<0> {
@@ -3168,7 +3168,7 @@ pub mod usb0_in_ep {
                 self
             }
         }
-        #[doc = "usb0_in_ep stall register\n\nThis register you can [`read`](crate::generic::Reg::read), [`write_with_zero`](crate::generic::Reg::write_with_zero), [`reset`](crate::generic::Reg::reset), [`write`](crate::generic::Reg::write), [`modify`](crate::generic::Reg::modify). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [stall](index.html) module"]
+        #[doc = "usb0_ep0_in stall register\n\nThis register you can [`read`](crate::generic::Reg::read), [`write_with_zero`](crate::generic::Reg::write_with_zero), [`reset`](crate::generic::Reg::reset), [`write`](crate::generic::Reg::write), [`modify`](crate::generic::Reg::modify). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [stall](index.html) module"]
         pub struct STALL_SPEC;
         impl crate::RegisterSpec for STALL_SPEC {
             type Ux = u32;
@@ -3190,7 +3190,7 @@ pub mod usb0_in_ep {
     }
     #[doc = "idle (r) register accessor: an alias for `Reg<IDLE_SPEC>`"]
     pub type IDLE = crate::Reg<idle::IDLE_SPEC>;
-    #[doc = "usb0_in_ep idle register"]
+    #[doc = "usb0_ep0_in idle register"]
     pub mod idle {
         #[doc = "Register `idle` reader"]
         pub struct R(crate::R<IDLE_SPEC>);
@@ -3207,16 +3207,16 @@ pub mod usb0_in_ep {
                 R(reader)
             }
         }
-        #[doc = "Field `idle` reader - usb0_in_ep idle register field"]
+        #[doc = "Field `idle` reader - usb0_ep0_in idle register field"]
         pub type IDLE_R = crate::BitReader<bool>;
         impl R {
-            #[doc = "Bit 0 - usb0_in_ep idle register field"]
+            #[doc = "Bit 0 - usb0_ep0_in idle register field"]
             #[inline(always)]
             pub fn idle(&self) -> IDLE_R {
                 IDLE_R::new((self.bits & 1) != 0)
             }
         }
-        #[doc = "usb0_in_ep idle register\n\nThis register you can [`read`](crate::generic::Reg::read). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [idle](index.html) module"]
+        #[doc = "usb0_ep0_in idle register\n\nThis register you can [`read`](crate::generic::Reg::read). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [idle](index.html) module"]
         pub struct IDLE_SPEC;
         impl crate::RegisterSpec for IDLE_SPEC {
             type Ux = u32;
@@ -3232,7 +3232,7 @@ pub mod usb0_in_ep {
     }
     #[doc = "have (r) register accessor: an alias for `Reg<HAVE_SPEC>`"]
     pub type HAVE = crate::Reg<have::HAVE_SPEC>;
-    #[doc = "usb0_in_ep have register"]
+    #[doc = "usb0_ep0_in have register"]
     pub mod have {
         #[doc = "Register `have` reader"]
         pub struct R(crate::R<HAVE_SPEC>);
@@ -3249,16 +3249,16 @@ pub mod usb0_in_ep {
                 R(reader)
             }
         }
-        #[doc = "Field `have` reader - usb0_in_ep have register field"]
+        #[doc = "Field `have` reader - usb0_ep0_in have register field"]
         pub type HAVE_R = crate::BitReader<bool>;
         impl R {
-            #[doc = "Bit 0 - usb0_in_ep have register field"]
+            #[doc = "Bit 0 - usb0_ep0_in have register field"]
             #[inline(always)]
             pub fn have(&self) -> HAVE_R {
                 HAVE_R::new((self.bits & 1) != 0)
             }
         }
-        #[doc = "usb0_in_ep have register\n\nThis register you can [`read`](crate::generic::Reg::read). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [have](index.html) module"]
+        #[doc = "usb0_ep0_in have register\n\nThis register you can [`read`](crate::generic::Reg::read). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [have](index.html) module"]
         pub struct HAVE_SPEC;
         impl crate::RegisterSpec for HAVE_SPEC {
             type Ux = u32;
@@ -3274,7 +3274,7 @@ pub mod usb0_in_ep {
     }
     #[doc = "pend (r) register accessor: an alias for `Reg<PEND_SPEC>`"]
     pub type PEND = crate::Reg<pend::PEND_SPEC>;
-    #[doc = "usb0_in_ep pend register"]
+    #[doc = "usb0_ep0_in pend register"]
     pub mod pend {
         #[doc = "Register `pend` reader"]
         pub struct R(crate::R<PEND_SPEC>);
@@ -3291,16 +3291,16 @@ pub mod usb0_in_ep {
                 R(reader)
             }
         }
-        #[doc = "Field `pend` reader - usb0_in_ep pend register field"]
+        #[doc = "Field `pend` reader - usb0_ep0_in pend register field"]
         pub type PEND_R = crate::BitReader<bool>;
         impl R {
-            #[doc = "Bit 0 - usb0_in_ep pend register field"]
+            #[doc = "Bit 0 - usb0_ep0_in pend register field"]
             #[inline(always)]
             pub fn pend(&self) -> PEND_R {
                 PEND_R::new((self.bits & 1) != 0)
             }
         }
-        #[doc = "usb0_in_ep pend register\n\nThis register you can [`read`](crate::generic::Reg::read). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [pend](index.html) module"]
+        #[doc = "usb0_ep0_in pend register\n\nThis register you can [`read`](crate::generic::Reg::read). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [pend](index.html) module"]
         pub struct PEND_SPEC;
         impl crate::RegisterSpec for PEND_SPEC {
             type Ux = u32;
@@ -3316,7 +3316,7 @@ pub mod usb0_in_ep {
     }
     #[doc = "pid (rw) register accessor: an alias for `Reg<PID_SPEC>`"]
     pub type PID = crate::Reg<pid::PID_SPEC>;
-    #[doc = "usb0_in_ep pid register"]
+    #[doc = "usb0_ep0_in pid register"]
     pub mod pid {
         #[doc = "Register `pid` reader"]
         pub struct R(crate::R<PID_SPEC>);
@@ -3354,19 +3354,19 @@ pub mod usb0_in_ep {
                 W(writer)
             }
         }
-        #[doc = "Field `pid` reader - usb0_in_ep pid register field"]
+        #[doc = "Field `pid` reader - usb0_ep0_in pid register field"]
         pub type PID_R = crate::BitReader<bool>;
-        #[doc = "Field `pid` writer - usb0_in_ep pid register field"]
+        #[doc = "Field `pid` writer - usb0_ep0_in pid register field"]
         pub type PID_W<'a, const O: u8> = crate::BitWriter<'a, u32, PID_SPEC, bool, O>;
         impl R {
-            #[doc = "Bit 0 - usb0_in_ep pid register field"]
+            #[doc = "Bit 0 - usb0_ep0_in pid register field"]
             #[inline(always)]
             pub fn pid(&self) -> PID_R {
                 PID_R::new((self.bits & 1) != 0)
             }
         }
         impl W {
-            #[doc = "Bit 0 - usb0_in_ep pid register field"]
+            #[doc = "Bit 0 - usb0_ep0_in pid register field"]
             #[inline(always)]
             #[must_use]
             pub fn pid(&mut self) -> PID_W<0> {
@@ -3379,7 +3379,7 @@ pub mod usb0_in_ep {
                 self
             }
         }
-        #[doc = "usb0_in_ep pid register\n\nThis register you can [`read`](crate::generic::Reg::read), [`write_with_zero`](crate::generic::Reg::write_with_zero), [`reset`](crate::generic::Reg::reset), [`write`](crate::generic::Reg::write), [`modify`](crate::generic::Reg::modify). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [pid](index.html) module"]
+        #[doc = "usb0_ep0_in pid register\n\nThis register you can [`read`](crate::generic::Reg::read), [`write_with_zero`](crate::generic::Reg::write_with_zero), [`reset`](crate::generic::Reg::reset), [`write`](crate::generic::Reg::write), [`modify`](crate::generic::Reg::modify). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [pid](index.html) module"]
         pub struct PID_SPEC;
         impl crate::RegisterSpec for PID_SPEC {
             type Ux = u32;
@@ -3401,7 +3401,7 @@ pub mod usb0_in_ep {
     }
     #[doc = "ev_status (r) register accessor: an alias for `Reg<EV_STATUS_SPEC>`"]
     pub type EV_STATUS = crate::Reg<ev_status::EV_STATUS_SPEC>;
-    #[doc = "usb0_in_ep ev_status register"]
+    #[doc = "usb0_ep0_in ev_status register"]
     pub mod ev_status {
         #[doc = "Register `ev_status` reader"]
         pub struct R(crate::R<EV_STATUS_SPEC>);
@@ -3418,16 +3418,16 @@ pub mod usb0_in_ep {
                 R(reader)
             }
         }
-        #[doc = "Field `status` reader - usb0_in_ep status register field"]
+        #[doc = "Field `status` reader - usb0_ep0_in status register field"]
         pub type STATUS_R = crate::BitReader<bool>;
         impl R {
-            #[doc = "Bit 0 - usb0_in_ep status register field"]
+            #[doc = "Bit 0 - usb0_ep0_in status register field"]
             #[inline(always)]
             pub fn status(&self) -> STATUS_R {
                 STATUS_R::new((self.bits & 1) != 0)
             }
         }
-        #[doc = "usb0_in_ep ev_status register\n\nThis register you can [`read`](crate::generic::Reg::read). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [ev_status](index.html) module"]
+        #[doc = "usb0_ep0_in ev_status register\n\nThis register you can [`read`](crate::generic::Reg::read). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [ev_status](index.html) module"]
         pub struct EV_STATUS_SPEC;
         impl crate::RegisterSpec for EV_STATUS_SPEC {
             type Ux = u32;
@@ -3443,7 +3443,7 @@ pub mod usb0_in_ep {
     }
     #[doc = "ev_pending (rw) register accessor: an alias for `Reg<EV_PENDING_SPEC>`"]
     pub type EV_PENDING = crate::Reg<ev_pending::EV_PENDING_SPEC>;
-    #[doc = "usb0_in_ep ev_pending register"]
+    #[doc = "usb0_ep0_in ev_pending register"]
     pub mod ev_pending {
         #[doc = "Register `ev_pending` reader"]
         pub struct R(crate::R<EV_PENDING_SPEC>);
@@ -3481,19 +3481,19 @@ pub mod usb0_in_ep {
                 W(writer)
             }
         }
-        #[doc = "Field `pending` reader - usb0_in_ep pending register field"]
+        #[doc = "Field `pending` reader - usb0_ep0_in pending register field"]
         pub type PENDING_R = crate::BitReader<bool>;
-        #[doc = "Field `pending` writer - usb0_in_ep pending register field"]
+        #[doc = "Field `pending` writer - usb0_ep0_in pending register field"]
         pub type PENDING_W<'a, const O: u8> = crate::BitWriter<'a, u32, EV_PENDING_SPEC, bool, O>;
         impl R {
-            #[doc = "Bit 0 - usb0_in_ep pending register field"]
+            #[doc = "Bit 0 - usb0_ep0_in pending register field"]
             #[inline(always)]
             pub fn pending(&self) -> PENDING_R {
                 PENDING_R::new((self.bits & 1) != 0)
             }
         }
         impl W {
-            #[doc = "Bit 0 - usb0_in_ep pending register field"]
+            #[doc = "Bit 0 - usb0_ep0_in pending register field"]
             #[inline(always)]
             #[must_use]
             pub fn pending(&mut self) -> PENDING_W<0> {
@@ -3506,7 +3506,7 @@ pub mod usb0_in_ep {
                 self
             }
         }
-        #[doc = "usb0_in_ep ev_pending register\n\nThis register you can [`read`](crate::generic::Reg::read), [`write_with_zero`](crate::generic::Reg::write_with_zero), [`reset`](crate::generic::Reg::reset), [`write`](crate::generic::Reg::write), [`modify`](crate::generic::Reg::modify). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [ev_pending](index.html) module"]
+        #[doc = "usb0_ep0_in ev_pending register\n\nThis register you can [`read`](crate::generic::Reg::read), [`write_with_zero`](crate::generic::Reg::write_with_zero), [`reset`](crate::generic::Reg::reset), [`write`](crate::generic::Reg::write), [`modify`](crate::generic::Reg::modify). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [ev_pending](index.html) module"]
         pub struct EV_PENDING_SPEC;
         impl crate::RegisterSpec for EV_PENDING_SPEC {
             type Ux = u32;
@@ -3528,7 +3528,7 @@ pub mod usb0_in_ep {
     }
     #[doc = "ev_enable (rw) register accessor: an alias for `Reg<EV_ENABLE_SPEC>`"]
     pub type EV_ENABLE = crate::Reg<ev_enable::EV_ENABLE_SPEC>;
-    #[doc = "usb0_in_ep ev_enable register"]
+    #[doc = "usb0_ep0_in ev_enable register"]
     pub mod ev_enable {
         #[doc = "Register `ev_enable` reader"]
         pub struct R(crate::R<EV_ENABLE_SPEC>);
@@ -3566,19 +3566,19 @@ pub mod usb0_in_ep {
                 W(writer)
             }
         }
-        #[doc = "Field `enable` reader - usb0_in_ep enable register field"]
+        #[doc = "Field `enable` reader - usb0_ep0_in enable register field"]
         pub type ENABLE_R = crate::BitReader<bool>;
-        #[doc = "Field `enable` writer - usb0_in_ep enable register field"]
+        #[doc = "Field `enable` writer - usb0_ep0_in enable register field"]
         pub type ENABLE_W<'a, const O: u8> = crate::BitWriter<'a, u32, EV_ENABLE_SPEC, bool, O>;
         impl R {
-            #[doc = "Bit 0 - usb0_in_ep enable register field"]
+            #[doc = "Bit 0 - usb0_ep0_in enable register field"]
             #[inline(always)]
             pub fn enable(&self) -> ENABLE_R {
                 ENABLE_R::new((self.bits & 1) != 0)
             }
         }
         impl W {
-            #[doc = "Bit 0 - usb0_in_ep enable register field"]
+            #[doc = "Bit 0 - usb0_ep0_in enable register field"]
             #[inline(always)]
             #[must_use]
             pub fn enable(&mut self) -> ENABLE_W<0> {
@@ -3591,7 +3591,7 @@ pub mod usb0_in_ep {
                 self
             }
         }
-        #[doc = "usb0_in_ep ev_enable register\n\nThis register you can [`read`](crate::generic::Reg::read), [`write_with_zero`](crate::generic::Reg::write_with_zero), [`reset`](crate::generic::Reg::reset), [`write`](crate::generic::Reg::write), [`modify`](crate::generic::Reg::modify). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [ev_enable](index.html) module"]
+        #[doc = "usb0_ep0_in ev_enable register\n\nThis register you can [`read`](crate::generic::Reg::read), [`write_with_zero`](crate::generic::Reg::write_with_zero), [`reset`](crate::generic::Reg::reset), [`write`](crate::generic::Reg::write), [`modify`](crate::generic::Reg::modify). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [ev_enable](index.html) module"]
         pub struct EV_ENABLE_SPEC;
         impl crate::RegisterSpec for EV_ENABLE_SPEC {
             type Ux = u32;
@@ -3612,70 +3612,70 @@ pub mod usb0_in_ep {
         }
     }
 }
-#[doc = "USB0_OUT_EP"]
-pub struct USB0_OUT_EP {
+#[doc = "USB0_EP0_OUT"]
+pub struct USB0_EP0_OUT {
     _marker: PhantomData<*const ()>,
 }
-unsafe impl Send for USB0_OUT_EP {}
-impl USB0_OUT_EP {
+unsafe impl Send for USB0_EP0_OUT {}
+impl USB0_EP0_OUT {
     #[doc = r"Pointer to the register block"]
-    pub const PTR: *const usb0_out_ep::RegisterBlock = 0x5000_0100 as *const _;
+    pub const PTR: *const usb0_ep0_out::RegisterBlock = 0x5000_0100 as *const _;
     #[doc = r"Return the pointer to the register block"]
     #[inline(always)]
-    pub const fn ptr() -> *const usb0_out_ep::RegisterBlock {
+    pub const fn ptr() -> *const usb0_ep0_out::RegisterBlock {
         Self::PTR
     }
 }
-impl Deref for USB0_OUT_EP {
-    type Target = usb0_out_ep::RegisterBlock;
+impl Deref for USB0_EP0_OUT {
+    type Target = usb0_ep0_out::RegisterBlock;
     #[inline(always)]
     fn deref(&self) -> &Self::Target {
         unsafe { &*Self::PTR }
     }
 }
-impl core::fmt::Debug for USB0_OUT_EP {
+impl core::fmt::Debug for USB0_EP0_OUT {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        f.debug_struct("USB0_OUT_EP").finish()
+        f.debug_struct("USB0_EP0_OUT").finish()
     }
 }
-#[doc = "USB0_OUT_EP"]
-pub mod usb0_out_ep {
+#[doc = "USB0_EP0_OUT"]
+pub mod usb0_ep0_out {
     #[doc = r"Register block"]
     #[repr(C)]
     pub struct RegisterBlock {
-        #[doc = "0x00 - usb0_out_ep data register"]
+        #[doc = "0x00 - usb0_ep0_out data register"]
         pub data: DATA,
-        #[doc = "0x04 - usb0_out_ep data_ep register"]
+        #[doc = "0x04 - usb0_ep0_out data_ep register"]
         pub data_ep: DATA_EP,
-        #[doc = "0x08 - usb0_out_ep reset register"]
+        #[doc = "0x08 - usb0_ep0_out reset register"]
         pub reset: RESET,
-        #[doc = "0x0c - usb0_out_ep epno register"]
+        #[doc = "0x0c - usb0_ep0_out epno register"]
         pub epno: EPNO,
-        #[doc = "0x10 - usb0_out_ep enable register"]
+        #[doc = "0x10 - usb0_ep0_out enable register"]
         pub enable: ENABLE,
-        #[doc = "0x14 - usb0_out_ep prime register"]
+        #[doc = "0x14 - usb0_ep0_out prime register"]
         pub prime: PRIME,
-        #[doc = "0x18 - usb0_out_ep stall register"]
+        #[doc = "0x18 - usb0_ep0_out stall register"]
         pub stall: STALL,
-        #[doc = "0x1c - usb0_out_ep have register"]
+        #[doc = "0x1c - usb0_ep0_out have register"]
         pub have: HAVE,
-        #[doc = "0x20 - usb0_out_ep pend register"]
+        #[doc = "0x20 - usb0_ep0_out pend register"]
         pub pend: PEND,
-        #[doc = "0x24 - usb0_out_ep address register"]
+        #[doc = "0x24 - usb0_ep0_out address register"]
         pub address: ADDRESS,
-        #[doc = "0x28 - usb0_out_ep pid register"]
+        #[doc = "0x28 - usb0_ep0_out pid register"]
         pub pid: PID,
         _reserved11: [u8; 0x14],
-        #[doc = "0x40 - usb0_out_ep ev_status register"]
+        #[doc = "0x40 - usb0_ep0_out ev_status register"]
         pub ev_status: EV_STATUS,
-        #[doc = "0x44 - usb0_out_ep ev_pending register"]
+        #[doc = "0x44 - usb0_ep0_out ev_pending register"]
         pub ev_pending: EV_PENDING,
-        #[doc = "0x48 - usb0_out_ep ev_enable register"]
+        #[doc = "0x48 - usb0_ep0_out ev_enable register"]
         pub ev_enable: EV_ENABLE,
     }
     #[doc = "data (r) register accessor: an alias for `Reg<DATA_SPEC>`"]
     pub type DATA = crate::Reg<data::DATA_SPEC>;
-    #[doc = "usb0_out_ep data register"]
+    #[doc = "usb0_ep0_out data register"]
     pub mod data {
         #[doc = "Register `data` reader"]
         pub struct R(crate::R<DATA_SPEC>);
@@ -3692,16 +3692,16 @@ pub mod usb0_out_ep {
                 R(reader)
             }
         }
-        #[doc = "Field `data` reader - usb0_out_ep data register field"]
+        #[doc = "Field `data` reader - usb0_ep0_out data register field"]
         pub type DATA_R = crate::FieldReader<u8, u8>;
         impl R {
-            #[doc = "Bits 0:7 - usb0_out_ep data register field"]
+            #[doc = "Bits 0:7 - usb0_ep0_out data register field"]
             #[inline(always)]
             pub fn data(&self) -> DATA_R {
                 DATA_R::new((self.bits & 0xff) as u8)
             }
         }
-        #[doc = "usb0_out_ep data register\n\nThis register you can [`read`](crate::generic::Reg::read). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [data](index.html) module"]
+        #[doc = "usb0_ep0_out data register\n\nThis register you can [`read`](crate::generic::Reg::read). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [data](index.html) module"]
         pub struct DATA_SPEC;
         impl crate::RegisterSpec for DATA_SPEC {
             type Ux = u32;
@@ -3717,7 +3717,7 @@ pub mod usb0_out_ep {
     }
     #[doc = "data_ep (r) register accessor: an alias for `Reg<DATA_EP_SPEC>`"]
     pub type DATA_EP = crate::Reg<data_ep::DATA_EP_SPEC>;
-    #[doc = "usb0_out_ep data_ep register"]
+    #[doc = "usb0_ep0_out data_ep register"]
     pub mod data_ep {
         #[doc = "Register `data_ep` reader"]
         pub struct R(crate::R<DATA_EP_SPEC>);
@@ -3734,16 +3734,16 @@ pub mod usb0_out_ep {
                 R(reader)
             }
         }
-        #[doc = "Field `data_ep` reader - usb0_out_ep data_ep register field"]
+        #[doc = "Field `data_ep` reader - usb0_ep0_out data_ep register field"]
         pub type DATA_EP_R = crate::FieldReader<u8, u8>;
         impl R {
-            #[doc = "Bits 0:3 - usb0_out_ep data_ep register field"]
+            #[doc = "Bits 0:3 - usb0_ep0_out data_ep register field"]
             #[inline(always)]
             pub fn data_ep(&self) -> DATA_EP_R {
                 DATA_EP_R::new((self.bits & 0x0f) as u8)
             }
         }
-        #[doc = "usb0_out_ep data_ep register\n\nThis register you can [`read`](crate::generic::Reg::read). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [data_ep](index.html) module"]
+        #[doc = "usb0_ep0_out data_ep register\n\nThis register you can [`read`](crate::generic::Reg::read). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [data_ep](index.html) module"]
         pub struct DATA_EP_SPEC;
         impl crate::RegisterSpec for DATA_EP_SPEC {
             type Ux = u32;
@@ -3759,7 +3759,7 @@ pub mod usb0_out_ep {
     }
     #[doc = "reset (w) register accessor: an alias for `Reg<RESET_SPEC>`"]
     pub type RESET = crate::Reg<reset::RESET_SPEC>;
-    #[doc = "usb0_out_ep reset register"]
+    #[doc = "usb0_ep0_out reset register"]
     pub mod reset {
         #[doc = "Register `reset` writer"]
         pub struct W(crate::W<RESET_SPEC>);
@@ -3782,10 +3782,10 @@ pub mod usb0_out_ep {
                 W(writer)
             }
         }
-        #[doc = "Field `reset` writer - usb0_out_ep reset register field"]
+        #[doc = "Field `reset` writer - usb0_ep0_out reset register field"]
         pub type RESET_W<'a, const O: u8> = crate::BitWriter<'a, u32, RESET_SPEC, bool, O>;
         impl W {
-            #[doc = "Bit 0 - usb0_out_ep reset register field"]
+            #[doc = "Bit 0 - usb0_ep0_out reset register field"]
             #[inline(always)]
             #[must_use]
             pub fn reset(&mut self) -> RESET_W<0> {
@@ -3798,7 +3798,7 @@ pub mod usb0_out_ep {
                 self
             }
         }
-        #[doc = "usb0_out_ep reset register\n\nThis register you can [`write_with_zero`](crate::generic::Reg::write_with_zero), [`reset`](crate::generic::Reg::reset), [`write`](crate::generic::Reg::write). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [reset](index.html) module"]
+        #[doc = "usb0_ep0_out reset register\n\nThis register you can [`write_with_zero`](crate::generic::Reg::write_with_zero), [`reset`](crate::generic::Reg::reset), [`write`](crate::generic::Reg::write). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [reset](index.html) module"]
         pub struct RESET_SPEC;
         impl crate::RegisterSpec for RESET_SPEC {
             type Ux = u32;
@@ -3816,7 +3816,7 @@ pub mod usb0_out_ep {
     }
     #[doc = "epno (rw) register accessor: an alias for `Reg<EPNO_SPEC>`"]
     pub type EPNO = crate::Reg<epno::EPNO_SPEC>;
-    #[doc = "usb0_out_ep epno register"]
+    #[doc = "usb0_ep0_out epno register"]
     pub mod epno {
         #[doc = "Register `epno` reader"]
         pub struct R(crate::R<EPNO_SPEC>);
@@ -3854,19 +3854,19 @@ pub mod usb0_out_ep {
                 W(writer)
             }
         }
-        #[doc = "Field `epno` reader - usb0_out_ep epno register field"]
+        #[doc = "Field `epno` reader - usb0_ep0_out epno register field"]
         pub type EPNO_R = crate::FieldReader<u8, u8>;
-        #[doc = "Field `epno` writer - usb0_out_ep epno register field"]
+        #[doc = "Field `epno` writer - usb0_ep0_out epno register field"]
         pub type EPNO_W<'a, const O: u8> = crate::FieldWriter<'a, u32, EPNO_SPEC, u8, u8, 4, O>;
         impl R {
-            #[doc = "Bits 0:3 - usb0_out_ep epno register field"]
+            #[doc = "Bits 0:3 - usb0_ep0_out epno register field"]
             #[inline(always)]
             pub fn epno(&self) -> EPNO_R {
                 EPNO_R::new((self.bits & 0x0f) as u8)
             }
         }
         impl W {
-            #[doc = "Bits 0:3 - usb0_out_ep epno register field"]
+            #[doc = "Bits 0:3 - usb0_ep0_out epno register field"]
             #[inline(always)]
             #[must_use]
             pub fn epno(&mut self) -> EPNO_W<0> {
@@ -3879,7 +3879,7 @@ pub mod usb0_out_ep {
                 self
             }
         }
-        #[doc = "usb0_out_ep epno register\n\nThis register you can [`read`](crate::generic::Reg::read), [`write_with_zero`](crate::generic::Reg::write_with_zero), [`reset`](crate::generic::Reg::reset), [`write`](crate::generic::Reg::write), [`modify`](crate::generic::Reg::modify). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [epno](index.html) module"]
+        #[doc = "usb0_ep0_out epno register\n\nThis register you can [`read`](crate::generic::Reg::read), [`write_with_zero`](crate::generic::Reg::write_with_zero), [`reset`](crate::generic::Reg::reset), [`write`](crate::generic::Reg::write), [`modify`](crate::generic::Reg::modify). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [epno](index.html) module"]
         pub struct EPNO_SPEC;
         impl crate::RegisterSpec for EPNO_SPEC {
             type Ux = u32;
@@ -3901,7 +3901,7 @@ pub mod usb0_out_ep {
     }
     #[doc = "enable (rw) register accessor: an alias for `Reg<ENABLE_SPEC>`"]
     pub type ENABLE = crate::Reg<enable::ENABLE_SPEC>;
-    #[doc = "usb0_out_ep enable register"]
+    #[doc = "usb0_ep0_out enable register"]
     pub mod enable {
         #[doc = "Register `enable` reader"]
         pub struct R(crate::R<ENABLE_SPEC>);
@@ -3939,19 +3939,19 @@ pub mod usb0_out_ep {
                 W(writer)
             }
         }
-        #[doc = "Field `enable` reader - usb0_out_ep enable register field"]
+        #[doc = "Field `enable` reader - usb0_ep0_out enable register field"]
         pub type ENABLE_R = crate::BitReader<bool>;
-        #[doc = "Field `enable` writer - usb0_out_ep enable register field"]
+        #[doc = "Field `enable` writer - usb0_ep0_out enable register field"]
         pub type ENABLE_W<'a, const O: u8> = crate::BitWriter<'a, u32, ENABLE_SPEC, bool, O>;
         impl R {
-            #[doc = "Bit 0 - usb0_out_ep enable register field"]
+            #[doc = "Bit 0 - usb0_ep0_out enable register field"]
             #[inline(always)]
             pub fn enable(&self) -> ENABLE_R {
                 ENABLE_R::new((self.bits & 1) != 0)
             }
         }
         impl W {
-            #[doc = "Bit 0 - usb0_out_ep enable register field"]
+            #[doc = "Bit 0 - usb0_ep0_out enable register field"]
             #[inline(always)]
             #[must_use]
             pub fn enable(&mut self) -> ENABLE_W<0> {
@@ -3964,7 +3964,7 @@ pub mod usb0_out_ep {
                 self
             }
         }
-        #[doc = "usb0_out_ep enable register\n\nThis register you can [`read`](crate::generic::Reg::read), [`write_with_zero`](crate::generic::Reg::write_with_zero), [`reset`](crate::generic::Reg::reset), [`write`](crate::generic::Reg::write), [`modify`](crate::generic::Reg::modify). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [enable](index.html) module"]
+        #[doc = "usb0_ep0_out enable register\n\nThis register you can [`read`](crate::generic::Reg::read), [`write_with_zero`](crate::generic::Reg::write_with_zero), [`reset`](crate::generic::Reg::reset), [`write`](crate::generic::Reg::write), [`modify`](crate::generic::Reg::modify). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [enable](index.html) module"]
         pub struct ENABLE_SPEC;
         impl crate::RegisterSpec for ENABLE_SPEC {
             type Ux = u32;
@@ -3986,7 +3986,7 @@ pub mod usb0_out_ep {
     }
     #[doc = "prime (w) register accessor: an alias for `Reg<PRIME_SPEC>`"]
     pub type PRIME = crate::Reg<prime::PRIME_SPEC>;
-    #[doc = "usb0_out_ep prime register"]
+    #[doc = "usb0_ep0_out prime register"]
     pub mod prime {
         #[doc = "Register `prime` writer"]
         pub struct W(crate::W<PRIME_SPEC>);
@@ -4009,10 +4009,10 @@ pub mod usb0_out_ep {
                 W(writer)
             }
         }
-        #[doc = "Field `prime` writer - usb0_out_ep prime register field"]
+        #[doc = "Field `prime` writer - usb0_ep0_out prime register field"]
         pub type PRIME_W<'a, const O: u8> = crate::BitWriter<'a, u32, PRIME_SPEC, bool, O>;
         impl W {
-            #[doc = "Bit 0 - usb0_out_ep prime register field"]
+            #[doc = "Bit 0 - usb0_ep0_out prime register field"]
             #[inline(always)]
             #[must_use]
             pub fn prime(&mut self) -> PRIME_W<0> {
@@ -4025,7 +4025,7 @@ pub mod usb0_out_ep {
                 self
             }
         }
-        #[doc = "usb0_out_ep prime register\n\nThis register you can [`write_with_zero`](crate::generic::Reg::write_with_zero), [`reset`](crate::generic::Reg::reset), [`write`](crate::generic::Reg::write). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [prime](index.html) module"]
+        #[doc = "usb0_ep0_out prime register\n\nThis register you can [`write_with_zero`](crate::generic::Reg::write_with_zero), [`reset`](crate::generic::Reg::reset), [`write`](crate::generic::Reg::write). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [prime](index.html) module"]
         pub struct PRIME_SPEC;
         impl crate::RegisterSpec for PRIME_SPEC {
             type Ux = u32;
@@ -4043,7 +4043,7 @@ pub mod usb0_out_ep {
     }
     #[doc = "stall (rw) register accessor: an alias for `Reg<STALL_SPEC>`"]
     pub type STALL = crate::Reg<stall::STALL_SPEC>;
-    #[doc = "usb0_out_ep stall register"]
+    #[doc = "usb0_ep0_out stall register"]
     pub mod stall {
         #[doc = "Register `stall` reader"]
         pub struct R(crate::R<STALL_SPEC>);
@@ -4081,19 +4081,19 @@ pub mod usb0_out_ep {
                 W(writer)
             }
         }
-        #[doc = "Field `stall` reader - usb0_out_ep stall register field"]
+        #[doc = "Field `stall` reader - usb0_ep0_out stall register field"]
         pub type STALL_R = crate::BitReader<bool>;
-        #[doc = "Field `stall` writer - usb0_out_ep stall register field"]
+        #[doc = "Field `stall` writer - usb0_ep0_out stall register field"]
         pub type STALL_W<'a, const O: u8> = crate::BitWriter<'a, u32, STALL_SPEC, bool, O>;
         impl R {
-            #[doc = "Bit 0 - usb0_out_ep stall register field"]
+            #[doc = "Bit 0 - usb0_ep0_out stall register field"]
             #[inline(always)]
             pub fn stall(&self) -> STALL_R {
                 STALL_R::new((self.bits & 1) != 0)
             }
         }
         impl W {
-            #[doc = "Bit 0 - usb0_out_ep stall register field"]
+            #[doc = "Bit 0 - usb0_ep0_out stall register field"]
             #[inline(always)]
             #[must_use]
             pub fn stall(&mut self) -> STALL_W<0> {
@@ -4106,7 +4106,7 @@ pub mod usb0_out_ep {
                 self
             }
         }
-        #[doc = "usb0_out_ep stall register\n\nThis register you can [`read`](crate::generic::Reg::read), [`write_with_zero`](crate::generic::Reg::write_with_zero), [`reset`](crate::generic::Reg::reset), [`write`](crate::generic::Reg::write), [`modify`](crate::generic::Reg::modify). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [stall](index.html) module"]
+        #[doc = "usb0_ep0_out stall register\n\nThis register you can [`read`](crate::generic::Reg::read), [`write_with_zero`](crate::generic::Reg::write_with_zero), [`reset`](crate::generic::Reg::reset), [`write`](crate::generic::Reg::write), [`modify`](crate::generic::Reg::modify). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [stall](index.html) module"]
         pub struct STALL_SPEC;
         impl crate::RegisterSpec for STALL_SPEC {
             type Ux = u32;
@@ -4128,7 +4128,7 @@ pub mod usb0_out_ep {
     }
     #[doc = "have (r) register accessor: an alias for `Reg<HAVE_SPEC>`"]
     pub type HAVE = crate::Reg<have::HAVE_SPEC>;
-    #[doc = "usb0_out_ep have register"]
+    #[doc = "usb0_ep0_out have register"]
     pub mod have {
         #[doc = "Register `have` reader"]
         pub struct R(crate::R<HAVE_SPEC>);
@@ -4145,16 +4145,16 @@ pub mod usb0_out_ep {
                 R(reader)
             }
         }
-        #[doc = "Field `have` reader - usb0_out_ep have register field"]
+        #[doc = "Field `have` reader - usb0_ep0_out have register field"]
         pub type HAVE_R = crate::BitReader<bool>;
         impl R {
-            #[doc = "Bit 0 - usb0_out_ep have register field"]
+            #[doc = "Bit 0 - usb0_ep0_out have register field"]
             #[inline(always)]
             pub fn have(&self) -> HAVE_R {
                 HAVE_R::new((self.bits & 1) != 0)
             }
         }
-        #[doc = "usb0_out_ep have register\n\nThis register you can [`read`](crate::generic::Reg::read). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [have](index.html) module"]
+        #[doc = "usb0_ep0_out have register\n\nThis register you can [`read`](crate::generic::Reg::read). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [have](index.html) module"]
         pub struct HAVE_SPEC;
         impl crate::RegisterSpec for HAVE_SPEC {
             type Ux = u32;
@@ -4170,7 +4170,7 @@ pub mod usb0_out_ep {
     }
     #[doc = "pend (r) register accessor: an alias for `Reg<PEND_SPEC>`"]
     pub type PEND = crate::Reg<pend::PEND_SPEC>;
-    #[doc = "usb0_out_ep pend register"]
+    #[doc = "usb0_ep0_out pend register"]
     pub mod pend {
         #[doc = "Register `pend` reader"]
         pub struct R(crate::R<PEND_SPEC>);
@@ -4187,16 +4187,16 @@ pub mod usb0_out_ep {
                 R(reader)
             }
         }
-        #[doc = "Field `pend` reader - usb0_out_ep pend register field"]
+        #[doc = "Field `pend` reader - usb0_ep0_out pend register field"]
         pub type PEND_R = crate::BitReader<bool>;
         impl R {
-            #[doc = "Bit 0 - usb0_out_ep pend register field"]
+            #[doc = "Bit 0 - usb0_ep0_out pend register field"]
             #[inline(always)]
             pub fn pend(&self) -> PEND_R {
                 PEND_R::new((self.bits & 1) != 0)
             }
         }
-        #[doc = "usb0_out_ep pend register\n\nThis register you can [`read`](crate::generic::Reg::read). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [pend](index.html) module"]
+        #[doc = "usb0_ep0_out pend register\n\nThis register you can [`read`](crate::generic::Reg::read). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [pend](index.html) module"]
         pub struct PEND_SPEC;
         impl crate::RegisterSpec for PEND_SPEC {
             type Ux = u32;
@@ -4212,7 +4212,7 @@ pub mod usb0_out_ep {
     }
     #[doc = "address (rw) register accessor: an alias for `Reg<ADDRESS_SPEC>`"]
     pub type ADDRESS = crate::Reg<address::ADDRESS_SPEC>;
-    #[doc = "usb0_out_ep address register"]
+    #[doc = "usb0_ep0_out address register"]
     pub mod address {
         #[doc = "Register `address` reader"]
         pub struct R(crate::R<ADDRESS_SPEC>);
@@ -4250,20 +4250,20 @@ pub mod usb0_out_ep {
                 W(writer)
             }
         }
-        #[doc = "Field `address` reader - usb0_out_ep address register field"]
+        #[doc = "Field `address` reader - usb0_ep0_out address register field"]
         pub type ADDRESS_R = crate::FieldReader<u8, u8>;
-        #[doc = "Field `address` writer - usb0_out_ep address register field"]
+        #[doc = "Field `address` writer - usb0_ep0_out address register field"]
         pub type ADDRESS_W<'a, const O: u8> =
             crate::FieldWriter<'a, u32, ADDRESS_SPEC, u8, u8, 8, O>;
         impl R {
-            #[doc = "Bits 0:7 - usb0_out_ep address register field"]
+            #[doc = "Bits 0:7 - usb0_ep0_out address register field"]
             #[inline(always)]
             pub fn address(&self) -> ADDRESS_R {
                 ADDRESS_R::new((self.bits & 0xff) as u8)
             }
         }
         impl W {
-            #[doc = "Bits 0:7 - usb0_out_ep address register field"]
+            #[doc = "Bits 0:7 - usb0_ep0_out address register field"]
             #[inline(always)]
             #[must_use]
             pub fn address(&mut self) -> ADDRESS_W<0> {
@@ -4276,7 +4276,7 @@ pub mod usb0_out_ep {
                 self
             }
         }
-        #[doc = "usb0_out_ep address register\n\nThis register you can [`read`](crate::generic::Reg::read), [`write_with_zero`](crate::generic::Reg::write_with_zero), [`reset`](crate::generic::Reg::reset), [`write`](crate::generic::Reg::write), [`modify`](crate::generic::Reg::modify). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [address](index.html) module"]
+        #[doc = "usb0_ep0_out address register\n\nThis register you can [`read`](crate::generic::Reg::read), [`write_with_zero`](crate::generic::Reg::write_with_zero), [`reset`](crate::generic::Reg::reset), [`write`](crate::generic::Reg::write), [`modify`](crate::generic::Reg::modify). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [address](index.html) module"]
         pub struct ADDRESS_SPEC;
         impl crate::RegisterSpec for ADDRESS_SPEC {
             type Ux = u32;
@@ -4298,7 +4298,7 @@ pub mod usb0_out_ep {
     }
     #[doc = "pid (rw) register accessor: an alias for `Reg<PID_SPEC>`"]
     pub type PID = crate::Reg<pid::PID_SPEC>;
-    #[doc = "usb0_out_ep pid register"]
+    #[doc = "usb0_ep0_out pid register"]
     pub mod pid {
         #[doc = "Register `pid` reader"]
         pub struct R(crate::R<PID_SPEC>);
@@ -4336,19 +4336,19 @@ pub mod usb0_out_ep {
                 W(writer)
             }
         }
-        #[doc = "Field `pid` reader - usb0_out_ep pid register field"]
+        #[doc = "Field `pid` reader - usb0_ep0_out pid register field"]
         pub type PID_R = crate::BitReader<bool>;
-        #[doc = "Field `pid` writer - usb0_out_ep pid register field"]
+        #[doc = "Field `pid` writer - usb0_ep0_out pid register field"]
         pub type PID_W<'a, const O: u8> = crate::BitWriter<'a, u32, PID_SPEC, bool, O>;
         impl R {
-            #[doc = "Bit 0 - usb0_out_ep pid register field"]
+            #[doc = "Bit 0 - usb0_ep0_out pid register field"]
             #[inline(always)]
             pub fn pid(&self) -> PID_R {
                 PID_R::new((self.bits & 1) != 0)
             }
         }
         impl W {
-            #[doc = "Bit 0 - usb0_out_ep pid register field"]
+            #[doc = "Bit 0 - usb0_ep0_out pid register field"]
             #[inline(always)]
             #[must_use]
             pub fn pid(&mut self) -> PID_W<0> {
@@ -4361,7 +4361,7 @@ pub mod usb0_out_ep {
                 self
             }
         }
-        #[doc = "usb0_out_ep pid register\n\nThis register you can [`read`](crate::generic::Reg::read), [`write_with_zero`](crate::generic::Reg::write_with_zero), [`reset`](crate::generic::Reg::reset), [`write`](crate::generic::Reg::write), [`modify`](crate::generic::Reg::modify). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [pid](index.html) module"]
+        #[doc = "usb0_ep0_out pid register\n\nThis register you can [`read`](crate::generic::Reg::read), [`write_with_zero`](crate::generic::Reg::write_with_zero), [`reset`](crate::generic::Reg::reset), [`write`](crate::generic::Reg::write), [`modify`](crate::generic::Reg::modify). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [pid](index.html) module"]
         pub struct PID_SPEC;
         impl crate::RegisterSpec for PID_SPEC {
             type Ux = u32;
@@ -4383,7 +4383,7 @@ pub mod usb0_out_ep {
     }
     #[doc = "ev_status (r) register accessor: an alias for `Reg<EV_STATUS_SPEC>`"]
     pub type EV_STATUS = crate::Reg<ev_status::EV_STATUS_SPEC>;
-    #[doc = "usb0_out_ep ev_status register"]
+    #[doc = "usb0_ep0_out ev_status register"]
     pub mod ev_status {
         #[doc = "Register `ev_status` reader"]
         pub struct R(crate::R<EV_STATUS_SPEC>);
@@ -4400,16 +4400,16 @@ pub mod usb0_out_ep {
                 R(reader)
             }
         }
-        #[doc = "Field `status` reader - usb0_out_ep status register field"]
+        #[doc = "Field `status` reader - usb0_ep0_out status register field"]
         pub type STATUS_R = crate::BitReader<bool>;
         impl R {
-            #[doc = "Bit 0 - usb0_out_ep status register field"]
+            #[doc = "Bit 0 - usb0_ep0_out status register field"]
             #[inline(always)]
             pub fn status(&self) -> STATUS_R {
                 STATUS_R::new((self.bits & 1) != 0)
             }
         }
-        #[doc = "usb0_out_ep ev_status register\n\nThis register you can [`read`](crate::generic::Reg::read). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [ev_status](index.html) module"]
+        #[doc = "usb0_ep0_out ev_status register\n\nThis register you can [`read`](crate::generic::Reg::read). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [ev_status](index.html) module"]
         pub struct EV_STATUS_SPEC;
         impl crate::RegisterSpec for EV_STATUS_SPEC {
             type Ux = u32;
@@ -4425,7 +4425,7 @@ pub mod usb0_out_ep {
     }
     #[doc = "ev_pending (rw) register accessor: an alias for `Reg<EV_PENDING_SPEC>`"]
     pub type EV_PENDING = crate::Reg<ev_pending::EV_PENDING_SPEC>;
-    #[doc = "usb0_out_ep ev_pending register"]
+    #[doc = "usb0_ep0_out ev_pending register"]
     pub mod ev_pending {
         #[doc = "Register `ev_pending` reader"]
         pub struct R(crate::R<EV_PENDING_SPEC>);
@@ -4463,19 +4463,19 @@ pub mod usb0_out_ep {
                 W(writer)
             }
         }
-        #[doc = "Field `pending` reader - usb0_out_ep pending register field"]
+        #[doc = "Field `pending` reader - usb0_ep0_out pending register field"]
         pub type PENDING_R = crate::BitReader<bool>;
-        #[doc = "Field `pending` writer - usb0_out_ep pending register field"]
+        #[doc = "Field `pending` writer - usb0_ep0_out pending register field"]
         pub type PENDING_W<'a, const O: u8> = crate::BitWriter<'a, u32, EV_PENDING_SPEC, bool, O>;
         impl R {
-            #[doc = "Bit 0 - usb0_out_ep pending register field"]
+            #[doc = "Bit 0 - usb0_ep0_out pending register field"]
             #[inline(always)]
             pub fn pending(&self) -> PENDING_R {
                 PENDING_R::new((self.bits & 1) != 0)
             }
         }
         impl W {
-            #[doc = "Bit 0 - usb0_out_ep pending register field"]
+            #[doc = "Bit 0 - usb0_ep0_out pending register field"]
             #[inline(always)]
             #[must_use]
             pub fn pending(&mut self) -> PENDING_W<0> {
@@ -4488,7 +4488,7 @@ pub mod usb0_out_ep {
                 self
             }
         }
-        #[doc = "usb0_out_ep ev_pending register\n\nThis register you can [`read`](crate::generic::Reg::read), [`write_with_zero`](crate::generic::Reg::write_with_zero), [`reset`](crate::generic::Reg::reset), [`write`](crate::generic::Reg::write), [`modify`](crate::generic::Reg::modify). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [ev_pending](index.html) module"]
+        #[doc = "usb0_ep0_out ev_pending register\n\nThis register you can [`read`](crate::generic::Reg::read), [`write_with_zero`](crate::generic::Reg::write_with_zero), [`reset`](crate::generic::Reg::reset), [`write`](crate::generic::Reg::write), [`modify`](crate::generic::Reg::modify). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [ev_pending](index.html) module"]
         pub struct EV_PENDING_SPEC;
         impl crate::RegisterSpec for EV_PENDING_SPEC {
             type Ux = u32;
@@ -4510,7 +4510,7 @@ pub mod usb0_out_ep {
     }
     #[doc = "ev_enable (rw) register accessor: an alias for `Reg<EV_ENABLE_SPEC>`"]
     pub type EV_ENABLE = crate::Reg<ev_enable::EV_ENABLE_SPEC>;
-    #[doc = "usb0_out_ep ev_enable register"]
+    #[doc = "usb0_ep0_out ev_enable register"]
     pub mod ev_enable {
         #[doc = "Register `ev_enable` reader"]
         pub struct R(crate::R<EV_ENABLE_SPEC>);
@@ -4548,19 +4548,19 @@ pub mod usb0_out_ep {
                 W(writer)
             }
         }
-        #[doc = "Field `enable` reader - usb0_out_ep enable register field"]
+        #[doc = "Field `enable` reader - usb0_ep0_out enable register field"]
         pub type ENABLE_R = crate::BitReader<bool>;
-        #[doc = "Field `enable` writer - usb0_out_ep enable register field"]
+        #[doc = "Field `enable` writer - usb0_ep0_out enable register field"]
         pub type ENABLE_W<'a, const O: u8> = crate::BitWriter<'a, u32, EV_ENABLE_SPEC, bool, O>;
         impl R {
-            #[doc = "Bit 0 - usb0_out_ep enable register field"]
+            #[doc = "Bit 0 - usb0_ep0_out enable register field"]
             #[inline(always)]
             pub fn enable(&self) -> ENABLE_R {
                 ENABLE_R::new((self.bits & 1) != 0)
             }
         }
         impl W {
-            #[doc = "Bit 0 - usb0_out_ep enable register field"]
+            #[doc = "Bit 0 - usb0_ep0_out enable register field"]
             #[inline(always)]
             #[must_use]
             pub fn enable(&mut self) -> ENABLE_W<0> {
@@ -4573,7 +4573,7 @@ pub mod usb0_out_ep {
                 self
             }
         }
-        #[doc = "usb0_out_ep ev_enable register\n\nThis register you can [`read`](crate::generic::Reg::read), [`write_with_zero`](crate::generic::Reg::write_with_zero), [`reset`](crate::generic::Reg::reset), [`write`](crate::generic::Reg::write), [`modify`](crate::generic::Reg::modify). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [ev_enable](index.html) module"]
+        #[doc = "usb0_ep0_out ev_enable register\n\nThis register you can [`read`](crate::generic::Reg::read), [`write_with_zero`](crate::generic::Reg::write_with_zero), [`reset`](crate::generic::Reg::reset), [`write`](crate::generic::Reg::write), [`modify`](crate::generic::Reg::modify). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [ev_enable](index.html) module"]
         pub struct EV_ENABLE_SPEC;
         impl crate::RegisterSpec for EV_ENABLE_SPEC {
             type Ux = u32;
@@ -4699,10 +4699,10 @@ pub struct Peripherals {
     pub USB0: USB0,
     #[doc = "USB0_SETUP"]
     pub USB0_SETUP: USB0_SETUP,
-    #[doc = "USB0_IN_EP"]
-    pub USB0_IN_EP: USB0_IN_EP,
-    #[doc = "USB0_OUT_EP"]
-    pub USB0_OUT_EP: USB0_OUT_EP,
+    #[doc = "USB0_EP0_IN"]
+    pub USB0_EP0_IN: USB0_EP0_IN,
+    #[doc = "USB0_EP0_OUT"]
+    pub USB0_EP0_OUT: USB0_EP0_OUT,
     #[doc = "LEDS"]
     pub LEDS: LEDS,
 }
@@ -4739,10 +4739,10 @@ impl Peripherals {
             USB0_SETUP: USB0_SETUP {
                 _marker: PhantomData,
             },
-            USB0_IN_EP: USB0_IN_EP {
+            USB0_EP0_IN: USB0_EP0_IN {
                 _marker: PhantomData,
             },
-            USB0_OUT_EP: USB0_OUT_EP {
+            USB0_EP0_OUT: USB0_EP0_OUT {
                 _marker: PhantomData,
             },
             LEDS: LEDS {

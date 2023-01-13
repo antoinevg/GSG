@@ -1,15 +1,12 @@
-from lunasoc                           import LunaSoC
+from lunasoc                                 import LunaSoC
 
-from luna                              import configure_default_logging, top_level_cli
-from luna.gateware.platform.ulx3s      import ULX3S_85F_Platform
-from luna.gateware.platform.luna_r0_4  import LUNAPlatformRev0D4
-
+from luna                                    import configure_default_logging, top_level_cli
 from luna.gateware.usb.usb2.device           import USBDevice, USBDeviceController
 from luna.gateware.usb.usb2.interfaces.eptri import SetupFIFOInterface, InFIFOInterface, OutFIFOInterface
 
-from amaranth                          import Elaboratable, Module, Cat
-from amaranth.hdl.rec                  import Record
-from lambdasoc.periph                  import Peripheral
+from amaranth                                import Elaboratable, Module, Cat
+from amaranth.hdl.rec                        import Record
+from lambdasoc.periph                        import Peripheral
 
 import logging
 import os
@@ -82,11 +79,11 @@ class LunaSoCExample(Elaboratable):
         self.usb0_setup = SetupFIFOInterface()
         self.soc.add_peripheral(self.usb0_setup, as_submodule=False)
 
-        self.usb0_in_ep = InFIFOInterface()
-        self.soc.add_peripheral(self.usb0_in_ep, as_submodule=False)
+        self.usb0_ep0_in = InFIFOInterface()
+        self.soc.add_peripheral(self.usb0_ep0_in, as_submodule=False)
 
-        self.usb0_out_ep = OutFIFOInterface()
-        self.soc.add_peripheral(self.usb0_out_ep, as_submodule=False)
+        self.usb0_ep0_out = OutFIFOInterface()
+        self.soc.add_peripheral(self.usb0_ep0_out, as_submodule=False)
 
         # ... and our LED peripheral, for simple output.
         self.leds = LedPeripheral()
@@ -119,13 +116,17 @@ class LunaSoCExample(Elaboratable):
 
         # add our eptri endpoint handlers
         usb_device.add_endpoint(self.usb0_setup)
-        usb_device.add_endpoint(self.usb0_in_ep)
-        usb_device.add_endpoint(self.usb0_out_ep)
+        usb_device.add_endpoint(self.usb0_ep0_in)
+        usb_device.add_endpoint(self.usb0_ep0_out)
 
         return m
 
 
 # - main ----------------------------------------------------------------------
+
+from luna.gateware.platform.ulx3s     import ULX3S_85F_Platform
+from luna.gateware.platform.luna_r0_4 import LUNAPlatformRev0D4
+
 
 if __name__ == "__main__":
     from generate import Generate
