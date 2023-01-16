@@ -18,17 +18,11 @@ impl UsbInterface0 {
         // If this is an IN request, read a zero-length packet (ZLP) from the host..
         if (setup_request.request_type & MASK_DIRECTION_IN) != 0 {
             self.prime_receive(0);
-
-        } else { // ... otherwise, send a ZLP.
+        } else {
+            // ... otherwise, send a ZLP.
             self.send_packet(0, &[]);
         }
     }
-
-    /*
-    /// Clear the content of the receive buffer
-    pub fn flush_receive_buffer(&self) {
-        self.ep0_out.reset.write(|w| w.reset().bit(true));
-    }*/
 
     /// Prepare endpoint to receive a single OUT packet.
     pub fn prime_receive(&self, endpoint: u8) {
@@ -67,7 +61,9 @@ impl UsbInterface0 {
         }
 
         // finally, prime IN endpoint
-        self.ep0_in.epno.write(|w| unsafe { w.epno().bits(endpoint) });
+        self.ep0_in
+            .epno
+            .write(|w| unsafe { w.epno().bits(endpoint) });
     }
 
     /// Stalls the current control request.
@@ -91,11 +87,37 @@ pub struct UsbSetupRequest {
 
 // - types --------------------------------------------------------------------
 
-#[derive(PartialEq)]
+// see: https://www.beyondlogic.org/usbnutshell/usb6.shtml
+
+// TODO implement other bits of bmRequestType apart from Type
+// TODO look at some kind of bit struct
+#[derive(Debug, PartialEq)]
+#[repr(u8)]
+pub enum UsbControlRequestType {
+    Standard = 0x00,
+    Class = 0x01,
+    Vendor = 0x02,
+    Reserved = 0x03,
+}
+
+impl TryFrom<u8> for UsbControlRequestType {
+    type Error = crate::Error;
+
+    fn try_from(value: u8) -> core::result::Result<Self, Self::Error> {
+        let result = match value {
+            0x00 => UsbControlRequestType::Standard,
+            0x01 => UsbControlRequestType::Class,
+            0x02 => UsbControlRequestType::Vendor,
+            0x03 => UsbControlRequestType::Reserved,
+            _ => return Err(Error::InvalidControlRequestType),
+        };
+        Ok(result)
+    }
+}
+
+#[derive(Debug, PartialEq)]
 #[repr(u8)]
 pub enum UsbControlRequest {
-    Standard = 0x00,
-
     // request types
     SetAddress = 0x05,
     GetDescriptor = 0x06,
@@ -112,7 +134,6 @@ impl TryFrom<u8> for UsbControlRequest {
 
     fn try_from(value: u8) -> core::result::Result<Self, Self::Error> {
         let result = match value {
-            0x00 => UsbControlRequest::Standard,
             0x05 => UsbControlRequest::SetAddress,
             0x06 => UsbControlRequest::GetDescriptor,
             0x09 => UsbControlRequest::SetConfiguration,

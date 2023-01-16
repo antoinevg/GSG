@@ -19,7 +19,12 @@ pub const SYSTEM_CLOCK_FREQUENCY: u32 = 10_000_000;
 
 #[derive(Debug)]
 pub enum Error {
+    InvalidControlRequestType,
     InvalidControlRequest,
+    RequestTypeIsNotStandard,
+    RequestIsUnknown,
+    DescriptorIsUnknown,
+    ConfigurationIsUnknown,
     Unknown,
 }
 
