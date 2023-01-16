@@ -36,10 +36,6 @@ class GenSVD:
         # <peripherals />
         peripherals = SubElement(device, "peripherals")
 
-        # TODO use self._soc.peripherals() instead of memory_map
-        #for resource, resource_info, address, size in self._soc.resources():
-        #    print(resource.name)
-
         window: MemoryMap
         for window, (start, stop, ratio) in self._soc.memory_map.windows():
             if window.name in ["bootrom", "scratchpad", "internal_sram"]:
@@ -51,21 +47,8 @@ class GenSVD:
 
             resource_info: ResourceInfo
             for resource_info in window.all_resources():
-
                 register = _generate_section_register(registers, window, resource_info)
                 fields = SubElement(register, "fields")
-
-                # for ast in resource_info.resource:
-                #     if isinstance(ast, amaranth.hdl.ast.Signal):
-                #         #print("signal: ", str(ast))
-                #         pass
-                #     elif isinstance(ast, amaranth.hdl.ast.Slice):
-                #         #print("slice: ", str(ast))
-                #         pass
-                #     else:
-                #         print("unhandled amaranth ast element: ", type(slice))
-
-                # TODO can we go lower?
                 field = _generate_section_field(fields, window, resource_info)
 
         # <vendorExtensions />
@@ -169,11 +152,13 @@ def _generate_section_register(registers: Element, window: MemoryMap, resource_i
     el = SubElement(register, "name")
     el.text = "_".join(resource_info.name)
     el = SubElement(register, "description")
-    # TODO it would be nice if we could document our peripheral registers
-    description = "{} {} register".format(
-        window.name,
-        "_".join(resource_info.name),
-    )
+    if hasattr(resource_info, "desc"):
+        description = resource_info.desc
+    else:
+        description = "{} {} register".format(
+            window.name,
+            "_".join(resource_info.name),
+        )
     el.text = description
     el = SubElement(register, "addressOffset")
     el.text = "0x{:04x}".format(resource_info.start)
@@ -206,49 +191,15 @@ def _generate_section_field(fields: Element, window: MemoryMap, resource_info: R
     el = SubElement(field, "name")
     el.text = resource.name
     el = SubElement(field, "description")
-    # TODO it would be nice if we could document our peripheral register fields
-    description = "{} {} register field".format(
-        window.name,
-        resource.name,
-    )
+    if hasattr(resource, "desc"):
+        description = resource.desc
+    else:
+        description = "{} {} register field".format(
+            window.name,
+            resource.name,
+        )
     el.text = description
     el = SubElement(field, "bitRange")
     el.text = "[{:d}:0]".format(resource.width - 1)
 
-    return field
-
-
-def __generate_section_field(fields: Element, window: MemoryMap, resource_info: ResourceInfo):
-
-    if window.name == "timer":
-        return SubElement(fields, "field")
-
-    import amaranth_soc
-    from amaranth_soc.csr.bus import Element
-
-    # resource_info          holds register info
-    # resource_info.resource holds register fields
-
-    print("Generating register: {} {} {} {}".format(window.name, resource_info.name, resource_info.resource.name, resource_info.resource.width))
-
-    resource: amaranth_soc.csr.bus.Element = resource_info.resource
-    assert type(resource) == amaranth_soc.csr.bus.Element
-
-    print("  Generating fields for resource record: ", resource)
-
-    #resource.layout.fields
-    #for field_name in resource.layout.fields:
-    #    field = resource.layout.fields[field_name]
-    #    print("  {}: {}".format(field_name, field))
-
-    #for field_name, field_shape, field_dir in resource.layout:
-    #    print("    name: {}  shape: {}  dir: {}".format(field_name, field_shape, field_dir))
-
-    for field_name in resource.fields:
-        field: amaranth.hdl.ast.Signal = resource.fields[field_name]
-        print("    field: ", field.name, field.width, field.reset)
-
-
-
-    field =  SubElement(fields, "field")
     return field

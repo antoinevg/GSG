@@ -291,7 +291,9 @@
           <fields>
             <field>
               <name>connect</name>
-              <description>usb0 connect register field</description>
+              <description>
+                Set this bit to '1' to allow the associated USB device to connect to a host.
+            </description>
               <bitRange>[0:0]</bitRange>
             </field>
           </fields>
@@ -306,7 +308,10 @@
           <fields>
             <field>
               <name>speed</name>
-              <description>usb0 speed register field</description>
+              <description>
+                Indicates the current speed of the USB device. 0 indicates High; 1 =&gt; Full,
+                2 =&gt; Low, and 3 =&gt; SuperSpeed (incl SuperSpeed+).
+            </description>
               <bitRange>[1:0]</bitRange>
             </field>
           </fields>
@@ -382,7 +387,11 @@
           <fields>
             <field>
               <name>data</name>
-              <description>usb0_setup data register field</description>
+              <description>
+            A FIFO that returns the bytes from the most recently captured SETUP packet.
+            Reading a byte from this register advances the FIFO. The first eight bytes read
+            from this conain the core SETUP packet.
+        </description>
               <bitRange>[7:0]</bitRange>
             </field>
           </fields>
@@ -397,7 +406,9 @@
           <fields>
             <field>
               <name>reset</name>
-              <description>usb0_setup reset register field</description>
+              <description>
+            Local reset control for the SETUP handler; writing a '1' to this register clears the handler state.
+        </description>
               <bitRange>[0:0]</bitRange>
             </field>
           </fields>
@@ -412,7 +423,7 @@
           <fields>
             <field>
               <name>epno</name>
-              <description>usb0_setup epno register field</description>
+              <description>The number of the endpoint associated with the current SETUP packet.</description>
               <bitRange>[3:0]</bitRange>
             </field>
           </fields>
@@ -427,7 +438,7 @@
           <fields>
             <field>
               <name>have</name>
-              <description>usb0_setup have register field</description>
+              <description>`1` iff data is available in the FIFO.</description>
               <bitRange>[0:0]</bitRange>
             </field>
           </fields>
@@ -442,7 +453,7 @@
           <fields>
             <field>
               <name>pend</name>
-              <description>usb0_setup pend register field</description>
+              <description>`1` iff an interrupt is pending</description>
               <bitRange>[0:0]</bitRange>
             </field>
           </fields>
@@ -457,7 +468,10 @@
           <fields>
             <field>
               <name>address</name>
-              <description>usb0_setup address register field</description>
+              <description>
+            Controls the current device's USB address. Should be written after a SET_ADDRESS request is
+            received. Automatically resets back to zero on a USB reset.
+        </description>
               <bitRange>[7:0]</bitRange>
             </field>
           </fields>
@@ -533,7 +547,11 @@
           <fields>
             <field>
               <name>data</name>
-              <description>usb0_ep0_in data register field</description>
+              <description>
+            Write-only register. Each write enqueues a byte to be transmitted; gradually building
+            a single packet to be transmitted. This queue should only ever contain a single packet;
+            it is the software's responsibility to handle breaking requests down into packets.
+        </description>
               <bitRange>[7:0]</bitRange>
             </field>
           </fields>
@@ -548,7 +566,14 @@
           <fields>
             <field>
               <name>epno</name>
-              <description>usb0_ep0_in epno register field</description>
+              <description>
+            Contains the endpoint the enqueued packet is to be transmitted on. Writing this register
+            marks the relevant packet as ready to transmit; and thus should only be written after a
+            full packet has been written into the FIFO. If no data has been placed into the DATA FIFO,
+            a zero-length packet is generated.
+
+            Note that any IN requests that do not match the endpoint number are automatically NAK'd.
+        </description>
               <bitRange>[3:0]</bitRange>
             </field>
           </fields>
@@ -563,7 +588,7 @@
           <fields>
             <field>
               <name>reset</name>
-              <description>usb0_ep0_in reset register field</description>
+              <description>A write to this register clears the FIFO without transmitting.</description>
               <bitRange>[0:0]</bitRange>
             </field>
           </fields>
@@ -578,7 +603,12 @@
           <fields>
             <field>
               <name>stall</name>
-              <description>usb0_ep0_in stall register field</description>
+              <description>
+            When this register contains '1', any IN tokens targeting `epno` will be responded to with a
+            STALL token, rather than DATA or a NAK.
+
+            For EP0, this register will automatically be cleared when a new SETUP token is received.
+        </description>
               <bitRange>[0:0]</bitRange>
             </field>
           </fields>
@@ -593,7 +623,7 @@
           <fields>
             <field>
               <name>idle</name>
-              <description>usb0_ep0_in idle register field</description>
+              <description>This value is `1` if no packet is actively being transmitted.</description>
               <bitRange>[0:0]</bitRange>
             </field>
           </fields>
@@ -608,7 +638,7 @@
           <fields>
             <field>
               <name>have</name>
-              <description>usb0_ep0_in have register field</description>
+              <description>This value is `1` if data is present in the transmit FIFO.</description>
               <bitRange>[0:0]</bitRange>
             </field>
           </fields>
@@ -623,7 +653,7 @@
           <fields>
             <field>
               <name>pend</name>
-              <description>usb0_ep0_in pend register field</description>
+              <description>`1` iff an interrupt is pending</description>
               <bitRange>[0:0]</bitRange>
             </field>
           </fields>
@@ -638,7 +668,7 @@
           <fields>
             <field>
               <name>pid</name>
-              <description>usb0_ep0_in pid register field</description>
+              <description>Contains the current PID toggle bit for the given endpoint.</description>
               <bitRange>[0:0]</bitRange>
             </field>
           </fields>
@@ -714,7 +744,10 @@
           <fields>
             <field>
               <name>data</name>
-              <description>usb0_ep0_out data register field</description>
+              <description>
+            A FIFO that returns the bytes from the most recently captured OUT transaction.
+            Reading a byte from this register advances the FIFO.
+        </description>
               <bitRange>[7:0]</bitRange>
             </field>
           </fields>
@@ -729,7 +762,10 @@
           <fields>
             <field>
               <name>data_ep</name>
-              <description>usb0_ep0_out data_ep register field</description>
+              <description>
+            Register that contains the endpoint number associated with the data in the FIFO -- that is,
+            the endpoint number on which the relevant data was received.
+        </description>
               <bitRange>[3:0]</bitRange>
             </field>
           </fields>
@@ -744,7 +780,9 @@
           <fields>
             <field>
               <name>reset</name>
-              <description>usb0_ep0_out reset register field</description>
+              <description>
+            Local reset for the OUT handler; clears the out FIFO.
+        </description>
               <bitRange>[0:0]</bitRange>
             </field>
           </fields>
@@ -759,7 +797,10 @@
           <fields>
             <field>
               <name>epno</name>
-              <description>usb0_ep0_out epno register field</description>
+              <description>
+            Selects the endpoint number to prime. This interface only allows priming a single endpoint at once--
+            that is, only one endpoint can be ready to receive data at a time. See the `enable` bit for usage.
+        </description>
               <bitRange>[3:0]</bitRange>
             </field>
           </fields>
@@ -774,7 +815,11 @@
           <fields>
             <field>
               <name>enable</name>
-              <description>usb0_ep0_out enable register field</description>
+              <description>
+            Controls whether any data can be received on any primed OUT endpoint. This bit is automatically cleared
+            on receive in order to give the controller time to read data from the FIFO. It must be re-enabled once
+            the FIFO has been emptied.
+        </description>
               <bitRange>[0:0]</bitRange>
             </field>
           </fields>
@@ -789,7 +834,18 @@
           <fields>
             <field>
               <name>prime</name>
-              <description>usb0_ep0_out prime register field</description>
+              <description>
+            Controls &quot;priming&quot; an out endpoint. To receive data on any endpoint, the CPU must first select
+            the endpoint with the `epno` register; and then write a '1' into the prime and enable register.
+            This prepares our FIFO to receive data; and the next OUT transaction will be captured into the FIFO.
+
+            When a transaction is complete, the `enable` bit is reset; the `prime` is not. This effectively means
+            that `enable` controls receiving on _any_ of the primed endpoints; while `prime` can be used to build
+            a collection of endpoints willing to participate in receipt.
+
+            Only one transaction / data packet is captured per `enable` write; repeated enabling is necessary
+            to capture multiple packets.
+        </description>
               <bitRange>[0:0]</bitRange>
             </field>
           </fields>
@@ -804,7 +860,12 @@
           <fields>
             <field>
               <name>stall</name>
-              <description>usb0_ep0_out stall register field</description>
+              <description>
+            Controls STALL'ing the active endpoint. Setting or clearing this bit will set or clear STALL on
+            the provided endpoint. Endpoint STALLs persist even after `epno` is changed; so multiple endpoints
+            can be stalled at once by writing their respective endpoint numbers into `epno` register and then
+            setting their `stall` bits.
+        </description>
               <bitRange>[0:0]</bitRange>
             </field>
           </fields>
@@ -819,7 +880,7 @@
           <fields>
             <field>
               <name>have</name>
-              <description>usb0_ep0_out have register field</description>
+              <description>`1` iff data is available in the FIFO.</description>
               <bitRange>[0:0]</bitRange>
             </field>
           </fields>
@@ -834,7 +895,7 @@
           <fields>
             <field>
               <name>pend</name>
-              <description>usb0_ep0_out pend register field</description>
+              <description>`1` iff an interrupt is pending</description>
               <bitRange>[0:0]</bitRange>
             </field>
           </fields>
@@ -849,7 +910,10 @@
           <fields>
             <field>
               <name>address</name>
-              <description>usb0_ep0_out address register field</description>
+              <description>
+            Controls the current device's USB address. Should be written after a SET_ADDRESS request is
+            received. Automatically resets back to zero on a USB reset.
+        </description>
               <bitRange>[7:0]</bitRange>
             </field>
           </fields>
@@ -864,7 +928,7 @@
           <fields>
             <field>
               <name>pid</name>
-              <description>usb0_ep0_out pid register field</description>
+              <description>Contains the current PID toggle bit for the given endpoint.</description>
               <bitRange>[0:0]</bitRange>
             </field>
           </fields>

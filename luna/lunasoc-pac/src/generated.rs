@@ -1975,19 +1975,19 @@ pub mod usb0 {
                 W(writer)
             }
         }
-        #[doc = "Field `connect` reader - usb0 connect register field"]
+        #[doc = "Field `connect` reader - Set this bit to '1' to allow the associated USB device to connect to a host."]
         pub type CONNECT_R = crate::BitReader<bool>;
-        #[doc = "Field `connect` writer - usb0 connect register field"]
+        #[doc = "Field `connect` writer - Set this bit to '1' to allow the associated USB device to connect to a host."]
         pub type CONNECT_W<'a, const O: u8> = crate::BitWriter<'a, u32, CONNECT_SPEC, bool, O>;
         impl R {
-            #[doc = "Bit 0 - usb0 connect register field"]
+            #[doc = "Bit 0 - Set this bit to '1' to allow the associated USB device to connect to a host."]
             #[inline(always)]
             pub fn connect(&self) -> CONNECT_R {
                 CONNECT_R::new((self.bits & 1) != 0)
             }
         }
         impl W {
-            #[doc = "Bit 0 - usb0 connect register field"]
+            #[doc = "Bit 0 - Set this bit to '1' to allow the associated USB device to connect to a host."]
             #[inline(always)]
             #[must_use]
             pub fn connect(&mut self) -> CONNECT_W<0> {
@@ -2039,10 +2039,10 @@ pub mod usb0 {
                 R(reader)
             }
         }
-        #[doc = "Field `speed` reader - usb0 speed register field"]
+        #[doc = "Field `speed` reader - Indicates the current speed of the USB device. 0 indicates High; 1 => Full, 2 => Low, and 3 => SuperSpeed (incl SuperSpeed+)."]
         pub type SPEED_R = crate::FieldReader<u8, u8>;
         impl R {
-            #[doc = "Bits 0:1 - usb0 speed register field"]
+            #[doc = "Bits 0:1 - Indicates the current speed of the USB device. 0 indicates High; 1 => Full, 2 => Low, and 3 => SuperSpeed (incl SuperSpeed+)."]
             #[inline(always)]
             pub fn speed(&self) -> SPEED_R {
                 SPEED_R::new((self.bits & 3) as u8)
@@ -2345,10 +2345,10 @@ pub mod usb0_setup {
                 R(reader)
             }
         }
-        #[doc = "Field `data` reader - usb0_setup data register field"]
+        #[doc = "Field `data` reader - A FIFO that returns the bytes from the most recently captured SETUP packet. Reading a byte from this register advances the FIFO. The first eight bytes read from this conain the core SETUP packet."]
         pub type DATA_R = crate::FieldReader<u8, u8>;
         impl R {
-            #[doc = "Bits 0:7 - usb0_setup data register field"]
+            #[doc = "Bits 0:7 - A FIFO that returns the bytes from the most recently captured SETUP packet. Reading a byte from this register advances the FIFO. The first eight bytes read from this conain the core SETUP packet."]
             #[inline(always)]
             pub fn data(&self) -> DATA_R {
                 DATA_R::new((self.bits & 0xff) as u8)
@@ -2393,10 +2393,10 @@ pub mod usb0_setup {
                 W(writer)
             }
         }
-        #[doc = "Field `reset` writer - usb0_setup reset register field"]
+        #[doc = "Field `reset` writer - Local reset control for the SETUP handler; writing a '1' to this register clears the handler state."]
         pub type RESET_W<'a, const O: u8> = crate::BitWriter<'a, u32, RESET_SPEC, bool, O>;
         impl W {
-            #[doc = "Bit 0 - usb0_setup reset register field"]
+            #[doc = "Bit 0 - Local reset control for the SETUP handler; writing a '1' to this register clears the handler state."]
             #[inline(always)]
             #[must_use]
             pub fn reset(&mut self) -> RESET_W<0> {
@@ -2444,10 +2444,10 @@ pub mod usb0_setup {
                 R(reader)
             }
         }
-        #[doc = "Field `epno` reader - usb0_setup epno register field"]
+        #[doc = "Field `epno` reader - The number of the endpoint associated with the current SETUP packet."]
         pub type EPNO_R = crate::FieldReader<u8, u8>;
         impl R {
-            #[doc = "Bits 0:3 - usb0_setup epno register field"]
+            #[doc = "Bits 0:3 - The number of the endpoint associated with the current SETUP packet."]
             #[inline(always)]
             pub fn epno(&self) -> EPNO_R {
                 EPNO_R::new((self.bits & 0x0f) as u8)
@@ -2486,10 +2486,10 @@ pub mod usb0_setup {
                 R(reader)
             }
         }
-        #[doc = "Field `have` reader - usb0_setup have register field"]
+        #[doc = "Field `have` reader - `1` iff data is available in the FIFO."]
         pub type HAVE_R = crate::BitReader<bool>;
         impl R {
-            #[doc = "Bit 0 - usb0_setup have register field"]
+            #[doc = "Bit 0 - `1` iff data is available in the FIFO."]
             #[inline(always)]
             pub fn have(&self) -> HAVE_R {
                 HAVE_R::new((self.bits & 1) != 0)
@@ -2528,10 +2528,10 @@ pub mod usb0_setup {
                 R(reader)
             }
         }
-        #[doc = "Field `pend` reader - usb0_setup pend register field"]
+        #[doc = "Field `pend` reader - `1` iff an interrupt is pending"]
         pub type PEND_R = crate::BitReader<bool>;
         impl R {
-            #[doc = "Bit 0 - usb0_setup pend register field"]
+            #[doc = "Bit 0 - `1` iff an interrupt is pending"]
             #[inline(always)]
             pub fn pend(&self) -> PEND_R {
                 PEND_R::new((self.bits & 1) != 0)
@@ -2591,20 +2591,20 @@ pub mod usb0_setup {
                 W(writer)
             }
         }
-        #[doc = "Field `address` reader - usb0_setup address register field"]
+        #[doc = "Field `address` reader - Controls the current device's USB address. Should be written after a SET_ADDRESS request is received. Automatically resets back to zero on a USB reset."]
         pub type ADDRESS_R = crate::FieldReader<u8, u8>;
-        #[doc = "Field `address` writer - usb0_setup address register field"]
+        #[doc = "Field `address` writer - Controls the current device's USB address. Should be written after a SET_ADDRESS request is received. Automatically resets back to zero on a USB reset."]
         pub type ADDRESS_W<'a, const O: u8> =
             crate::FieldWriter<'a, u32, ADDRESS_SPEC, u8, u8, 8, O>;
         impl R {
-            #[doc = "Bits 0:7 - usb0_setup address register field"]
+            #[doc = "Bits 0:7 - Controls the current device's USB address. Should be written after a SET_ADDRESS request is received. Automatically resets back to zero on a USB reset."]
             #[inline(always)]
             pub fn address(&self) -> ADDRESS_R {
                 ADDRESS_R::new((self.bits & 0xff) as u8)
             }
         }
         impl W {
-            #[doc = "Bits 0:7 - usb0_setup address register field"]
+            #[doc = "Bits 0:7 - Controls the current device's USB address. Should be written after a SET_ADDRESS request is received. Automatically resets back to zero on a USB reset."]
             #[inline(always)]
             #[must_use]
             pub fn address(&mut self) -> ADDRESS_W<0> {
@@ -2929,10 +2929,10 @@ pub mod usb0_ep0_in {
                 W(writer)
             }
         }
-        #[doc = "Field `data` writer - usb0_ep0_in data register field"]
+        #[doc = "Field `data` writer - Write-only register. Each write enqueues a byte to be transmitted; gradually building a single packet to be transmitted. This queue should only ever contain a single packet; it is the software's responsibility to handle breaking requests down into packets."]
         pub type DATA_W<'a, const O: u8> = crate::FieldWriter<'a, u32, DATA_SPEC, u8, u8, 8, O>;
         impl W {
-            #[doc = "Bits 0:7 - usb0_ep0_in data register field"]
+            #[doc = "Bits 0:7 - Write-only register. Each write enqueues a byte to be transmitted; gradually building a single packet to be transmitted. This queue should only ever contain a single packet; it is the software's responsibility to handle breaking requests down into packets."]
             #[inline(always)]
             #[must_use]
             pub fn data(&mut self) -> DATA_W<0> {
@@ -3001,19 +3001,19 @@ pub mod usb0_ep0_in {
                 W(writer)
             }
         }
-        #[doc = "Field `epno` reader - usb0_ep0_in epno register field"]
+        #[doc = "Field `epno` reader - Contains the endpoint the enqueued packet is to be transmitted on. Writing this register marks the relevant packet as ready to transmit; and thus should only be written after a full packet has been written into the FIFO. If no data has been placed into the DATA FIFO, a zero-length packet is generated. Note that any IN requests that do not match the endpoint number are automatically NAK'd."]
         pub type EPNO_R = crate::FieldReader<u8, u8>;
-        #[doc = "Field `epno` writer - usb0_ep0_in epno register field"]
+        #[doc = "Field `epno` writer - Contains the endpoint the enqueued packet is to be transmitted on. Writing this register marks the relevant packet as ready to transmit; and thus should only be written after a full packet has been written into the FIFO. If no data has been placed into the DATA FIFO, a zero-length packet is generated. Note that any IN requests that do not match the endpoint number are automatically NAK'd."]
         pub type EPNO_W<'a, const O: u8> = crate::FieldWriter<'a, u32, EPNO_SPEC, u8, u8, 4, O>;
         impl R {
-            #[doc = "Bits 0:3 - usb0_ep0_in epno register field"]
+            #[doc = "Bits 0:3 - Contains the endpoint the enqueued packet is to be transmitted on. Writing this register marks the relevant packet as ready to transmit; and thus should only be written after a full packet has been written into the FIFO. If no data has been placed into the DATA FIFO, a zero-length packet is generated. Note that any IN requests that do not match the endpoint number are automatically NAK'd."]
             #[inline(always)]
             pub fn epno(&self) -> EPNO_R {
                 EPNO_R::new((self.bits & 0x0f) as u8)
             }
         }
         impl W {
-            #[doc = "Bits 0:3 - usb0_ep0_in epno register field"]
+            #[doc = "Bits 0:3 - Contains the endpoint the enqueued packet is to be transmitted on. Writing this register marks the relevant packet as ready to transmit; and thus should only be written after a full packet has been written into the FIFO. If no data has been placed into the DATA FIFO, a zero-length packet is generated. Note that any IN requests that do not match the endpoint number are automatically NAK'd."]
             #[inline(always)]
             #[must_use]
             pub fn epno(&mut self) -> EPNO_W<0> {
@@ -3071,10 +3071,10 @@ pub mod usb0_ep0_in {
                 W(writer)
             }
         }
-        #[doc = "Field `reset` writer - usb0_ep0_in reset register field"]
+        #[doc = "Field `reset` writer - A write to this register clears the FIFO without transmitting."]
         pub type RESET_W<'a, const O: u8> = crate::BitWriter<'a, u32, RESET_SPEC, bool, O>;
         impl W {
-            #[doc = "Bit 0 - usb0_ep0_in reset register field"]
+            #[doc = "Bit 0 - A write to this register clears the FIFO without transmitting."]
             #[inline(always)]
             #[must_use]
             pub fn reset(&mut self) -> RESET_W<0> {
@@ -3143,19 +3143,19 @@ pub mod usb0_ep0_in {
                 W(writer)
             }
         }
-        #[doc = "Field `stall` reader - usb0_ep0_in stall register field"]
+        #[doc = "Field `stall` reader - When this register contains '1', any IN tokens targeting `epno` will be responded to with a STALL token, rather than DATA or a NAK. For EP0, this register will automatically be cleared when a new SETUP token is received."]
         pub type STALL_R = crate::BitReader<bool>;
-        #[doc = "Field `stall` writer - usb0_ep0_in stall register field"]
+        #[doc = "Field `stall` writer - When this register contains '1', any IN tokens targeting `epno` will be responded to with a STALL token, rather than DATA or a NAK. For EP0, this register will automatically be cleared when a new SETUP token is received."]
         pub type STALL_W<'a, const O: u8> = crate::BitWriter<'a, u32, STALL_SPEC, bool, O>;
         impl R {
-            #[doc = "Bit 0 - usb0_ep0_in stall register field"]
+            #[doc = "Bit 0 - When this register contains '1', any IN tokens targeting `epno` will be responded to with a STALL token, rather than DATA or a NAK. For EP0, this register will automatically be cleared when a new SETUP token is received."]
             #[inline(always)]
             pub fn stall(&self) -> STALL_R {
                 STALL_R::new((self.bits & 1) != 0)
             }
         }
         impl W {
-            #[doc = "Bit 0 - usb0_ep0_in stall register field"]
+            #[doc = "Bit 0 - When this register contains '1', any IN tokens targeting `epno` will be responded to with a STALL token, rather than DATA or a NAK. For EP0, this register will automatically be cleared when a new SETUP token is received."]
             #[inline(always)]
             #[must_use]
             pub fn stall(&mut self) -> STALL_W<0> {
@@ -3207,10 +3207,10 @@ pub mod usb0_ep0_in {
                 R(reader)
             }
         }
-        #[doc = "Field `idle` reader - usb0_ep0_in idle register field"]
+        #[doc = "Field `idle` reader - This value is `1` if no packet is actively being transmitted."]
         pub type IDLE_R = crate::BitReader<bool>;
         impl R {
-            #[doc = "Bit 0 - usb0_ep0_in idle register field"]
+            #[doc = "Bit 0 - This value is `1` if no packet is actively being transmitted."]
             #[inline(always)]
             pub fn idle(&self) -> IDLE_R {
                 IDLE_R::new((self.bits & 1) != 0)
@@ -3249,10 +3249,10 @@ pub mod usb0_ep0_in {
                 R(reader)
             }
         }
-        #[doc = "Field `have` reader - usb0_ep0_in have register field"]
+        #[doc = "Field `have` reader - This value is `1` if data is present in the transmit FIFO."]
         pub type HAVE_R = crate::BitReader<bool>;
         impl R {
-            #[doc = "Bit 0 - usb0_ep0_in have register field"]
+            #[doc = "Bit 0 - This value is `1` if data is present in the transmit FIFO."]
             #[inline(always)]
             pub fn have(&self) -> HAVE_R {
                 HAVE_R::new((self.bits & 1) != 0)
@@ -3291,10 +3291,10 @@ pub mod usb0_ep0_in {
                 R(reader)
             }
         }
-        #[doc = "Field `pend` reader - usb0_ep0_in pend register field"]
+        #[doc = "Field `pend` reader - `1` iff an interrupt is pending"]
         pub type PEND_R = crate::BitReader<bool>;
         impl R {
-            #[doc = "Bit 0 - usb0_ep0_in pend register field"]
+            #[doc = "Bit 0 - `1` iff an interrupt is pending"]
             #[inline(always)]
             pub fn pend(&self) -> PEND_R {
                 PEND_R::new((self.bits & 1) != 0)
@@ -3354,19 +3354,19 @@ pub mod usb0_ep0_in {
                 W(writer)
             }
         }
-        #[doc = "Field `pid` reader - usb0_ep0_in pid register field"]
+        #[doc = "Field `pid` reader - Contains the current PID toggle bit for the given endpoint."]
         pub type PID_R = crate::BitReader<bool>;
-        #[doc = "Field `pid` writer - usb0_ep0_in pid register field"]
+        #[doc = "Field `pid` writer - Contains the current PID toggle bit for the given endpoint."]
         pub type PID_W<'a, const O: u8> = crate::BitWriter<'a, u32, PID_SPEC, bool, O>;
         impl R {
-            #[doc = "Bit 0 - usb0_ep0_in pid register field"]
+            #[doc = "Bit 0 - Contains the current PID toggle bit for the given endpoint."]
             #[inline(always)]
             pub fn pid(&self) -> PID_R {
                 PID_R::new((self.bits & 1) != 0)
             }
         }
         impl W {
-            #[doc = "Bit 0 - usb0_ep0_in pid register field"]
+            #[doc = "Bit 0 - Contains the current PID toggle bit for the given endpoint."]
             #[inline(always)]
             #[must_use]
             pub fn pid(&mut self) -> PID_W<0> {
@@ -3692,10 +3692,10 @@ pub mod usb0_ep0_out {
                 R(reader)
             }
         }
-        #[doc = "Field `data` reader - usb0_ep0_out data register field"]
+        #[doc = "Field `data` reader - A FIFO that returns the bytes from the most recently captured OUT transaction. Reading a byte from this register advances the FIFO."]
         pub type DATA_R = crate::FieldReader<u8, u8>;
         impl R {
-            #[doc = "Bits 0:7 - usb0_ep0_out data register field"]
+            #[doc = "Bits 0:7 - A FIFO that returns the bytes from the most recently captured OUT transaction. Reading a byte from this register advances the FIFO."]
             #[inline(always)]
             pub fn data(&self) -> DATA_R {
                 DATA_R::new((self.bits & 0xff) as u8)
@@ -3734,10 +3734,10 @@ pub mod usb0_ep0_out {
                 R(reader)
             }
         }
-        #[doc = "Field `data_ep` reader - usb0_ep0_out data_ep register field"]
+        #[doc = "Field `data_ep` reader - Register that contains the endpoint number associated with the data in the FIFO -- that is, the endpoint number on which the relevant data was received."]
         pub type DATA_EP_R = crate::FieldReader<u8, u8>;
         impl R {
-            #[doc = "Bits 0:3 - usb0_ep0_out data_ep register field"]
+            #[doc = "Bits 0:3 - Register that contains the endpoint number associated with the data in the FIFO -- that is, the endpoint number on which the relevant data was received."]
             #[inline(always)]
             pub fn data_ep(&self) -> DATA_EP_R {
                 DATA_EP_R::new((self.bits & 0x0f) as u8)
@@ -3782,10 +3782,10 @@ pub mod usb0_ep0_out {
                 W(writer)
             }
         }
-        #[doc = "Field `reset` writer - usb0_ep0_out reset register field"]
+        #[doc = "Field `reset` writer - Local reset for the OUT handler; clears the out FIFO."]
         pub type RESET_W<'a, const O: u8> = crate::BitWriter<'a, u32, RESET_SPEC, bool, O>;
         impl W {
-            #[doc = "Bit 0 - usb0_ep0_out reset register field"]
+            #[doc = "Bit 0 - Local reset for the OUT handler; clears the out FIFO."]
             #[inline(always)]
             #[must_use]
             pub fn reset(&mut self) -> RESET_W<0> {
@@ -3854,19 +3854,19 @@ pub mod usb0_ep0_out {
                 W(writer)
             }
         }
-        #[doc = "Field `epno` reader - usb0_ep0_out epno register field"]
+        #[doc = "Field `epno` reader - Selects the endpoint number to prime. This interface only allows priming a single endpoint at once-- that is, only one endpoint can be ready to receive data at a time. See the `enable` bit for usage."]
         pub type EPNO_R = crate::FieldReader<u8, u8>;
-        #[doc = "Field `epno` writer - usb0_ep0_out epno register field"]
+        #[doc = "Field `epno` writer - Selects the endpoint number to prime. This interface only allows priming a single endpoint at once-- that is, only one endpoint can be ready to receive data at a time. See the `enable` bit for usage."]
         pub type EPNO_W<'a, const O: u8> = crate::FieldWriter<'a, u32, EPNO_SPEC, u8, u8, 4, O>;
         impl R {
-            #[doc = "Bits 0:3 - usb0_ep0_out epno register field"]
+            #[doc = "Bits 0:3 - Selects the endpoint number to prime. This interface only allows priming a single endpoint at once-- that is, only one endpoint can be ready to receive data at a time. See the `enable` bit for usage."]
             #[inline(always)]
             pub fn epno(&self) -> EPNO_R {
                 EPNO_R::new((self.bits & 0x0f) as u8)
             }
         }
         impl W {
-            #[doc = "Bits 0:3 - usb0_ep0_out epno register field"]
+            #[doc = "Bits 0:3 - Selects the endpoint number to prime. This interface only allows priming a single endpoint at once-- that is, only one endpoint can be ready to receive data at a time. See the `enable` bit for usage."]
             #[inline(always)]
             #[must_use]
             pub fn epno(&mut self) -> EPNO_W<0> {
@@ -3939,19 +3939,19 @@ pub mod usb0_ep0_out {
                 W(writer)
             }
         }
-        #[doc = "Field `enable` reader - usb0_ep0_out enable register field"]
+        #[doc = "Field `enable` reader - Controls whether any data can be received on any primed OUT endpoint. This bit is automatically cleared on receive in order to give the controller time to read data from the FIFO. It must be re-enabled once the FIFO has been emptied."]
         pub type ENABLE_R = crate::BitReader<bool>;
-        #[doc = "Field `enable` writer - usb0_ep0_out enable register field"]
+        #[doc = "Field `enable` writer - Controls whether any data can be received on any primed OUT endpoint. This bit is automatically cleared on receive in order to give the controller time to read data from the FIFO. It must be re-enabled once the FIFO has been emptied."]
         pub type ENABLE_W<'a, const O: u8> = crate::BitWriter<'a, u32, ENABLE_SPEC, bool, O>;
         impl R {
-            #[doc = "Bit 0 - usb0_ep0_out enable register field"]
+            #[doc = "Bit 0 - Controls whether any data can be received on any primed OUT endpoint. This bit is automatically cleared on receive in order to give the controller time to read data from the FIFO. It must be re-enabled once the FIFO has been emptied."]
             #[inline(always)]
             pub fn enable(&self) -> ENABLE_R {
                 ENABLE_R::new((self.bits & 1) != 0)
             }
         }
         impl W {
-            #[doc = "Bit 0 - usb0_ep0_out enable register field"]
+            #[doc = "Bit 0 - Controls whether any data can be received on any primed OUT endpoint. This bit is automatically cleared on receive in order to give the controller time to read data from the FIFO. It must be re-enabled once the FIFO has been emptied."]
             #[inline(always)]
             #[must_use]
             pub fn enable(&mut self) -> ENABLE_W<0> {
@@ -4009,10 +4009,10 @@ pub mod usb0_ep0_out {
                 W(writer)
             }
         }
-        #[doc = "Field `prime` writer - usb0_ep0_out prime register field"]
+        #[doc = "Field `prime` writer - Controls \"priming\" an out endpoint. To receive data on any endpoint, the CPU must first select the endpoint with the `epno` register; and then write a '1' into the prime and enable register. This prepares our FIFO to receive data; and the next OUT transaction will be captured into the FIFO. When a transaction is complete, the `enable` bit is reset; the `prime` is not. This effectively means that `enable` controls receiving on _any_ of the primed endpoints; while `prime` can be used to build a collection of endpoints willing to participate in receipt. Only one transaction / data packet is captured per `enable` write; repeated enabling is necessary to capture multiple packets."]
         pub type PRIME_W<'a, const O: u8> = crate::BitWriter<'a, u32, PRIME_SPEC, bool, O>;
         impl W {
-            #[doc = "Bit 0 - usb0_ep0_out prime register field"]
+            #[doc = "Bit 0 - Controls \"priming\" an out endpoint. To receive data on any endpoint, the CPU must first select the endpoint with the `epno` register; and then write a '1' into the prime and enable register. This prepares our FIFO to receive data; and the next OUT transaction will be captured into the FIFO. When a transaction is complete, the `enable` bit is reset; the `prime` is not. This effectively means that `enable` controls receiving on _any_ of the primed endpoints; while `prime` can be used to build a collection of endpoints willing to participate in receipt. Only one transaction / data packet is captured per `enable` write; repeated enabling is necessary to capture multiple packets."]
             #[inline(always)]
             #[must_use]
             pub fn prime(&mut self) -> PRIME_W<0> {
@@ -4081,19 +4081,19 @@ pub mod usb0_ep0_out {
                 W(writer)
             }
         }
-        #[doc = "Field `stall` reader - usb0_ep0_out stall register field"]
+        #[doc = "Field `stall` reader - Controls STALL'ing the active endpoint. Setting or clearing this bit will set or clear STALL on the provided endpoint. Endpoint STALLs persist even after `epno` is changed; so multiple endpoints can be stalled at once by writing their respective endpoint numbers into `epno` register and then setting their `stall` bits."]
         pub type STALL_R = crate::BitReader<bool>;
-        #[doc = "Field `stall` writer - usb0_ep0_out stall register field"]
+        #[doc = "Field `stall` writer - Controls STALL'ing the active endpoint. Setting or clearing this bit will set or clear STALL on the provided endpoint. Endpoint STALLs persist even after `epno` is changed; so multiple endpoints can be stalled at once by writing their respective endpoint numbers into `epno` register and then setting their `stall` bits."]
         pub type STALL_W<'a, const O: u8> = crate::BitWriter<'a, u32, STALL_SPEC, bool, O>;
         impl R {
-            #[doc = "Bit 0 - usb0_ep0_out stall register field"]
+            #[doc = "Bit 0 - Controls STALL'ing the active endpoint. Setting or clearing this bit will set or clear STALL on the provided endpoint. Endpoint STALLs persist even after `epno` is changed; so multiple endpoints can be stalled at once by writing their respective endpoint numbers into `epno` register and then setting their `stall` bits."]
             #[inline(always)]
             pub fn stall(&self) -> STALL_R {
                 STALL_R::new((self.bits & 1) != 0)
             }
         }
         impl W {
-            #[doc = "Bit 0 - usb0_ep0_out stall register field"]
+            #[doc = "Bit 0 - Controls STALL'ing the active endpoint. Setting or clearing this bit will set or clear STALL on the provided endpoint. Endpoint STALLs persist even after `epno` is changed; so multiple endpoints can be stalled at once by writing their respective endpoint numbers into `epno` register and then setting their `stall` bits."]
             #[inline(always)]
             #[must_use]
             pub fn stall(&mut self) -> STALL_W<0> {
@@ -4145,10 +4145,10 @@ pub mod usb0_ep0_out {
                 R(reader)
             }
         }
-        #[doc = "Field `have` reader - usb0_ep0_out have register field"]
+        #[doc = "Field `have` reader - `1` iff data is available in the FIFO."]
         pub type HAVE_R = crate::BitReader<bool>;
         impl R {
-            #[doc = "Bit 0 - usb0_ep0_out have register field"]
+            #[doc = "Bit 0 - `1` iff data is available in the FIFO."]
             #[inline(always)]
             pub fn have(&self) -> HAVE_R {
                 HAVE_R::new((self.bits & 1) != 0)
@@ -4187,10 +4187,10 @@ pub mod usb0_ep0_out {
                 R(reader)
             }
         }
-        #[doc = "Field `pend` reader - usb0_ep0_out pend register field"]
+        #[doc = "Field `pend` reader - `1` iff an interrupt is pending"]
         pub type PEND_R = crate::BitReader<bool>;
         impl R {
-            #[doc = "Bit 0 - usb0_ep0_out pend register field"]
+            #[doc = "Bit 0 - `1` iff an interrupt is pending"]
             #[inline(always)]
             pub fn pend(&self) -> PEND_R {
                 PEND_R::new((self.bits & 1) != 0)
@@ -4250,20 +4250,20 @@ pub mod usb0_ep0_out {
                 W(writer)
             }
         }
-        #[doc = "Field `address` reader - usb0_ep0_out address register field"]
+        #[doc = "Field `address` reader - Controls the current device's USB address. Should be written after a SET_ADDRESS request is received. Automatically resets back to zero on a USB reset."]
         pub type ADDRESS_R = crate::FieldReader<u8, u8>;
-        #[doc = "Field `address` writer - usb0_ep0_out address register field"]
+        #[doc = "Field `address` writer - Controls the current device's USB address. Should be written after a SET_ADDRESS request is received. Automatically resets back to zero on a USB reset."]
         pub type ADDRESS_W<'a, const O: u8> =
             crate::FieldWriter<'a, u32, ADDRESS_SPEC, u8, u8, 8, O>;
         impl R {
-            #[doc = "Bits 0:7 - usb0_ep0_out address register field"]
+            #[doc = "Bits 0:7 - Controls the current device's USB address. Should be written after a SET_ADDRESS request is received. Automatically resets back to zero on a USB reset."]
             #[inline(always)]
             pub fn address(&self) -> ADDRESS_R {
                 ADDRESS_R::new((self.bits & 0xff) as u8)
             }
         }
         impl W {
-            #[doc = "Bits 0:7 - usb0_ep0_out address register field"]
+            #[doc = "Bits 0:7 - Controls the current device's USB address. Should be written after a SET_ADDRESS request is received. Automatically resets back to zero on a USB reset."]
             #[inline(always)]
             #[must_use]
             pub fn address(&mut self) -> ADDRESS_W<0> {
@@ -4336,19 +4336,19 @@ pub mod usb0_ep0_out {
                 W(writer)
             }
         }
-        #[doc = "Field `pid` reader - usb0_ep0_out pid register field"]
+        #[doc = "Field `pid` reader - Contains the current PID toggle bit for the given endpoint."]
         pub type PID_R = crate::BitReader<bool>;
-        #[doc = "Field `pid` writer - usb0_ep0_out pid register field"]
+        #[doc = "Field `pid` writer - Contains the current PID toggle bit for the given endpoint."]
         pub type PID_W<'a, const O: u8> = crate::BitWriter<'a, u32, PID_SPEC, bool, O>;
         impl R {
-            #[doc = "Bit 0 - usb0_ep0_out pid register field"]
+            #[doc = "Bit 0 - Contains the current PID toggle bit for the given endpoint."]
             #[inline(always)]
             pub fn pid(&self) -> PID_R {
                 PID_R::new((self.bits & 1) != 0)
             }
         }
         impl W {
-            #[doc = "Bit 0 - usb0_ep0_out pid register field"]
+            #[doc = "Bit 0 - Contains the current PID toggle bit for the given endpoint."]
             #[inline(always)]
             #[must_use]
             pub fn pid(&mut self) -> PID_W<0> {
