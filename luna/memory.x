@@ -4,7 +4,7 @@
 MEMORY {
     bootrom       : ORIGIN = 0x00000000, LENGTH = 0x00004000
     scratchpad    : ORIGIN = 0x00008000, LENGTH = 0x00001000
-    internal_sram : ORIGIN = 0x40000000, LENGTH = 0x00002000
+    internal_sram : ORIGIN = 0x40000000, LENGTH = 0x00004000
 }
 
 REGION_ALIAS("REGION_TEXT",   internal_sram);

@@ -124,6 +124,7 @@ class LunaSoCExample(Elaboratable):
 
 # - main ----------------------------------------------------------------------
 
+import luna
 from luna.gateware.platform.ulx3s     import ULX3S_85F_Platform
 from luna.gateware.platform.luna_r0_4 import LUNAPlatformRev0D4
 
@@ -131,7 +132,7 @@ from luna.gateware.platform.luna_r0_4 import LUNAPlatformRev0D4
 if __name__ == "__main__":
     from generate import Generate
 
-    # Disable UnusedElaboarable warnings
+    # Disable UnusedElaborable warnings
     from amaranth._unused   import MustUse
     MustUse._MustUse__silence = True
 
@@ -142,9 +143,9 @@ if __name__ == "__main__":
     logging.getLogger().setLevel(logging.DEBUG)
 
     # select platform
-    platform = LUNAPlatformRev0D4()
+    platform = luna.gateware.platform.get_appropriate_platform()
+    #platform = LUNAPlatformRev0D4()
     #platform = ULX3S_85F_Platform()
-    #platform = luna.gateware.platform.get_appropriate_platform()
 
     # create design
     # TODO ideally we should be able to get clk_freq from platform
@@ -158,13 +159,13 @@ if __name__ == "__main__":
         logging.error("Unsupported platform: {}".format(platform))
         sys.exit()
 
-    # TODO fix build
+    # TODO fix litex build
     thirdparty = os.path.join(build_dir, "lambdasoc.soc.cpu/bios/3rdparty/litex")
     if not os.path.exists(thirdparty):
         logging.info("Fixing build, creating output directory: ", thirdparty)
         os.makedirs(thirdparty)
 
-    # build bios
+    # build litex bios
     logging.info("Building bios")
     design.soc.build(name="soc",
                      build_dir=build_dir,
@@ -174,7 +175,7 @@ if __name__ == "__main__":
     logging.info("Building soc")
     products = platform.build(design, do_program=False, build_dir=build_dir)
 
-    # Log resources
+    # log resources
     from lunasoc import Introspect
     Introspect(design.soc).log_resources()
 
@@ -200,7 +201,6 @@ if __name__ == "__main__":
     logging.info("Generating svd file: {}".format(path))
     with open(os.path.join(path, "lunasoc.svd"), "w") as f:
         generate.svd(file=f)
-
 
     print("Build completed. Use 'make load' to load bitsream to device.")
 
