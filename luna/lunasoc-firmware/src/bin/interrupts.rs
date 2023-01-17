@@ -1,30 +1,26 @@
-#![allow(dead_code, unused_mut, unused_variables)]
 #![no_std]
 #![no_main]
 
 use panic_halt as _;
 use riscv_rt::entry;
 
-use lunasoc_hal as hal;
-use lunasoc_pac as pac;
+use firmware::{hal, pac};
+use lunasoc_firmware as firmware;
 
-use hal::Serial;
-use hal::Timer;
-
-use core::fmt::Write;
-
-const SYSTEM_CLOCK_FREQUENCY: u32 = 60_000_000;
+use log::{error, info};
 
 #[entry]
 fn main() -> ! {
     let peripherals = pac::Peripherals::take().unwrap();
 
-    let leds = &peripherals.LEDS;
-    let mut timer = Timer::new(peripherals.TIMER, SYSTEM_CLOCK_FREQUENCY);
-    let mut uart = Serial::new(peripherals.UART);
+    // initialize logging
+    let serial = hal::Serial::new(peripherals.UART);
+    firmware::log::init(serial);
 
     // configure and enable timer
-    timer.set_timeout_ticks(SYSTEM_CLOCK_FREQUENCY / 2);
+    let one_second = firmware::SYSTEM_CLOCK_FREQUENCY;
+    let mut timer = hal::Timer::new(peripherals.TIMER, one_second);
+    timer.set_timeout_ticks(one_second / 2);
     timer.enable();
 
     // enable timer events
@@ -42,11 +38,15 @@ fn main() -> ! {
         pac::csr::interrupt::enable(pac::Interrupt::TIMER)
     }
 
+    info!("Peripherals initialized, entering main loop.");
+
+    let mut uptime = 1;
     loop {
         unsafe {
-            riscv::asm::delay(SYSTEM_CLOCK_FREQUENCY);
+            riscv::asm::delay(firmware::SYSTEM_CLOCK_FREQUENCY);
+            uptime += 1;
         }
-        writeln!(uart, "Ping").unwrap();
+        info!("Uptime: {} seconds", uptime);
     }
 }
 
@@ -57,7 +57,7 @@ fn MachineExternal() {
     static mut TOGGLE: bool = true;
 
     if unsafe { pac::csr::interrupt::pending(pac::Interrupt::TIMER) } {
-        let mut timer = unsafe { Timer::summon() };
+        let mut timer = unsafe { hal::Timer::summon() };
         timer.clear_irq();
 
         // blinkenlights
@@ -71,7 +71,6 @@ fn MachineExternal() {
         }
         unsafe { TOGGLE = !TOGGLE };
     } else {
-        let mut uart = unsafe { Serial::summon() };
-        writeln!(uart, "MachineExternal - unknown interrupt").unwrap();
+        error!("MachineExternal - unknown interrupt");
     }
 }

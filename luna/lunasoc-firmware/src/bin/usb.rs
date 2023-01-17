@@ -6,28 +6,27 @@
 use panic_halt as _;
 use riscv_rt::entry;
 
-use firmware::hal;
-use firmware::pac;
-use lunasoc_firmware as firmware;
-
-use core::fmt::Write;
-use hal::Serial;
-
 use hal::hal::delay::DelayUs;
-use hal::Timer;
+
+use firmware::{hal, pac};
+use lunasoc_firmware as firmware;
 
 use firmware::usb::{UsbControlRequest, UsbControlRequestType, UsbInterface0, UsbSetupRequest};
 use firmware::SYSTEM_CLOCK_FREQUENCY;
 use firmware::{Error, Result};
 
-static mut SERIAL: Serial = unsafe { Serial::summon() };
+use log::{debug, error, info};
 
 #[entry]
 fn main() -> ! {
     let peripherals = pac::Peripherals::take().unwrap();
 
+    // initialize logging
+    let serial = hal::Serial::new(peripherals.UART);
+    firmware::log::init(serial);
+
     let leds = &peripherals.LEDS;
-    let mut timer = Timer::new(peripherals.TIMER, SYSTEM_CLOCK_FREQUENCY);
+    let mut timer = hal::Timer::new(peripherals.TIMER, SYSTEM_CLOCK_FREQUENCY);
 
     let usb0 = UsbInterface0 {
         usb: peripherals.USB0,
@@ -39,9 +38,9 @@ fn main() -> ! {
     leds.output.write(|w| unsafe { w.output().bits(0xff) });
     timer.delay_ms(2000).unwrap();
 
-    //writeln!(unsafe { &mut SERIAL }, "Connecting USB device...").unwrap();
+    info!("Connecting USB device...");
     usb0.usb.connect.write(|w| w.connect().bit(true));
-    //writeln!(unsafe { &mut SERIAL }, "Connected.").unwrap();
+    info!("Connected.");
 
     loop {
         leds.output.write(|w| unsafe { w.output().bits(0x00) });
@@ -49,7 +48,7 @@ fn main() -> ! {
         let setup_request = match read_setup_request(&usb0) {
             Ok(setup_request) => setup_request,
             Err(e) => {
-                writeln!(unsafe { &mut SERIAL }, "  Error {:?}", e).unwrap();
+                error!("  Error {:?}", e);
                 loop {}
             }
         };
@@ -57,16 +56,10 @@ fn main() -> ! {
         // handle setup request
         match handle_setup_request(&usb0, &setup_request) {
             Ok(()) => {
-                writeln!(unsafe { &mut SERIAL }, "  Ok: {:?}", setup_request).unwrap();
+                debug!("  Ok: {:?}", setup_request);
             }
             Err(e) => {
-                writeln!(
-                    unsafe { &mut SERIAL },
-                    "  Error {:?}: {:?}",
-                    e,
-                    setup_request
-                )
-                    .unwrap();
+                error!("  Error {:?}: {:?}", e, setup_request);
                 loop {}
             }
         };
@@ -77,7 +70,7 @@ fn main() -> ! {
 // - read_setup_request -------------------------------------------------------
 
 fn read_setup_request(usb0: &UsbInterface0) -> Result<UsbSetupRequest> {
-    writeln!(unsafe { &mut SERIAL }, "\n=> read_setup_request()").unwrap();
+    debug!("\n=> read_setup_request()");
 
     let mut buf = [0_u8; 8];
     for i in 0..7 {
@@ -97,14 +90,14 @@ fn read_setup_request(usb0: &UsbInterface0) -> Result<UsbSetupRequest> {
 // - handle_setup_request -----------------------------------------------------
 
 fn handle_setup_request(usb0: &UsbInterface0, setup_request: &UsbSetupRequest) -> Result<()> {
-    writeln!(unsafe { &mut SERIAL }, "=> handle_setup_request()",).unwrap();
+    debug!("=> handle_setup_request()",);
 
     // Extract the type (e.g. standard/class/vendor) from our SETUP request.
     let bits: u8 = (setup_request.request_type >> 5) & 0b0000_0011;
     let request_type = UsbControlRequestType::try_from(bits)?;
 
     // TODO: Get rid of this once we move to be fully compatible with ValentyUSB.
-    //usb0.ep0_in.pid.write(|w| w.pid().bit(true));
+    usb0.ep0_in.pid.write(|w| w.pid().bit(true));
 
     // If this isn't a standard request, stall it.
     if request_type != UsbControlRequestType::Standard {
@@ -116,7 +109,7 @@ fn handle_setup_request(usb0: &UsbInterface0, setup_request: &UsbSetupRequest) -
     let request = match UsbControlRequest::try_from(setup_request.request) {
         Ok(request) => request,
         Err(e) => {
-            writeln!(unsafe { &mut SERIAL }, "OOPSIE",).unwrap();
+            error!("OOPSIE",);
             handle_unhandled_request(usb0, setup_request)?;
             return Err(e);
         }
@@ -134,7 +127,7 @@ fn handle_setup_request(usb0: &UsbInterface0, setup_request: &UsbSetupRequest) -
 }
 
 fn handle_set_address(usb0: &UsbInterface0, setup_request: &UsbSetupRequest) -> Result<()> {
-    writeln!(unsafe { &mut SERIAL }, "  -> handle_set_address()").unwrap();
+    debug!("  -> handle_set_address()");
 
     usb0.ack_status_stage(setup_request);
 
@@ -149,7 +142,7 @@ fn handle_set_address(usb0: &UsbInterface0, setup_request: &UsbSetupRequest) -> 
 }
 
 fn handle_get_descriptor(usb0: &UsbInterface0, setup_request: &UsbSetupRequest) -> Result<()> {
-    writeln!(unsafe { &mut SERIAL }, "  -> handle_get_descriptor()").unwrap();
+    debug!("  -> handle_get_descriptor()");
 
     let [descriptor_number, descriptor_type] = setup_request.value.to_le_bytes();
     let descriptor_type = UsbControlRequest::try_from(descriptor_type)?;
@@ -180,7 +173,7 @@ fn handle_get_descriptor(usb0: &UsbInterface0, setup_request: &UsbSetupRequest) 
 }
 
 fn handle_set_configuration(usb0: &UsbInterface0, setup_request: &UsbSetupRequest) -> Result<()> {
-    writeln!(unsafe { &mut SERIAL }, "  -> handle_set_configuration()").unwrap();
+    debug!("  -> handle_set_configuration()");
 
     let configuration = setup_request.value;
     if configuration > 1 {
@@ -194,7 +187,7 @@ fn handle_set_configuration(usb0: &UsbInterface0, setup_request: &UsbSetupReques
 }
 
 fn handle_unhandled_request(usb0: &UsbInterface0, setup_request: &UsbSetupRequest) -> Result<()> {
-    writeln!(unsafe { &mut SERIAL }, "  -> handle_unhandled_request()",).unwrap();
+    debug!("  -> handle_unhandled_request()",);
 
     usb0.stall_request();
 
