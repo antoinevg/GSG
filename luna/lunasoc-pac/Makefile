@@ -1,7 +1,5 @@
 SVD := ../hello-lunasoc/build/gensvd/lunasoc.svd
 
-# TODO --const_generic
-
 svd2rust:
 	rm -rf build src/generated.rs src/generated/
 	mkdir build
@@ -16,22 +14,8 @@ svd2rust:
 	mv src/generated/lib.rs src/generated.rs
 	cargo fmt -- --emit files
 
-
-
-svd2rust_old:
-	rm -rf build src svd
-	mkdir build src svd
-
-	cp $(SVD) svd/lunasoc.svd
-
-	svd2rust -i svd/lunasoc.svd -o build/ --target riscv --const_generic
-	mv build/lib.rs src
-	mv build/build.rs .
-	mv build/device.x .
-
-	form -i src/lib.rs -o src/
-	cd src && cargo fmt -- --emit files
-
+doc:
+	cargo doc --no-deps --all-features --document-private-items --open
 
 distclean:
 	rm -rf build/ target/ src/generated.rs src/generated/ svd/lunasoc.svd
