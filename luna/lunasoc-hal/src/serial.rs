@@ -48,6 +48,7 @@ macro_rules! impl_serial {
                 fn write_str(&mut self, s: &str) -> core::fmt::Result {
                     use $crate::hal::serial::Write;
                     self.write(s.as_bytes()).ok();
+                    self.flush().ok();
                     Ok(())
                 }
             }
