@@ -15,9 +15,8 @@ const SYSTEM_CLOCK_FREQUENCY: u32 = 10_000_000;
 #[entry]
 fn main() -> ! {
     let peripherals = pac::Peripherals::take().unwrap();
-
-    let mut timer = Timer::new(peripherals.TIMER, SYSTEM_CLOCK_FREQUENCY);
     let leds = &peripherals.LEDS;
+    let mut timer = Timer::new(peripherals.TIMER, SYSTEM_CLOCK_FREQUENCY);
 
     let mut direction = true;
     let mut led_state = 0b11000000;
@@ -36,8 +35,7 @@ fn main() -> ! {
                 direction = true;
             }
         }
-        unsafe {
-            leds.output.write(|w| w.output().bits(led_state));
-        }
+
+        leds.output.write(|w| unsafe { w.output().bits(led_state) });
     }
 }

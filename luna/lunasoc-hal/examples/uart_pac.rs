@@ -13,6 +13,7 @@ fn main() -> ! {
     let peripherals = pac::Peripherals::take().unwrap();
     let leds = &peripherals.LEDS;
     let timer = &peripherals.TIMER;
+    let uart = &peripherals.UART;
 
     let mut direction = true;
     let mut led_state = 0b11000000;
@@ -24,11 +25,13 @@ fn main() -> ! {
             led_state >>= 1;
             if led_state == 0b00000011 {
                 direction = false;
+                uart_tx(uart, "left\n");
             }
         } else {
             led_state <<= 1;
             if led_state == 0b11000000 {
                 direction = true;
+                uart_tx(uart, "right\n");
             }
         }
 
@@ -50,4 +53,15 @@ fn delay_ms(timer: &pac::TIMER, sys_clk: u32, ms: u32) {
 
     timer.en.write(|w| w.en().bit(false));
     timer.reload.write(|w| unsafe { w.reload().bits(0) });
+}
+
+fn uart_tx(uart: &pac::UART, string: &str) {
+    for c in string.chars() {
+        while uart.tx_rdy.read().tx_rdy().bit() == false {
+            unsafe {
+                riscv::asm::nop();
+            }
+        }
+        uart.tx_data.write(|w| unsafe { w.tx_data().bits(c as u8) })
+    }
 }
