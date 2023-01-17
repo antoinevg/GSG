@@ -123,7 +123,7 @@ macro_rules! impl_timer {
                 type Error = core::convert::Infallible;
 
                 fn delay_us(&mut self, us: u32) -> Result<(), Self::Error> {
-                    let ticks: u32 = (self.clk / 1_000_000) * us;
+                    let ticks: u32 = (self.clk * us) / 1_000_000;
 
                     // start timer
                     self.registers.en.write(|w| w.en().bit(true));
