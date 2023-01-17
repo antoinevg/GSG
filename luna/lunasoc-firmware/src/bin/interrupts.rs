@@ -7,7 +7,7 @@ use riscv_rt::entry;
 use firmware::{hal, pac};
 use lunasoc_firmware as firmware;
 
-use log::{error, info};
+use log::{debug, error, info};
 
 #[entry]
 fn main() -> ! {
@@ -59,6 +59,8 @@ fn MachineExternal() {
     if unsafe { pac::csr::interrupt::pending(pac::Interrupt::TIMER) } {
         let mut timer = unsafe { hal::Timer::summon() };
         timer.clear_irq();
+
+        debug!("MachineExternal - timer interrupt");
 
         // blinkenlights
         let peripherals = unsafe { pac::Peripherals::steal() };

@@ -7,50 +7,57 @@ use crate::{hal, pac};
 
 use log::{Level, LevelFilter, Metadata, Record};
 
+use core::cell::RefCell;
 use core::fmt::Write;
 
 // - initialization -----------------------------------------------------------
 
-static LOGGER: WriteLogger = WriteLogger {
+static LOGGER: WriteLogger<hal::Serial> = WriteLogger {
+    writer: RefCell::new(None),
     level: Level::Debug,
 };
 
 pub fn init(writer: hal::Serial) {
-    unsafe {
-        log::set_logger_racy(&LOGGER)
-            .map(|()| log::set_max_level(LevelFilter::Debug))
-            .unwrap();
-    }
+    LOGGER.writer.replace(Some(writer));
+
+    // TODO we need support for atomics to use log::set_logger()
+    unsafe { log::set_logger_racy(&LOGGER) }
+        .map(|()| log::set_max_level(LevelFilter::Debug))
+        .unwrap();
 }
 
 // - implementation -----------------------------------------------------------
 
 /// WriteLogger
-pub struct WriteLogger
-//<W>
-//where
-//    W: Write
+pub struct WriteLogger<W>
+where
+    W: Write + Send,
 {
-    //pub writer: Option<W>,
+    pub writer: RefCell<Option<W>>,
     pub level: Level,
 }
 
-//static GLOBAL_LOGGER: Logger<hal::Serial> = Logger {
-//    writer: None,
-//    level: LevelFilter::Error
-//};
-
-impl log::Log for WriteLogger {
+impl<W> log::Log for WriteLogger<W>
+where
+    W: Write + Send,
+{
     fn enabled(&self, metadata: &Metadata) -> bool {
         metadata.level() <= self.level
     }
 
     fn log(&self, record: &Record) {
-        //let peripherals = unsafe { pac::Peripherals::steal() };
-        //let mut serial = hal::Serial::new(peripherals.UART);
-        let mut serial = unsafe { hal::Serial::summon() };
-        writeln!(serial, "{} - {}", record.level(), record.args()).unwrap();
+        riscv::interrupt::free(|| match self.writer.borrow_mut().as_mut() {
+            Some(writer) => writeln!(writer, "{} - {}", record.level(), record.args())
+                .expect("Logger failed to write to device"),
+            None => {
+                panic!("Logger has not been initialized");
+            }
+        })
     }
 
     fn flush(&self) {}
 }
+
+// TODO add support for critical-section crate
+// TODO implement a riscv::interrupt::Mutex
+unsafe impl<W: Write + Send> Sync for WriteLogger<W> {}

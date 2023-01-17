@@ -105,11 +105,11 @@ fn handle_setup_request(usb0: &UsbInterface0, setup_request: &UsbSetupRequest) -
         return Err(Error::RequestTypeIsNotStandard);
     }
 
-    // TODO if this fails it should stall
+    // Check if it's a valid request
     let request = match UsbControlRequest::try_from(setup_request.request) {
         Ok(request) => request,
         Err(e) => {
-            error!("OOPSIE",);
+            error!("  invalid request: {}", setup_request.request);
             handle_unhandled_request(usb0, setup_request)?;
             return Err(e);
         }
