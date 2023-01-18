@@ -20,12 +20,8 @@ pub const SYSTEM_CLOCK_FREQUENCY: u32 = 60_000_000;
 
 #[derive(Debug)]
 pub enum Error {
-    InvalidControlRequestType,
-    InvalidControlRequest,
-    RequestTypeIsNotStandard,
-    RequestIsUnknown,
-    DescriptorIsUnknown,
-    ConfigurationIsUnknown,
+    // TODO move these into a usb::Error
+    FailedConversion,
     Unknown,
 }
 

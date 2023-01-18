@@ -1,9 +1,12 @@
 //! Simple USB implementation
 
-use crate::pac;
-use crate::Error;
+mod request;
+
+pub use request::*;
 
 // - UsbInterface0 ------------------------------------------------------------
+
+use crate::pac;
 
 pub struct UsbInterface0 {
     pub usb: pac::USB0,
@@ -14,7 +17,7 @@ pub struct UsbInterface0 {
 
 impl UsbInterface0 {
     /// Acknowledge the status stage of an incoming control request.
-    pub fn ack_status_stage(&self, setup_request: &UsbSetupRequest) {
+    pub fn ack_status_stage(&self, setup_request: &SetupPacket) {
         // If this is an IN request, read a zero-length packet (ZLP) from the host..
         if (setup_request.request_type & MASK_DIRECTION_IN) != 0 {
             self.prime_receive(0);
@@ -38,7 +41,7 @@ impl UsbInterface0 {
         self.ep0_out.enable.write(|w| w.enable().bit(true));
     }
 
-    pub fn send_control_response(&self, setup_request: &UsbSetupRequest, buffer: &[u8]) {
+    pub fn send_control_response(&self, setup_request: &SetupPacket, buffer: &[u8]) {
         // if the host is requesting less than the maximum amount of data,
         // only respond with the amount requested
         let requested_length = setup_request.length as usize;
@@ -72,80 +75,3 @@ impl UsbInterface0 {
         self.ep0_out.stall.write(|w| w.stall().bit(true));
     }
 }
-
-// - UsbSetupRequest ----------------------------------------------------------
-
-#[repr(C)]
-#[derive(Clone, Copy, Debug)]
-pub struct UsbSetupRequest {
-    pub request_type: u8,
-    pub request: u8,
-    pub value: u16,
-    pub index: u16,
-    pub length: u16,
-}
-
-// - types --------------------------------------------------------------------
-
-// see: https://www.beyondlogic.org/usbnutshell/usb6.shtml
-
-// TODO implement other bits of bmRequestType apart from Type
-// TODO look at some kind of bit struct
-#[derive(Debug, PartialEq)]
-#[repr(u8)]
-pub enum UsbControlRequestType {
-    Standard = 0x00,
-    Class = 0x01,
-    Vendor = 0x02,
-    Reserved = 0x03,
-}
-
-impl TryFrom<u8> for UsbControlRequestType {
-    type Error = crate::Error;
-
-    fn try_from(value: u8) -> core::result::Result<Self, Self::Error> {
-        let result = match value {
-            0x00 => UsbControlRequestType::Standard,
-            0x01 => UsbControlRequestType::Class,
-            0x02 => UsbControlRequestType::Vendor,
-            0x03 => UsbControlRequestType::Reserved,
-            _ => return Err(Error::InvalidControlRequestType),
-        };
-        Ok(result)
-    }
-}
-
-#[derive(Debug, PartialEq)]
-#[repr(u8)]
-pub enum UsbControlRequest {
-    // request types
-    SetAddress = 0x05,
-    GetDescriptor = 0x06,
-    SetConfiguration = 0x09,
-
-    // descriptor types
-    DescriptorDevice = 0x01,
-    DescriptorConfiguration = 0x02,
-    DescriptorString = 0x03,
-}
-
-impl TryFrom<u8> for UsbControlRequest {
-    type Error = crate::Error;
-
-    fn try_from(value: u8) -> core::result::Result<Self, Self::Error> {
-        let result = match value {
-            0x05 => UsbControlRequest::SetAddress,
-            0x06 => UsbControlRequest::GetDescriptor,
-            0x09 => UsbControlRequest::SetConfiguration,
-            0x01 => UsbControlRequest::DescriptorDevice,
-            0x02 => UsbControlRequest::DescriptorConfiguration,
-            0x03 => UsbControlRequest::DescriptorString,
-            _ => return Err(Error::InvalidControlRequest),
-        };
-        Ok(result)
-    }
-}
-
-// - constants ----------------------------------------------------------------
-
-const MASK_DIRECTION_IN: u8 = 0b1000_0000; // 0x80

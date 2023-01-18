@@ -42,11 +42,12 @@ fn main() -> ! {
 
     let mut uptime = 1;
     loop {
+        info!("Uptime: {} seconds", uptime);
+
         unsafe {
             riscv::asm::delay(firmware::SYSTEM_CLOCK_FREQUENCY);
-            uptime += 1;
         }
-        info!("Uptime: {} seconds", uptime);
+        uptime += 1;
     }
 }
 
