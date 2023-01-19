@@ -9,8 +9,8 @@ AR=riscv64-unknown-elf-ar
 CC=riscv64-unknown-elf-gcc
 OBJCOPY=riscv64-unknown-elf-objcopy
 
-CFLAGS	= -march=rv32im -mabi=ilp32 -g -Os
-LDFLAGS = -Tsoc.ld -Triscv_application.ld  -nostdlib
+CFLAGS	= -march=rv32im -mabi=ilp32 -g -Os -I./build/genc/
+LDFLAGS = -Tsoc.ld -Triscv_application.ld  -nostdlib -L./build/genc/ -L./examples/
 
 LUNASOC_PAC := ../lunasoc-pac
 
@@ -28,24 +28,25 @@ load2:
 
 # - cgen ----------------------------------------------------------------------
 
-blinky.elf: #soc.ld resources.h
-	$(CC) $(CFLAGS) $(LDFLAGS) start.S blinky.c -o $@
+build/examples/blinky.elf: #soc.ld resources.h
+	mkdir -p build/examples/
+	$(CC) $(CFLAGS) $(LDFLAGS) examples/blinky.S examples/blinky.c -o $@
 
-blinky.bin: blinky.elf
+build/examples/blinky.bin: build/examples/blinky.elf
 	$(OBJCOPY) -O binary $< $@
 
-flash: blinky.bin
-	lxterm --kernel ./blinky.bin --kernel-adr 0x40000000 --speed 115200 $(UART)
+blinky: build/examples/blinky.bin
+	lxterm --kernel ./build/examples/blinky.bin --kernel-adr 0x40000000 --speed 115200 $(UART)
 
-timer.elf: timer.c timer.S soc.ld resources.h
-	$(CC) $(CFLAGS) $(LDFLAGS) timer.S timer.c -o $@
+build/examples/timer.elf: #soc.ld resources.h
+	mkdir -p build/examples/
+	$(CC) $(CFLAGS) $(LDFLAGS) examples/timer.S examples/timer.c -o $@
 
-timer.bin: timer.elf
+build/examples/timer.bin: build/examples/timer.elf
 	$(OBJCOPY) -O binary $< $@
 
-flash_timer: timer.bin
-	lxterm --kernel ./timer.bin --kernel-adr 0x40000000 --speed 115200 $(UART)
-
+timer: build/examples/timer.bin
+	lxterm --kernel ./build/examples/timer.bin --kernel-adr 0x40000000 --speed 115200 $(UART)
 
 
 # - gensvd --------------------------------------------------------------------
