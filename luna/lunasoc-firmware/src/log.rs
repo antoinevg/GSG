@@ -47,8 +47,10 @@ where
 
     fn log(&self, record: &Record) {
         riscv::interrupt::free(|| match self.writer.borrow_mut().as_mut() {
-            Some(writer) => writeln!(writer, "{} - {}", record.level(), record.args())
-                .expect("Logger failed to write to device"),
+            Some(writer) => {
+                writeln!(writer, "{} - {}", record.level(), record.args())
+                    .expect("Logger failed to write to device");
+            }
             None => {
                 panic!("Logger has not been initialized");
             }

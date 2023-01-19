@@ -41,7 +41,7 @@ impl UsbInterface0 {
         self.ep_out.enable.write(|w| w.enable().bit(true));
     }
 
-    pub fn send_control_response(&self, setup_request: &SetupPacket, buffer: &[u8]) {
+    pub fn send_packet_control_response(&self, setup_request: &SetupPacket, buffer: &[u8]) {
         // if the host is requesting less than the maximum amount of data,
         // only respond with the amount requested
         let requested_length = setup_request.length as usize;

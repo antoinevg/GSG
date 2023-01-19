@@ -1,5 +1,4 @@
 #![feature(error_in_core)]
-
 #![no_std]
 
 // - modules ------------------------------------------------------------------
@@ -22,6 +21,7 @@ pub const SYSTEM_CLOCK_FREQUENCY: u32 = 60_000_000;
 pub enum Error {
     // TODO move these into a usb::Error
     FailedConversion,
+    Timeout,
     Unknown,
 }
 

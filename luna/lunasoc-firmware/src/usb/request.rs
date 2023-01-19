@@ -1,12 +1,9 @@
 ///! The Setup Packet
 ///!
 ///! see: https://www.beyondlogic.org/usbnutshell/usb6.shtml
-
 use crate::Error;
 
-
 // - UsbSetupRequest ----------------------------------------------------------
-
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
@@ -20,7 +17,6 @@ pub struct SetupPacket {
     pub index: u16,
     pub length: u16,
 }
-
 
 // - request_type -------------------------------------------------------------
 

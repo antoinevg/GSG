@@ -1,7 +1,7 @@
 #!/usr/bin/env zsh
 
 # configuration
-UART=/dev/cu.usbmodem22301
+UART=/dev/cu.usbmodem22401
 BASE_MEM=0x40000000
 
 # create bin file

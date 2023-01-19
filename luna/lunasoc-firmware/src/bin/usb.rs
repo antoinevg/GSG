@@ -51,7 +51,7 @@ fn main() -> ! {
             Ok(setup_request) => setup_request,
             Err(e) => {
                 error!("  Error {:?}", e);
-                loop {}
+                continue;
             }
         };
 
@@ -74,10 +74,16 @@ fn main() -> ! {
 fn read_setup_request(usb0: &UsbInterface0) -> Result<SetupPacket> {
     debug!("# read_setup_request()");
 
+    let mut counter = 0;
     let mut buf = [0_u8; 8];
     for i in 0..7 {
         // block until setup data is available
-        while !usb0.setup.have.read().have().bit() {}
+        while !usb0.setup.have.read().have().bit() {
+            counter += 1;
+            if counter > 60_000_000 {
+                return Err(Error::Timeout);
+            }
+        }
 
         // read next byte
         buf[i] = usb0.setup.data.read().data().bits();
@@ -182,8 +188,11 @@ fn handle_set_address(usb0: &UsbInterface0, setup_request: &SetupPacket) -> Resu
 fn handle_get_status(usb0: &UsbInterface0, setup_request: &SetupPacket) -> Result<()> {
     debug!("  -> handle_get_status()");
 
-    let status: u16 = 0x00; // 0b01 = self powered, 0b10 = remote wakeup enabled
-    usb0.send_control_response(setup_request, &status.to_le_bytes());
+    usb0.ack_status_stage(setup_request);
+
+    //let status: u16 = 0x01; // 0b01 = self powered, 0b10 = remote wakeup enabled
+    //usb0.send_packet_control_response(setup_request, &status.to_le_bytes());
+    //usb0.send_packet(0, &status.to_le_bytes());
 
     Ok(())
 }
@@ -204,18 +213,20 @@ fn handle_get_descriptor(usb0: &UsbInterface0, setup_request: &SetupPacket) -> R
     let descriptor_type = Descriptor::try_from(descriptor_type)?;
 
     match (descriptor_number, &descriptor_type) {
-        (_, Descriptor::Device) => usb0.send_control_response(setup_request, USB_DEVICE_DESCRIPTOR),
+        (_, Descriptor::Device) => {
+            usb0.send_packet_control_response(setup_request, USB_DEVICE_DESCRIPTOR)
+        }
         (0, Descriptor::Configuration) => {
-            usb0.send_control_response(setup_request, USB_CONFIG_DESCRIPTOR)
+            usb0.send_packet_control_response(setup_request, USB_CONFIG_DESCRIPTOR)
         }
         (0, Descriptor::String) => {
-            usb0.send_control_response(setup_request, USB_STRING0_DESCRIPTOR)
+            usb0.send_packet_control_response(setup_request, USB_STRING0_DESCRIPTOR)
         }
         (1, Descriptor::String) => {
-            usb0.send_control_response(setup_request, USB_STRING1_DESCRIPTOR)
+            usb0.send_packet_control_response(setup_request, USB_STRING1_DESCRIPTOR)
         }
         (2, Descriptor::String) => {
-            usb0.send_control_response(setup_request, USB_STRING2_DESCRIPTOR)
+            usb0.send_packet_control_response(setup_request, USB_STRING2_DESCRIPTOR)
         }
         _ => {
             warn!(

@@ -5,7 +5,7 @@
 TARGET		= blinky
 BAUDRATE	= 115200
 SERIALPORT ?= /dev/ttyACM0
-UART := /dev/cu.usbmodem22301
+UART := /dev/cu.usbmodem22401
 
 CROSS  ?= riscv64-unknown-elf-
 

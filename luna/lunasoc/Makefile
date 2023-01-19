@@ -1,7 +1,7 @@
 SHELL := /bin/zsh
 
-UART := /dev/cu.usbmodem22301
-#UART := /dev/cu.usbmodem22401
+#UART := /dev/cu.usbmodem22301
+UART := /dev/cu.usbmodem22401
 #UART := /dev/cu.usbmodem22101
 
 YOSYS_BIN := ~/GreatScott/gsg.git/luna/toolchain/oss-cad-suite/bin
@@ -47,6 +47,16 @@ build/examples/timer.bin: build/examples/timer.elf
 
 timer: build/examples/timer.bin
 	lxterm --kernel ./build/examples/timer.bin --kernel-adr 0x40000000 --speed 115200 $(UART)
+
+build/examples/eptri.elf: #soc.ld resources.h
+	mkdir -p build/examples/
+	$(CC) $(CFLAGS) $(LDFLAGS) examples/eptri.S examples/eptri.c -o $@
+
+build/examples/eptri.bin: build/examples/eptri.elf
+	$(OBJCOPY) -O binary $< $@
+
+eptri: build/examples/eptri.bin
+	lxterm --kernel ./build/examples/eptri.bin --kernel-adr 0x40000000 --speed 115200 $(UART)
 
 
 # - gensvd --------------------------------------------------------------------

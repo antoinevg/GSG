@@ -79,11 +79,11 @@ class LunaSoCExample(Elaboratable):
         self.usb0_setup = SetupFIFOInterface()
         self.soc.add_peripheral(self.usb0_setup, as_submodule=False)
 
-        self.usb0_ep0_in = InFIFOInterface()
-        self.soc.add_peripheral(self.usb0_ep0_in, as_submodule=False)
+        self.usb0_ep_in = InFIFOInterface()
+        self.soc.add_peripheral(self.usb0_ep_in, as_submodule=False)
 
-        self.usb0_ep0_out = OutFIFOInterface()
-        self.soc.add_peripheral(self.usb0_ep0_out, as_submodule=False)
+        self.usb0_ep_out = OutFIFOInterface()
+        self.soc.add_peripheral(self.usb0_ep_out, as_submodule=False)
 
         # ... and our LED peripheral, for simple output.
         self.leds = LedPeripheral()
@@ -116,8 +116,8 @@ class LunaSoCExample(Elaboratable):
 
         # add our eptri endpoint handlers
         usb_device.add_endpoint(self.usb0_setup)
-        usb_device.add_endpoint(self.usb0_ep0_in)
-        usb_device.add_endpoint(self.usb0_ep0_out)
+        usb_device.add_endpoint(self.usb0_ep_in)
+        usb_device.add_endpoint(self.usb0_ep_out)
 
         return m
 
