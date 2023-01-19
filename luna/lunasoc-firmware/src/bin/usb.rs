@@ -33,8 +33,8 @@ fn main() -> ! {
     let usb0 = UsbInterface0 {
         usb: peripherals.USB0,
         setup: peripherals.USB0_SETUP,
-        ep0_in: peripherals.USB0_EP0_IN,
-        ep0_out: peripherals.USB0_EP0_OUT,
+        ep_in: peripherals.USB0_EP_IN,
+        ep_out: peripherals.USB0_EP_OUT,
     };
 
     leds.output.write(|w| unsafe { w.output().bits(0xff) });
@@ -128,7 +128,7 @@ fn handle_setup_request(usb0: &UsbInterface0, setup_request: &SetupPacket) -> Re
     };
 
     // TODO: Get rid of this once we move to be fully compatible with ValentyUSB.
-    usb0.ep0_in.pid.write(|w| w.pid().bit(true));
+    usb0.ep_in.pid.write(|w| w.pid().bit(true));
 
     // If this isn't a standard request, stall it.
     if request_type != RequestType::Standard {

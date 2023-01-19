@@ -10,10 +10,10 @@ pub enum Interrupt {
     USB0 = 2,
     #[doc = "3 - usb0_setup"]
     USB0_SETUP = 3,
-    #[doc = "4 - usb0_ep0_in"]
-    USB0_EP0_IN = 4,
-    #[doc = "5 - usb0_ep0_out"]
-    USB0_EP0_OUT = 5,
+    #[doc = "4 - usb0_ep_in"]
+    USB0_EP_IN = 4,
+    #[doc = "5 - usb0_ep_out"]
+    USB0_EP_OUT = 5,
 }
 #[doc = r" TryFromInterruptError"]
 #[derive(Debug, Copy, Clone)]
@@ -27,8 +27,8 @@ impl Interrupt {
             1 => Ok(Interrupt::UART),
             2 => Ok(Interrupt::USB0),
             3 => Ok(Interrupt::USB0_SETUP),
-            4 => Ok(Interrupt::USB0_EP0_IN),
-            5 => Ok(Interrupt::USB0_EP0_OUT),
+            4 => Ok(Interrupt::USB0_EP_IN),
+            5 => Ok(Interrupt::USB0_EP_OUT),
             _ => Err(TryFromInterruptError(())),
         }
     }

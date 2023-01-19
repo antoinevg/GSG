@@ -22,7 +22,7 @@ impl R {
         HAVE_R::new((self.bits & 1) != 0)
     }
 }
-#[doc = "usb0_ep0_in have register\n\nThis register you can [`read`](crate::generic::Reg::read). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [have](index.html) module"]
+#[doc = "usb0_ep_in have register\n\nThis register you can [`read`](crate::generic::Reg::read). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [have](index.html) module"]
 pub struct HAVE_SPEC;
 impl crate::RegisterSpec for HAVE_SPEC {
     type Ux = u32;

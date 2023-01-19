@@ -34,19 +34,19 @@ impl From<crate::W<EV_PENDING_SPEC>> for W {
         W(writer)
     }
 }
-#[doc = "Field `pending` reader - usb0_ep0_in pending register field"]
+#[doc = "Field `pending` reader - usb0_ep_out pending register field"]
 pub type PENDING_R = crate::BitReader<bool>;
-#[doc = "Field `pending` writer - usb0_ep0_in pending register field"]
+#[doc = "Field `pending` writer - usb0_ep_out pending register field"]
 pub type PENDING_W<'a, const O: u8> = crate::BitWriter<'a, u32, EV_PENDING_SPEC, bool, O>;
 impl R {
-    #[doc = "Bit 0 - usb0_ep0_in pending register field"]
+    #[doc = "Bit 0 - usb0_ep_out pending register field"]
     #[inline(always)]
     pub fn pending(&self) -> PENDING_R {
         PENDING_R::new((self.bits & 1) != 0)
     }
 }
 impl W {
-    #[doc = "Bit 0 - usb0_ep0_in pending register field"]
+    #[doc = "Bit 0 - usb0_ep_out pending register field"]
     #[inline(always)]
     #[must_use]
     pub fn pending(&mut self) -> PENDING_W<0> {
@@ -59,7 +59,7 @@ impl W {
         self
     }
 }
-#[doc = "usb0_ep0_in ev_pending register\n\nThis register you can [`read`](crate::generic::Reg::read), [`write_with_zero`](crate::generic::Reg::write_with_zero), [`reset`](crate::generic::Reg::reset), [`write`](crate::generic::Reg::write), [`modify`](crate::generic::Reg::modify). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [ev_pending](index.html) module"]
+#[doc = "usb0_ep_out ev_pending register\n\nThis register you can [`read`](crate::generic::Reg::read), [`write_with_zero`](crate::generic::Reg::write_with_zero), [`reset`](crate::generic::Reg::reset), [`write`](crate::generic::Reg::write), [`modify`](crate::generic::Reg::modify). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [ev_pending](index.html) module"]
 pub struct EV_PENDING_SPEC;
 impl crate::RegisterSpec for EV_PENDING_SPEC {
     type Ux = u32;

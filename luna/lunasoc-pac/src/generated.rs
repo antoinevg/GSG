@@ -12,8 +12,8 @@ extern "C" {
     fn UART();
     fn USB0();
     fn USB0_SETUP();
-    fn USB0_EP0_IN();
-    fn USB0_EP0_OUT();
+    fn USB0_EP_IN();
+    fn USB0_EP_OUT();
 }
 #[doc(hidden)]
 pub union Vector {
@@ -31,10 +31,10 @@ pub static __EXTERNAL_INTERRUPTS: [Vector; 6] = [
         _handler: USB0_SETUP,
     },
     Vector {
-        _handler: USB0_EP0_IN,
+        _handler: USB0_EP_IN,
     },
     Vector {
-        _handler: USB0_EP0_OUT,
+        _handler: USB0_EP_OUT,
     },
 ];
 #[doc(hidden)]
@@ -152,62 +152,62 @@ impl core::fmt::Debug for USB0_SETUP {
 }
 #[doc = "USB0_SETUP"]
 pub mod usb0_setup;
-#[doc = "USB0_EP0_IN"]
-pub struct USB0_EP0_IN {
+#[doc = "USB0_EP_IN"]
+pub struct USB0_EP_IN {
     _marker: PhantomData<*const ()>,
 }
-unsafe impl Send for USB0_EP0_IN {}
-impl USB0_EP0_IN {
+unsafe impl Send for USB0_EP_IN {}
+impl USB0_EP_IN {
     #[doc = r"Pointer to the register block"]
-    pub const PTR: *const usb0_ep0_in::RegisterBlock = 0x5000_0080 as *const _;
+    pub const PTR: *const usb0_ep_in::RegisterBlock = 0x5000_0080 as *const _;
     #[doc = r"Return the pointer to the register block"]
     #[inline(always)]
-    pub const fn ptr() -> *const usb0_ep0_in::RegisterBlock {
+    pub const fn ptr() -> *const usb0_ep_in::RegisterBlock {
         Self::PTR
     }
 }
-impl Deref for USB0_EP0_IN {
-    type Target = usb0_ep0_in::RegisterBlock;
+impl Deref for USB0_EP_IN {
+    type Target = usb0_ep_in::RegisterBlock;
     #[inline(always)]
     fn deref(&self) -> &Self::Target {
         unsafe { &*Self::PTR }
     }
 }
-impl core::fmt::Debug for USB0_EP0_IN {
+impl core::fmt::Debug for USB0_EP_IN {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        f.debug_struct("USB0_EP0_IN").finish()
+        f.debug_struct("USB0_EP_IN").finish()
     }
 }
-#[doc = "USB0_EP0_IN"]
-pub mod usb0_ep0_in;
-#[doc = "USB0_EP0_OUT"]
-pub struct USB0_EP0_OUT {
+#[doc = "USB0_EP_IN"]
+pub mod usb0_ep_in;
+#[doc = "USB0_EP_OUT"]
+pub struct USB0_EP_OUT {
     _marker: PhantomData<*const ()>,
 }
-unsafe impl Send for USB0_EP0_OUT {}
-impl USB0_EP0_OUT {
+unsafe impl Send for USB0_EP_OUT {}
+impl USB0_EP_OUT {
     #[doc = r"Pointer to the register block"]
-    pub const PTR: *const usb0_ep0_out::RegisterBlock = 0x5000_0100 as *const _;
+    pub const PTR: *const usb0_ep_out::RegisterBlock = 0x5000_0100 as *const _;
     #[doc = r"Return the pointer to the register block"]
     #[inline(always)]
-    pub const fn ptr() -> *const usb0_ep0_out::RegisterBlock {
+    pub const fn ptr() -> *const usb0_ep_out::RegisterBlock {
         Self::PTR
     }
 }
-impl Deref for USB0_EP0_OUT {
-    type Target = usb0_ep0_out::RegisterBlock;
+impl Deref for USB0_EP_OUT {
+    type Target = usb0_ep_out::RegisterBlock;
     #[inline(always)]
     fn deref(&self) -> &Self::Target {
         unsafe { &*Self::PTR }
     }
 }
-impl core::fmt::Debug for USB0_EP0_OUT {
+impl core::fmt::Debug for USB0_EP_OUT {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        f.debug_struct("USB0_EP0_OUT").finish()
+        f.debug_struct("USB0_EP_OUT").finish()
     }
 }
-#[doc = "USB0_EP0_OUT"]
-pub mod usb0_ep0_out;
+#[doc = "USB0_EP_OUT"]
+pub mod usb0_ep_out;
 #[doc = "LEDS"]
 pub struct LEDS {
     _marker: PhantomData<*const ()>,
@@ -249,10 +249,10 @@ pub struct Peripherals {
     pub USB0: USB0,
     #[doc = "USB0_SETUP"]
     pub USB0_SETUP: USB0_SETUP,
-    #[doc = "USB0_EP0_IN"]
-    pub USB0_EP0_IN: USB0_EP0_IN,
-    #[doc = "USB0_EP0_OUT"]
-    pub USB0_EP0_OUT: USB0_EP0_OUT,
+    #[doc = "USB0_EP_IN"]
+    pub USB0_EP_IN: USB0_EP_IN,
+    #[doc = "USB0_EP_OUT"]
+    pub USB0_EP_OUT: USB0_EP_OUT,
     #[doc = "LEDS"]
     pub LEDS: LEDS,
 }
@@ -289,10 +289,10 @@ impl Peripherals {
             USB0_SETUP: USB0_SETUP {
                 _marker: PhantomData,
             },
-            USB0_EP0_IN: USB0_EP0_IN {
+            USB0_EP_IN: USB0_EP_IN {
                 _marker: PhantomData,
             },
-            USB0_EP0_OUT: USB0_EP0_OUT {
+            USB0_EP_OUT: USB0_EP_OUT {
                 _marker: PhantomData,
             },
             LEDS: LEDS {

@@ -22,7 +22,7 @@ impl R {
         IDLE_R::new((self.bits & 1) != 0)
     }
 }
-#[doc = "usb0_ep0_in idle register\n\nThis register you can [`read`](crate::generic::Reg::read). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [idle](index.html) module"]
+#[doc = "usb0_ep_in idle register\n\nThis register you can [`read`](crate::generic::Reg::read). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [idle](index.html) module"]
 pub struct IDLE_SPEC;
 impl crate::RegisterSpec for IDLE_SPEC {
     type Ux = u32;

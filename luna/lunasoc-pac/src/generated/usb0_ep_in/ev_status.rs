@@ -13,16 +13,16 @@ impl From<crate::R<EV_STATUS_SPEC>> for R {
         R(reader)
     }
 }
-#[doc = "Field `status` reader - usb0_ep0_out status register field"]
+#[doc = "Field `status` reader - usb0_ep_in status register field"]
 pub type STATUS_R = crate::BitReader<bool>;
 impl R {
-    #[doc = "Bit 0 - usb0_ep0_out status register field"]
+    #[doc = "Bit 0 - usb0_ep_in status register field"]
     #[inline(always)]
     pub fn status(&self) -> STATUS_R {
         STATUS_R::new((self.bits & 1) != 0)
     }
 }
-#[doc = "usb0_ep0_out ev_status register\n\nThis register you can [`read`](crate::generic::Reg::read). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [ev_status](index.html) module"]
+#[doc = "usb0_ep_in ev_status register\n\nThis register you can [`read`](crate::generic::Reg::read). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [ev_status](index.html) module"]
 pub struct EV_STATUS_SPEC;
 impl crate::RegisterSpec for EV_STATUS_SPEC {
     type Ux = u32;

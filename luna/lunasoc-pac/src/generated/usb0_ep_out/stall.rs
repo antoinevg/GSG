@@ -34,19 +34,19 @@ impl From<crate::W<STALL_SPEC>> for W {
         W(writer)
     }
 }
-#[doc = "Field `stall` reader - When this register contains '1', any IN tokens targeting `epno` will be responded to with a STALL token, rather than DATA or a NAK. For EP0, this register will automatically be cleared when a new SETUP token is received."]
+#[doc = "Field `stall` reader - Controls STALL'ing the active endpoint. Setting or clearing this bit will set or clear STALL on the provided endpoint. Endpoint STALLs persist even after `epno` is changed; so multiple endpoints can be stalled at once by writing their respective endpoint numbers into `epno` register and then setting their `stall` bits."]
 pub type STALL_R = crate::BitReader<bool>;
-#[doc = "Field `stall` writer - When this register contains '1', any IN tokens targeting `epno` will be responded to with a STALL token, rather than DATA or a NAK. For EP0, this register will automatically be cleared when a new SETUP token is received."]
+#[doc = "Field `stall` writer - Controls STALL'ing the active endpoint. Setting or clearing this bit will set or clear STALL on the provided endpoint. Endpoint STALLs persist even after `epno` is changed; so multiple endpoints can be stalled at once by writing their respective endpoint numbers into `epno` register and then setting their `stall` bits."]
 pub type STALL_W<'a, const O: u8> = crate::BitWriter<'a, u32, STALL_SPEC, bool, O>;
 impl R {
-    #[doc = "Bit 0 - When this register contains '1', any IN tokens targeting `epno` will be responded to with a STALL token, rather than DATA or a NAK. For EP0, this register will automatically be cleared when a new SETUP token is received."]
+    #[doc = "Bit 0 - Controls STALL'ing the active endpoint. Setting or clearing this bit will set or clear STALL on the provided endpoint. Endpoint STALLs persist even after `epno` is changed; so multiple endpoints can be stalled at once by writing their respective endpoint numbers into `epno` register and then setting their `stall` bits."]
     #[inline(always)]
     pub fn stall(&self) -> STALL_R {
         STALL_R::new((self.bits & 1) != 0)
     }
 }
 impl W {
-    #[doc = "Bit 0 - When this register contains '1', any IN tokens targeting `epno` will be responded to with a STALL token, rather than DATA or a NAK. For EP0, this register will automatically be cleared when a new SETUP token is received."]
+    #[doc = "Bit 0 - Controls STALL'ing the active endpoint. Setting or clearing this bit will set or clear STALL on the provided endpoint. Endpoint STALLs persist even after `epno` is changed; so multiple endpoints can be stalled at once by writing their respective endpoint numbers into `epno` register and then setting their `stall` bits."]
     #[inline(always)]
     #[must_use]
     pub fn stall(&mut self) -> STALL_W<0> {
@@ -59,7 +59,7 @@ impl W {
         self
     }
 }
-#[doc = "usb0_ep0_in stall register\n\nThis register you can [`read`](crate::generic::Reg::read), [`write_with_zero`](crate::generic::Reg::write_with_zero), [`reset`](crate::generic::Reg::reset), [`write`](crate::generic::Reg::write), [`modify`](crate::generic::Reg::modify). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [stall](index.html) module"]
+#[doc = "usb0_ep_out stall register\n\nThis register you can [`read`](crate::generic::Reg::read), [`write_with_zero`](crate::generic::Reg::write_with_zero), [`reset`](crate::generic::Reg::reset), [`write`](crate::generic::Reg::write), [`modify`](crate::generic::Reg::modify). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [stall](index.html) module"]
 pub struct STALL_SPEC;
 impl crate::RegisterSpec for STALL_SPEC {
     type Ux = u32;

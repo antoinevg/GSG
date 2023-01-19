@@ -11,8 +11,8 @@ use crate::pac;
 pub struct UsbInterface0 {
     pub usb: pac::USB0,
     pub setup: pac::USB0_SETUP,
-    pub ep0_in: pac::USB0_EP0_IN,
-    pub ep0_out: pac::USB0_EP0_OUT,
+    pub ep_in: pac::USB0_EP_IN,
+    pub ep_out: pac::USB0_EP_OUT,
 }
 
 impl UsbInterface0 {
@@ -30,15 +30,15 @@ impl UsbInterface0 {
     /// Prepare endpoint to receive a single OUT packet.
     pub fn prime_receive(&self, endpoint: u8) {
         // clear receive buffer
-        self.ep0_out.reset.write(|w| w.reset().bit(true));
+        self.ep_out.reset.write(|w| w.reset().bit(true));
 
         // select endpoint
-        self.ep0_out
+        self.ep_out
             .epno
             .write(|w| unsafe { w.epno().bits(endpoint) });
 
         // enable it to prime a read
-        self.ep0_out.enable.write(|w| w.enable().bit(true));
+        self.ep_out.enable.write(|w| w.enable().bit(true));
     }
 
     pub fn send_control_response(&self, setup_request: &SetupPacket, buffer: &[u8]) {
@@ -56,22 +56,22 @@ impl UsbInterface0 {
 
     pub fn send_packet(&self, endpoint: u8, buffer: &[u8]) {
         // clear output buffer
-        self.ep0_in.reset.write(|w| w.reset().bit(true));
+        self.ep_in.reset.write(|w| w.reset().bit(true));
 
         // send data
         for &word in buffer {
-            self.ep0_in.data.write(|w| unsafe { w.data().bits(word) })
+            self.ep_in.data.write(|w| unsafe { w.data().bits(word) })
         }
 
         // finally, prime IN endpoint
-        self.ep0_in
+        self.ep_in
             .epno
             .write(|w| unsafe { w.epno().bits(endpoint) });
     }
 
     /// Stalls the current control request.
     pub fn stall_request(&self) {
-        self.ep0_in.stall.write(|w| w.stall().bit(true));
-        self.ep0_out.stall.write(|w| w.stall().bit(true));
+        self.ep_in.stall.write(|w| w.stall().bit(true));
+        self.ep_out.stall.write(|w| w.stall().bit(true));
     }
 }

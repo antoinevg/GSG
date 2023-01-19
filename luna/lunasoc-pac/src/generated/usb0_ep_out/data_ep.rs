@@ -22,7 +22,7 @@ impl R {
         DATA_EP_R::new((self.bits & 0x0f) as u8)
     }
 }
-#[doc = "usb0_ep0_out data_ep register\n\nThis register you can [`read`](crate::generic::Reg::read). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [data_ep](index.html) module"]
+#[doc = "usb0_ep_out data_ep register\n\nThis register you can [`read`](crate::generic::Reg::read). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [data_ep](index.html) module"]
 pub struct DATA_EP_SPEC;
 impl crate::RegisterSpec for DATA_EP_SPEC {
     type Ux = u32;
