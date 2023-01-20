@@ -162,7 +162,7 @@ if __name__ == "__main__":
     # TODO fix litex build
     thirdparty = os.path.join(build_dir, "lambdasoc.soc.cpu/bios/3rdparty/litex")
     if not os.path.exists(thirdparty):
-        logging.info("Fixing build, creating output directory: ", thirdparty)
+        logging.info("Fixing build, creating output directory: {}".format(thirdparty))
         os.makedirs(thirdparty)
 
     # build litex bios

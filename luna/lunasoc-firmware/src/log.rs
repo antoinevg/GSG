@@ -14,7 +14,7 @@ use core::fmt::Write;
 
 static LOGGER: WriteLogger<hal::Serial> = WriteLogger {
     writer: RefCell::new(None),
-    level: Level::Debug,
+    level: Level::Trace,
 };
 
 pub fn init(writer: hal::Serial) {
@@ -22,7 +22,7 @@ pub fn init(writer: hal::Serial) {
 
     // TODO we need support for atomics to use log::set_logger()
     unsafe { log::set_logger_racy(&LOGGER) }
-        .map(|()| log::set_max_level(LevelFilter::Debug))
+        .map(|()| log::set_max_level(LevelFilter::Trace))
         .unwrap();
 }
 
@@ -50,6 +50,7 @@ where
             Some(writer) => {
                 writeln!(writer, "{} - {}", record.level(), record.args())
                     .expect("Logger failed to write to device");
+                //unsafe { riscv::asm::delay(6_000_000) };
             }
             None => {
                 panic!("Logger has not been initialized");

@@ -7,6 +7,9 @@ pub use request::*;
 // - UsbInterface0 ------------------------------------------------------------
 
 use crate::pac;
+use crate::{Error, Result};
+
+use log::trace;
 
 pub struct UsbInterface0 {
     pub usb: pac::USB0,
@@ -17,9 +20,9 @@ pub struct UsbInterface0 {
 
 impl UsbInterface0 {
     /// Acknowledge the status stage of an incoming control request.
-    pub fn ack_status_stage(&self, setup_request: &SetupPacket) {
+    pub fn ack_status_stage(&self, packet: &SetupPacket) {
         // If this is an IN request, read a zero-length packet (ZLP) from the host..
-        if (setup_request.request_type & MASK_DIRECTION_IN) != 0 {
+        if (packet.request_type & MASK_DIRECTION_IN) != 0 {
             self.prime_receive(0);
         } else {
             // ... otherwise, send a ZLP.
@@ -41,10 +44,10 @@ impl UsbInterface0 {
         self.ep_out.enable.write(|w| w.enable().bit(true));
     }
 
-    pub fn send_packet_control_response(&self, setup_request: &SetupPacket, buffer: &[u8]) {
+    pub fn send_packet_control_response(&self, packet: &SetupPacket, buffer: &[u8]) {
         // if the host is requesting less than the maximum amount of data,
         // only respond with the amount requested
-        let requested_length = setup_request.length as usize;
+        let requested_length = packet.length as usize;
         let buffer = if requested_length < buffer.len() {
             &buffer[0..requested_length]
         } else {
@@ -67,6 +70,27 @@ impl UsbInterface0 {
         self.ep_in
             .epno
             .write(|w| unsafe { w.epno().bits(endpoint) });
+
+        trace!("  TX: {:x?}", buffer);
+    }
+
+    pub fn read_packet(&self, buffer: &mut [u8]) -> Result<()> {
+        let mut counter = 0;
+
+        for i in 0..buffer.len() {
+            // block until setup data is available
+            while !self.setup.have.read().have().bit() {
+                counter += 1;
+                if counter > 60_000_000 {
+                    return Err(Error::Timeout);
+                }
+            }
+
+            // read next byte
+            buffer[i] = self.setup.data.read().data().bits();
+        }
+
+        Ok(())
     }
 
     /// Stalls the current control request.

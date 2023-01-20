@@ -17,7 +17,7 @@ use firmware::usb::{
 //use firmware::SYSTEM_CLOCK_FREQUENCY;
 use firmware::{Error, Result};
 
-use log::{debug, error, info, warn};
+use log::{debug, error, info, trace, warn};
 
 #[entry]
 fn main() -> ! {
@@ -47,8 +47,8 @@ fn main() -> ! {
     loop {
         leds.output.write(|w| unsafe { w.output().bits(0x00) });
         // read setup request
-        let setup_request = match read_setup_request(&usb0) {
-            Ok(setup_request) => setup_request,
+        let packet = match read_setup_request(&usb0) {
+            Ok(packet) => packet,
             Err(e) => {
                 error!("  Error {:?}", e);
                 continue;
@@ -56,12 +56,14 @@ fn main() -> ! {
         };
 
         // handle setup request
-        match handle_setup_request(&usb0, &setup_request) {
+        match handle_setup_request(&usb0, &packet) {
             Ok(()) => {
-                debug!("  Ok: {:?}", setup_request);
+                //debug!("  Ok: {:?}", packet);
+                debug!("OK");
+                debug!("");
             }
             Err(e) => {
-                error!("  Error {:?}: {:?}", e, setup_request);
+                error!("  Error {:?}: {:?}", e, packet);
                 loop {}
             }
         };
@@ -74,8 +76,11 @@ fn main() -> ! {
 fn read_setup_request(usb0: &UsbInterface0) -> Result<SetupPacket> {
     debug!("# read_setup_request()");
 
+    // read data packet
+    let mut buffer = [0_u8; 8];
+    //usb0.read_packet(&mut buffer)?;
+
     let mut counter = 0;
-    let mut buf = [0_u8; 8];
     for i in 0..7 {
         // block until setup data is available
         while !usb0.setup.have.read().have().bit() {
@@ -83,51 +88,53 @@ fn read_setup_request(usb0: &UsbInterface0) -> Result<SetupPacket> {
             if counter > 60_000_000 {
                 return Err(Error::Timeout);
             }
+
         }
+        counter = 0;
 
         // read next byte
-        buf[i] = usb0.setup.data.read().data().bits();
+        buffer[i] = usb0.setup.data.read().data().bits();
     }
 
     // Deserialize into a SetupRequest in the most cursed manner available to us.
-    let setup_request = unsafe { core::mem::transmute::<[u8; 8], SetupPacket>(buf) };
+    let packet = unsafe { core::mem::transmute::<[u8; 8], SetupPacket>(buffer) };
 
-    Ok(setup_request)
+    Ok(packet)
 }
 
 // - handle_setup_request -----------------------------------------------------
 
-fn handle_setup_request(usb0: &UsbInterface0, setup_request: &SetupPacket) -> Result<()> {
+fn handle_setup_request(usb0: &UsbInterface0, packet: &SetupPacket) -> Result<()> {
     debug!("# handle_setup_request()",);
 
     // Extract the recipient (e.g. device/interface/endpoint)
-    let bits: u8 = setup_request.request_type & 0b0001_1111;
+    let bits: u8 = packet.request_type & 0b0001_1111;
     let recipient = match Recipient::try_from(bits) {
         Ok(recipient) => recipient,
         Err(e) => {
-            warn!("  stall: unknown recipient: {}", bits);
+            warn!("  stall: unknown recipient");//: {}", bits);
             usb0.stall_request();
             return Ok(());
         }
     };
 
     // Extract the request type (e.g. standard/class/vendor) from our SETUP request.
-    let bits: u8 = (setup_request.request_type >> 5) & 0b0000_0011;
+    let bits: u8 = (packet.request_type >> 5) & 0b0000_0011;
     let request_type = match RequestType::try_from(bits) {
         Ok(request_type) => request_type,
         Err(e) => {
-            warn!("  stall: unknown request type: {}", bits);
+            warn!("  stall: unknown request type");//: {}", bits);
             usb0.stall_request();
             return Ok(());
         }
     };
 
     // Extract the direction
-    let bits: u8 = (setup_request.request_type >> 7) & 0b0000_0001;
+    let bits: u8 = (packet.request_type >> 7) & 0b0000_0001;
     let direction = match Direction::try_from(bits) {
         Ok(direction) => direction,
         Err(e) => {
-            warn!("  stall: unknown direction: {}", bits);
+            warn!("  stall: unknown direction");//: {}", bits);
             usb0.stall_request();
             return Ok(());
         }
@@ -144,23 +151,23 @@ fn handle_setup_request(usb0: &UsbInterface0, setup_request: &SetupPacket) -> Re
     }
 
     // Extract the request
-    let request = match Request::try_from(setup_request.request) {
+    let request = match Request::try_from(packet.request) {
         Ok(request) => request,
         Err(e) => {
-            warn!("  stall: unknown request: {}", setup_request.request);
+            warn!("  stall: unknown request");//: {}", packet.request);
             usb0.stall_request();
             return Ok(());
         }
     };
 
-    debug!("  dispatch: {:?} {:?} {:?}", recipient, direction, request);
+    debug!("  dispatch: {:?} {:?} {:?} {}, {}", recipient, direction, request, packet.value, packet.length);
 
     match request {
-        Request::SetAddress => handle_set_address(usb0, setup_request),
-        Request::GetStatus => handle_get_status(usb0, setup_request),
-        Request::SetDescriptor => handle_set_descriptor(usb0, setup_request),
-        Request::GetDescriptor => handle_get_descriptor(usb0, setup_request),
-        Request::SetConfiguration => handle_set_configuration(usb0, setup_request),
+        Request::SetAddress => handle_set_address(usb0, packet),
+        Request::GetStatus => handle_get_status(usb0, packet),
+        Request::SetDescriptor => handle_set_descriptor(usb0, packet),
+        Request::GetDescriptor => handle_get_descriptor(usb0, packet),
+        Request::SetConfiguration => handle_set_configuration(usb0, packet),
         _ => {
             warn!("  stall: unhandled request {:?}", request);
             usb0.stall_request();
@@ -169,14 +176,13 @@ fn handle_setup_request(usb0: &UsbInterface0, setup_request: &SetupPacket) -> Re
     }
 }
 
-fn handle_set_address(usb0: &UsbInterface0, setup_request: &SetupPacket) -> Result<()> {
-    debug!("  -> handle_set_address()");
+fn handle_set_address(usb0: &UsbInterface0, packet: &SetupPacket) -> Result<()> {
+    //debug!("  -> handle_set_address()");
 
-    usb0.ack_status_stage(setup_request);
+    usb0.ack_status_stage(packet);
 
     // TODO: SetupRequest.value is u16 but register expects u8 - is this correct?
-    let address: u8 = setup_request.value.try_into()?;
-
+    let address: u8 = packet.value.try_into()?;
     usb0.setup
         .address
         .write(|w| unsafe { w.address().bits(address) });
@@ -185,52 +191,72 @@ fn handle_set_address(usb0: &UsbInterface0, setup_request: &SetupPacket) -> Resu
 }
 
 /// ???
-fn handle_get_status(usb0: &UsbInterface0, setup_request: &SetupPacket) -> Result<()> {
+fn handle_get_status(usb0: &UsbInterface0, packet: &SetupPacket) -> Result<()> {
     debug!("  -> handle_get_status()");
 
-    usb0.ack_status_stage(setup_request);
-
+    //usb0.stall_request();
     //let status: u16 = 0x01; // 0b01 = self powered, 0b10 = remote wakeup enabled
-    //usb0.send_packet_control_response(setup_request, &status.to_le_bytes());
+    //usb0.send_packet_control_response(packet, &status.to_le_bytes());
     //usb0.send_packet(0, &status.to_le_bytes());
+    //usb0.send_packet(0, &[0x00, 0x00]);
+    //usb0.send_packet(0, &[]);
+
+    let length = packet.length as usize;
+    if length > 0 {
+        let mut data = [0_u8; 64]; // TODO
+        let data = &mut data[0..length];
+        usb0.read_packet(data)?;
+        trace!("  DATA {:x?}", data);
+
+    } else {
+        usb0.ack_status_stage(packet); // ???
+    }
 
     Ok(())
 }
 
 /// ???
-fn handle_set_descriptor(usb0: &UsbInterface0, setup_request: &SetupPacket) -> Result<()> {
-    debug!("  -> handle_set_descriptor()");
+fn handle_set_descriptor(usb0: &UsbInterface0, packet: &SetupPacket) -> Result<()> {
+    //debug!("  -> handle_set_descriptor()");
 
-    usb0.ack_status_stage(setup_request);
+    let descriptor = packet.value;
+    if descriptor > 1 {
+        warn!("  stall: unknown descriptor {}", descriptor);
+        usb0.stall_request();
+        return Ok(());
+    }
+
+    usb0.ack_status_stage(packet);
 
     Ok(())
 }
 
-fn handle_get_descriptor(usb0: &UsbInterface0, setup_request: &SetupPacket) -> Result<()> {
-    debug!("  -> handle_get_descriptor()");
+fn handle_get_descriptor(usb0: &UsbInterface0, packet: &SetupPacket) -> Result<()> {
+    //debug!("  -> handle_get_descriptor()");
 
-    let [descriptor_number, descriptor_type] = setup_request.value.to_le_bytes();
+    let [descriptor_number, descriptor_type] = packet.value.to_le_bytes();
     let descriptor_type = Descriptor::try_from(descriptor_type)?;
+    debug!("  -> handle_get_descriptor({}, {:?})", descriptor_number, descriptor_type);
 
-    match (descriptor_number, &descriptor_type) {
-        (_, Descriptor::Device) => {
-            usb0.send_packet_control_response(setup_request, USB_DEVICE_DESCRIPTOR)
+    match (&descriptor_type, descriptor_number) {
+        (Descriptor::Device, _) => {
+            usb0.send_packet_control_response(packet, USB_DEVICE_DESCRIPTOR)
         }
-        (0, Descriptor::Configuration) => {
-            usb0.send_packet_control_response(setup_request, USB_CONFIG_DESCRIPTOR)
+        (Descriptor::Configuration, 0) => {
+            usb0.send_packet_control_response(packet, USB_CONFIG_DESCRIPTOR)
         }
-        (0, Descriptor::String) => {
-            usb0.send_packet_control_response(setup_request, USB_STRING0_DESCRIPTOR)
+        (Descriptor::String, 0) => {
+            usb0.send_packet_control_response(packet, USB_STRING0_DESCRIPTOR)
         }
-        (1, Descriptor::String) => {
-            usb0.send_packet_control_response(setup_request, USB_STRING1_DESCRIPTOR)
+        (Descriptor::String, 1) => {
+            usb0.send_packet_control_response(packet, USB_STRING1_DESCRIPTOR)
         }
-        (2, Descriptor::String) => {
-            usb0.send_packet_control_response(setup_request, USB_STRING2_DESCRIPTOR)
+        (Descriptor::String, 2) => {
+            usb0.send_packet_control_response(packet, USB_STRING2_DESCRIPTOR)
         }
         _ => {
             warn!(
-                "  stall: unhandled descrptor {}.{:?}",
+                "  stall: unhandled descriptor {}.{:?}",
                 descriptor_number, descriptor_type
             );
             usb0.stall_request();
@@ -238,20 +264,22 @@ fn handle_get_descriptor(usb0: &UsbInterface0, setup_request: &SetupPacket) -> R
         }
     }
 
+    usb0.ack_status_stage(packet);
+
     Ok(())
 }
 
-fn handle_set_configuration(usb0: &UsbInterface0, setup_request: &SetupPacket) -> Result<()> {
-    debug!("  -> handle_set_configuration()");
+fn handle_set_configuration(usb0: &UsbInterface0, packet: &SetupPacket) -> Result<()> {
+    //debug!("  -> handle_set_configuration()");
 
-    let configuration = setup_request.value;
+    let configuration = packet.value;
     if configuration > 1 {
         warn!("  stall: unknown configuration {}", configuration);
         usb0.stall_request();
         return Ok(());
     }
 
-    usb0.ack_status_stage(setup_request);
+    usb0.ack_status_stage(packet);
 
     Ok(())
 }

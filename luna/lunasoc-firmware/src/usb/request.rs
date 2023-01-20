@@ -166,8 +166,8 @@ impl TryFrom<u8> for Descriptor {
 
     fn try_from(value: u8) -> core::result::Result<Self, Self::Error> {
         let result = match value {
-            0 => Descriptor::Device,
-            1 => Descriptor::Configuration,
+            1 => Descriptor::Device,
+            2 => Descriptor::Configuration,
             3 => Descriptor::String,
             _ => return Err(Error::FailedConversion),
         };

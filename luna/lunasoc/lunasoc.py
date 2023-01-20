@@ -43,7 +43,7 @@ class CoreSoC(CPUSoC, Elaboratable):
         super().__init__()
 
         # create cpu - TODO maybe do this _after_ we've added our RAM
-        self.internal_sram_size = 16384
+        self.internal_sram_size = 32768
         self.internal_sram_addr = 0x40000000
         cpu = MinervaCPU(
             with_debug    = with_debug,
