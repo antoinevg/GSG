@@ -13,12 +13,39 @@ use log::trace;
 
 pub struct UsbInterface0 {
     pub usb: pac::USB0,
-    pub setup: pac::USB0_SETUP,
+    pub ep_setup: pac::USB0_SETUP,
     pub ep_in: pac::USB0_EP_IN,
     pub ep_out: pac::USB0_EP_OUT,
 }
 
 impl UsbInterface0 {
+    /// Set the interface up for new connections
+    pub fn connect(&self) {
+        // clear all event handlers
+        self.ep_setup.ev_pending.modify(|r, w| w.pending().bit(r.pending().bit()));
+        self.ep_in.ev_pending.modify(|r, w| w.pending().bit(r.pending().bit()));
+        self.ep_out.ev_pending.modify(|r, w| w.pending().bit(r.pending().bit()));
+
+        // disable all events
+        self.ep_setup.ev_enable.write(|w| w.enable().bit(false));
+        self.ep_in.ev_enable.write(|w| w.enable().bit(false));
+        self.ep_out.ev_enable.write(|w| w.enable().bit(false));
+
+        // disconnect device controller
+        self.usb.connect.write(|w| w.connect().bit(false));
+
+        // reset device address to 0
+        self.ep_setup.address.write(|w| unsafe { w.address().bits(0) });
+
+        // clear FIFOs
+        self.ep_setup.reset.write(|w| w.reset().bit(true));
+        self.ep_in.reset.write(|w| w.reset().bit(true));
+        self.ep_out.reset.write(|w| w.reset().bit(true));
+
+        // connect device controller
+        self.usb.connect.write(|w| w.connect().bit(true));
+    }
+
     /// Acknowledge the status stage of an incoming control request.
     pub fn ack_status_stage(&self, packet: &SetupPacket) {
         // If this is an IN request, read a zero-length packet (ZLP) from the host..
@@ -44,7 +71,7 @@ impl UsbInterface0 {
         self.ep_out.enable.write(|w| w.enable().bit(true));
     }
 
-    pub fn send_packet_control_response(&self, packet: &SetupPacket, buffer: &[u8]) {
+    pub fn send_control_response(&self, packet: &SetupPacket, buffer: &[u8]) {
         // if the host is requesting less than the maximum amount of data,
         // only respond with the amount requested
         let requested_length = packet.length as usize;
@@ -59,19 +86,22 @@ impl UsbInterface0 {
 
     pub fn send_packet(&self, endpoint: u8, buffer: &[u8]) {
         // clear output buffer
-        self.ep_in.reset.write(|w| w.reset().bit(true));
+        if self.ep_in.have.read().have().bit() {
+            trace!("  clear tx");
+            self.ep_in.reset.write(|w| w.reset().bit(true));
+        }
 
         // send data
         for &word in buffer {
-            self.ep_in.data.write(|w| unsafe { w.data().bits(word) })
+            self.ep_in.data.write(|w| unsafe { w.data().bits(word) });
         }
 
         // finally, prime IN endpoint
         self.ep_in
             .epno
-            .write(|w| unsafe { w.epno().bits(endpoint) });
+            .write(|w| unsafe { w.epno().bits(endpoint & 0xf) });
 
-        trace!("  TX: {:x?}", buffer);
+        trace!("  TX {} bytes: {:x?}", buffer.len(), buffer);
     }
 
     pub fn read_packet(&self, buffer: &mut [u8]) -> Result<()> {
@@ -79,7 +109,7 @@ impl UsbInterface0 {
 
         for i in 0..buffer.len() {
             // block until setup data is available
-            while !self.setup.have.read().have().bit() {
+            while !self.ep_setup.have.read().have().bit() {
                 counter += 1;
                 if counter > 60_000_000 {
                     return Err(Error::Timeout);
@@ -87,8 +117,10 @@ impl UsbInterface0 {
             }
 
             // read next byte
-            buffer[i] = self.setup.data.read().data().bits();
+            buffer[i] = self.ep_setup.data.read().data().bits();
         }
+
+        trace!("  RX {} bytes: {:x?}", buffer.len(), buffer);
 
         Ok(())
     }
