@@ -20,4 +20,8 @@ pub mod interrupt {
         let pending = register::minerva::mip::read();
         (pending & (1 << interrupt as usize)) != 0
     }
+
+    pub unsafe fn irqno() -> usize {
+        register::minerva::mip::read()
+    }
 }
