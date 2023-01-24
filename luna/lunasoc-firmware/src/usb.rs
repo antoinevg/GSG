@@ -1,8 +1,8 @@
 //! Simple USB implementation
 
-mod request;
+mod control;
 
-pub use request::*;
+pub use control::*;
 
 // - UsbInterface0 ------------------------------------------------------------
 
@@ -50,15 +50,15 @@ impl UsbInterface0 {
     pub fn ack_status_stage(&self, packet: &SetupPacket) {
         // If this is an IN request, read a zero-length packet (ZLP) from the host..
         if (packet.request_type & MASK_DIRECTION_IN) != 0 {
-            self.prime_receive(0);
+            self.ep_out_prime_receive(0);
         } else {
             // ... otherwise, send a ZLP.
-            self.send_packet(0, &[]);
+            self.ep_in_send_packet(0, &[]);
         }
     }
 
     /// Prepare endpoint to receive a single OUT packet.
-    pub fn prime_receive(&self, endpoint: u8) {
+    pub fn ep_out_prime_receive(&self, endpoint: u8) {
         // clear receive buffer
         self.ep_out.reset.write(|w| w.reset().bit(true));
 
@@ -71,7 +71,7 @@ impl UsbInterface0 {
         self.ep_out.enable.write(|w| w.enable().bit(true));
     }
 
-    pub fn send_control_response(&self, packet: &SetupPacket, buffer: &[u8]) {
+    pub fn ep_in_send_control_response(&self, packet: &SetupPacket, buffer: &[u8]) {
         // if the host is requesting less than the maximum amount of data,
         // only respond with the amount requested
         let requested_length = packet.length as usize;
@@ -81,10 +81,10 @@ impl UsbInterface0 {
             buffer
         };
 
-        self.send_packet(0, buffer);
+        self.ep_in_send_packet(0, buffer);
     }
 
-    pub fn send_packet(&self, endpoint: u8, buffer: &[u8]) {
+    pub fn ep_in_send_packet(&self, endpoint: u8, buffer: &[u8]) {
         // clear output buffer
         if self.ep_in.have.read().have().bit() {
             trace!("  clear tx");
@@ -104,23 +104,32 @@ impl UsbInterface0 {
         trace!("  TX {} bytes: {:x?}", buffer.len(), buffer);
     }
 
-    pub fn read_packet(&self, buffer: &mut [u8]) -> Result<()> {
+    pub fn ep_setup_read_packet(&self, buffer: &mut [u8]) -> Result<()> {
+        // block until setup data is available
         let mut counter = 0;
-
-        for i in 0..buffer.len() {
-            // block until setup data is available
-            while !self.ep_setup.have.read().have().bit() {
-                counter += 1;
-                if counter > 60_000_000 {
-                    return Err(Error::Timeout);
-                }
+        while !self.ep_setup.have.read().have().bit() {
+            counter += 1;
+            if counter > 60_000_000 {
+                return Err(Error::Timeout);
             }
-
-            // read next byte
-            buffer[i] = self.ep_setup.data.read().data().bits();
         }
 
-        trace!("  RX {} bytes: {:x?}", buffer.len(), buffer);
+        // drain fifo
+        let mut bytes_read = 0;
+        let mut overflow = 0;
+        let mut drain = 0;
+        while self.ep_setup.have.read().have().bit() {
+            if bytes_read >= buffer.len() {
+                // drain
+                drain = self.ep_setup.data.read().data().bits();
+                overflow += 1;
+            } else {
+                buffer[bytes_read] = self.ep_setup.data.read().data().bits();
+                bytes_read += 1;
+            }
+        }
+
+        trace!("  RX {} + {} bytes: {:x?} - {:x}", bytes_read, overflow, buffer, drain);
 
         Ok(())
     }

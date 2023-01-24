@@ -22,6 +22,8 @@ pub enum Error {
     // TODO move these into a usb::Error
     FailedConversion,
     Timeout,
+    Overflow,
+    Underflow,
     Unknown,
 }
 

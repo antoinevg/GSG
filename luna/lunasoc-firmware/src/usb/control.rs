@@ -155,20 +155,36 @@ impl TryFrom<u8> for Feature {
 
 #[derive(Debug, PartialEq)]
 #[repr(u8)]
-pub enum Descriptor {
+pub enum DescriptorType {
     Device = 1,
     Configuration = 2,
     String = 3,
+    Interface = 4,
+    Endpoint = 5,
+    DeviceQualifier = 6,
+    OtherSpeedConfiguration = 7,
+    InterfacePower = 8,
+    OnTheGo = 9,
+    Debug = 10,
+    InterfaceAssociation = 11,
 }
 
-impl TryFrom<u8> for Descriptor {
+impl TryFrom<u8> for DescriptorType {
     type Error = crate::Error;
 
     fn try_from(value: u8) -> core::result::Result<Self, Self::Error> {
         let result = match value {
-            1 => Descriptor::Device,
-            2 => Descriptor::Configuration,
-            3 => Descriptor::String,
+            1 => DescriptorType::Device,
+            2 => DescriptorType::Configuration,
+            3 => DescriptorType::String,
+            4 => DescriptorType::Interface,
+            5 => DescriptorType::Endpoint,
+            6 => DescriptorType::DeviceQualifier,
+            7 => DescriptorType::OtherSpeedConfiguration,
+            8 => DescriptorType::InterfacePower,
+            9 => DescriptorType::OnTheGo,
+            10 => DescriptorType::Debug,
+            11 => DescriptorType::InterfaceAssociation,
             _ => return Err(Error::FailedConversion),
         };
         Ok(result)

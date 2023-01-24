@@ -10,7 +10,7 @@ use firmware::{hal, pac};
 use lunasoc_firmware as firmware;
 
 use firmware::usb::{
-    Descriptor, Direction, Recipient, Request, RequestType, SetupPacket, UsbInterface0,
+    DescriptorType, Direction, Recipient, Request, RequestType, SetupPacket, UsbInterface0,
 };
 use firmware::{Error, Result};
 
@@ -59,6 +59,7 @@ fn main() -> ! {
             }
             Err(e) => {
                 error!("  Error {:?}: {:?}", e, packet);
+                leds.output.write(|w| unsafe { w.output().bits(128) });
                 loop {}
             }
         };
@@ -72,7 +73,7 @@ fn read_setup_request(usb0: &UsbInterface0) -> Result<SetupPacket> {
 
     // read data packet
     let mut buffer = [0_u8; 8];
-    usb0.read_packet(&mut buffer)?;
+    usb0.ep_setup_read_packet(&mut buffer)?;
 
     // Deserialize into a SetupRequest in the most cursed manner available to us
     let packet = unsafe { core::mem::transmute::<[u8; 8], SetupPacket>(buffer) };
@@ -90,7 +91,7 @@ fn handle_setup_request(usb0: &UsbInterface0, packet: &SetupPacket) -> Result<()
     let recipient = match Recipient::try_from(bits) {
         Ok(recipient) => recipient,
         Err(e) => {
-            warn!("  stall: unknown recipient: {}", bits);
+            warn!("  stall: invalid recipient: {}", bits);
             usb0.stall_request();
             return Ok(());
         }
@@ -101,7 +102,7 @@ fn handle_setup_request(usb0: &UsbInterface0, packet: &SetupPacket) -> Result<()
     let request_type = match RequestType::try_from(bits) {
         Ok(request_type) => request_type,
         Err(e) => {
-            warn!("  stall: unknown request type: {}", bits);
+            warn!("  stall: invalid request type: {}", bits);
             usb0.stall_request();
             return Ok(());
         }
@@ -112,7 +113,7 @@ fn handle_setup_request(usb0: &UsbInterface0, packet: &SetupPacket) -> Result<()
     let direction = match Direction::try_from(bits) {
         Ok(direction) => direction,
         Err(e) => {
-            warn!("  stall: unknown direction: {}", bits);
+            warn!("  stall: invalid direction: {}", bits);
             usb0.stall_request();
             return Ok(());
         }
@@ -132,7 +133,7 @@ fn handle_setup_request(usb0: &UsbInterface0, packet: &SetupPacket) -> Result<()
     let request = match Request::try_from(packet.request) {
         Ok(request) => request,
         Err(e) => {
-            warn!("  stall: unknown request: {}", packet.request);
+            warn!("  stall: invalid request: {}", packet.request);
             usb0.stall_request();
             return Ok(());
         }
@@ -194,24 +195,32 @@ fn handle_set_descriptor(usb0: &UsbInterface0, packet: &SetupPacket) -> Result<(
 }
 
 fn handle_get_descriptor(usb0: &UsbInterface0, packet: &SetupPacket) -> Result<()> {
-    let [descriptor_number, numeric_descriptor_type] = packet.value.to_le_bytes();
-    let descriptor_type = Descriptor::try_from(numeric_descriptor_type)?;
+    // extract the descriptor type and number from our SETUP request
+    let [descriptor_number, descriptor_type_bits] = packet.value.to_le_bytes();
+    let descriptor_type = match DescriptorType::try_from(descriptor_type_bits) {
+        Ok(descriptor_type) => descriptor_type,
+        Err(e) => {
+            warn!("  stall: invalid descriptor type: {} {}", descriptor_type_bits, descriptor_number);
+            usb0.stall_request();
+            return Ok(());
+        }
+    };
 
     match (&descriptor_type, descriptor_number) {
-        (Descriptor::Device, _) => {
-            usb0.send_control_response(packet, USB_DEVICE_DESCRIPTOR)
+        (DescriptorType::Device, _) => {
+            usb0.ep_in_send_control_response(packet, USB_DEVICE_DESCRIPTOR)
         }
-        (Descriptor::Configuration, 0) => {
-            usb0.send_control_response(packet, USB_CONFIG_DESCRIPTOR)
+        (DescriptorType::Configuration, 0) => {
+            usb0.ep_in_send_control_response(packet, USB_CONFIG_DESCRIPTOR)
         }
-        (Descriptor::String, 0) => {
-            usb0.send_control_response(packet, USB_STRING0_DESCRIPTOR)
+        (DescriptorType::String, 0) => {
+            usb0.ep_in_send_control_response(packet, USB_STRING0_DESCRIPTOR)
         }
-        (Descriptor::String, 1) => {
-            usb0.send_control_response(packet, USB_STRING1_DESCRIPTOR)
+        (DescriptorType::String, 1) => {
+            usb0.ep_in_send_control_response(packet, USB_STRING1_DESCRIPTOR)
         }
-        (Descriptor::String, 2) => {
-            usb0.send_control_response(packet, USB_STRING2_DESCRIPTOR)
+        (DescriptorType::String, 2) => {
+            usb0.ep_in_send_control_response(packet, USB_STRING2_DESCRIPTOR)
         }
         _ => {
             warn!(
@@ -225,7 +234,7 @@ fn handle_get_descriptor(usb0: &UsbInterface0, packet: &SetupPacket) -> Result<(
 
     usb0.ack_status_stage(packet);
 
-    debug!("  -> handle_get_descriptor({:?}({}), {})", descriptor_type, numeric_descriptor_type, descriptor_number);
+    debug!("  -> handle_get_descriptor({:?}({}), {})", descriptor_type, descriptor_type_bits, descriptor_number);
 
     Ok(())
 }
