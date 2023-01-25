@@ -270,7 +270,7 @@
     <peripheral>
       <name>USB0</name>
       <groupName>USB0</groupName>
-      <baseAddress>0x50000000</baseAddress>
+      <baseAddress>0x80002000</baseAddress>
       <addressBlock>
         <offset>0</offset>
         <size>0x40</size>
@@ -366,7 +366,7 @@
     <peripheral>
       <name>USB0_SETUP</name>
       <groupName>USB0_SETUP</groupName>
-      <baseAddress>0x50000040</baseAddress>
+      <baseAddress>0x80002040</baseAddress>
       <addressBlock>
         <offset>0</offset>
         <size>0x40</size>
@@ -526,7 +526,7 @@
     <peripheral>
       <name>USB0_EP_IN</name>
       <groupName>USB0_EP_IN</groupName>
-      <baseAddress>0x50000080</baseAddress>
+      <baseAddress>0x80002080</baseAddress>
       <addressBlock>
         <offset>0</offset>
         <size>0x40</size>
@@ -723,7 +723,7 @@
     <peripheral>
       <name>USB0_EP_OUT</name>
       <groupName>USB0_EP_OUT</groupName>
-      <baseAddress>0x50000100</baseAddress>
+      <baseAddress>0x80002100</baseAddress>
       <addressBlock>
         <offset>0</offset>
         <size>0x80</size>
@@ -983,7 +983,7 @@
     <peripheral>
       <name>LEDS</name>
       <groupName>LEDS</groupName>
-      <baseAddress>0x50000180</baseAddress>
+      <baseAddress>0x80002180</baseAddress>
       <addressBlock>
         <offset>0</offset>
         <size>0x08</size>
@@ -1023,7 +1023,7 @@
       <memoryRegion>
         <name>INTERNAL_SRAM</name>
         <baseAddress>0x40000000</baseAddress>
-        <size>0x00004000</size>
+        <size>0x00008000</size>
       </memoryRegion>
     </memoryRegions>
     <constants/>

@@ -73,7 +73,7 @@ class LunaSoCExample(Elaboratable):
 
         # ... a core USB controller ...
         self.usb0 = USBDeviceController()
-        self.soc.add_peripheral(self.usb0, as_submodule=True, addr=0x50000000)
+        self.soc.add_peripheral(self.usb0, addr=0x80002000)
 
         # ... our eptri peripherals.
         self.usb0_setup = SetupFIFOInterface()

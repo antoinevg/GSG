@@ -1,4 +1,4 @@
-SVD := ../hello-lunasoc/build/gensvd/lunasoc.svd
+SVD := ../lunasoc/build/gensvd/lunasoc.svd
 
 svd2rust:
 	rm -rf build src/generated.rs src/generated/

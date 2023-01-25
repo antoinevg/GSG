@@ -103,7 +103,7 @@ pub struct USB0 {
 unsafe impl Send for USB0 {}
 impl USB0 {
     #[doc = r"Pointer to the register block"]
-    pub const PTR: *const usb0::RegisterBlock = 0x5000_0000 as *const _;
+    pub const PTR: *const usb0::RegisterBlock = 0x8000_2000 as *const _;
     #[doc = r"Return the pointer to the register block"]
     #[inline(always)]
     pub const fn ptr() -> *const usb0::RegisterBlock {
@@ -131,7 +131,7 @@ pub struct USB0_SETUP {
 unsafe impl Send for USB0_SETUP {}
 impl USB0_SETUP {
     #[doc = r"Pointer to the register block"]
-    pub const PTR: *const usb0_setup::RegisterBlock = 0x5000_0040 as *const _;
+    pub const PTR: *const usb0_setup::RegisterBlock = 0x8000_2040 as *const _;
     #[doc = r"Return the pointer to the register block"]
     #[inline(always)]
     pub const fn ptr() -> *const usb0_setup::RegisterBlock {
@@ -159,7 +159,7 @@ pub struct USB0_EP_IN {
 unsafe impl Send for USB0_EP_IN {}
 impl USB0_EP_IN {
     #[doc = r"Pointer to the register block"]
-    pub const PTR: *const usb0_ep_in::RegisterBlock = 0x5000_0080 as *const _;
+    pub const PTR: *const usb0_ep_in::RegisterBlock = 0x8000_2080 as *const _;
     #[doc = r"Return the pointer to the register block"]
     #[inline(always)]
     pub const fn ptr() -> *const usb0_ep_in::RegisterBlock {
@@ -187,7 +187,7 @@ pub struct USB0_EP_OUT {
 unsafe impl Send for USB0_EP_OUT {}
 impl USB0_EP_OUT {
     #[doc = r"Pointer to the register block"]
-    pub const PTR: *const usb0_ep_out::RegisterBlock = 0x5000_0100 as *const _;
+    pub const PTR: *const usb0_ep_out::RegisterBlock = 0x8000_2100 as *const _;
     #[doc = r"Return the pointer to the register block"]
     #[inline(always)]
     pub const fn ptr() -> *const usb0_ep_out::RegisterBlock {
@@ -215,7 +215,7 @@ pub struct LEDS {
 unsafe impl Send for LEDS {}
 impl LEDS {
     #[doc = r"Pointer to the register block"]
-    pub const PTR: *const leds::RegisterBlock = 0x5000_0180 as *const _;
+    pub const PTR: *const leds::RegisterBlock = 0x8000_2180 as *const _;
     #[doc = r"Return the pointer to the register block"]
     #[inline(always)]
     pub const fn ptr() -> *const leds::RegisterBlock {

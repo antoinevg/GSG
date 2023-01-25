@@ -260,11 +260,13 @@ class LunaSoC(CoreSoC):
         self._bus_decoder.add(peripheral.bus, **kwargs)
 
         try:
+            peripheral_irq = getattr(peripheral, "irq")
             index = self._interrupt_index
-            self._interrupt_index += 1
 
-            self.intc.add_irq(peripheral.irq, index)
+            self.intc.add_irq(peripheral_irq, index)
             self._interrupt_map[index] = peripheral
+
+            self._interrupt_index += 1
         except (AttributeError, NotImplementedError):
             # If the object has no associated IRQs, continue anyway.
             # This allows us to add devices with only Wishbone interfaces to our SoC.
