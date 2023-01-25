@@ -75,18 +75,20 @@ impl UsbInterface0 {
         self.ep_in.reset.write(|w| w.reset().bit(true));
         self.ep_out.reset.write(|w| w.reset().bit(true));
 
-        //self.listen();
+        self.listen();
 
         // connect device controller
         self.device.connect.write(|w| w.connect().bit(true));
 
         // TODO handle speed
         // 0: High, 1: Full, 2: Low, 3:SuperSpeed (incl SuperSpeed+)
-        let speed = self.device.speed.read().speed().bits();
+        let speed = 1; // self.device.speed.read().speed().bits();
         speed
     }
 
     pub fn reset(&mut self) -> u8 {
+        trace!("UsbInterface0::reset()");
+
         self.reset_count += 1;
 
         // disable endpoint events
@@ -116,10 +118,10 @@ impl UsbInterface0 {
     // TODO pass endpoint to enable events for
     pub fn listen(&self) {
         // clear all event handlers
-        self.device.ev_pending.write(|w| unsafe { w.bits(0xff) });
-        /*self.device
+        //self.device.ev_pending.write(|w| unsafe { w.bits(0xff) });
+        self.device
             .ev_pending
-            .modify(|r, w| w.pending().bit(r.pending().bit()));*/
+            .modify(|r, w| w.pending().bit(r.pending().bit()));
         self.ep_setup
             .ev_pending
             .modify(|r, w| w.pending().bit(r.pending().bit()));
@@ -131,10 +133,10 @@ impl UsbInterface0 {
             .modify(|r, w| w.pending().bit(r.pending().bit()));
 
         // enable device controller events for bus reset signal
+        self.device.ev_enable.write(|w| w.enable().bit(true));
         self.ep_in.ev_enable.write(|w| w.enable().bit(true));
         self.ep_out.ev_enable.write(|w| w.enable().bit(true));
         self.ep_setup.ev_enable.write(|w| w.enable().bit(true));
-        self.device.ev_enable.write(|w| w.enable().bit(true));
     }
 
     /// Acknowledge the status stage of an incoming control request.

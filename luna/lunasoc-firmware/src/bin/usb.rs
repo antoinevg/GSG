@@ -1,9 +1,32 @@
+#![feature(panic_info_message)]
 #![feature(error_in_core)]
-#![allow(dead_code, unused_imports, unused_variables)] // TODO
+#![allow(
+    dead_code,
+    unused_imports,
+    unreachable_code,
+    unused_mut,
+    unused_variables
+)] // TODO
 #![no_std]
 #![no_main]
 
-use panic_halt as _;
+//use panic_halt as _;
+#[panic_handler]
+#[no_mangle]
+fn panic(panic_info: &core::panic::PanicInfo) -> ! {
+    if let Some(message) = panic_info.message() {
+        error!("Panic: {}", message);
+    } else {
+        error!("Panic: Unknown");
+    }
+
+    if let Some(location) = panic_info.location() {
+        error!("'{}' : {}", location.file(), location.line(),);
+    }
+
+    loop {}
+}
+
 use riscv_rt::entry;
 
 use firmware::{hal, pac};
@@ -19,24 +42,32 @@ use log::{debug, error, info, trace, warn};
 #[entry]
 fn main() -> ! {
     let peripherals = pac::Peripherals::take().unwrap();
+    let leds = &peripherals.LEDS;
+    leds.output.write(|w| unsafe { w.output().bits(0x0) });
 
     // initialize logging
     let serial = hal::Serial::new(peripherals.UART);
     firmware::log::init(serial);
+    info!("logging initialized");
 
-    let leds = &peripherals.LEDS;
+    // timer
+    let sysclk = firmware::SYSTEM_CLOCK_FREQUENCY;
+    let mut timer = hal::Timer::new(peripherals.TIMER, sysclk);
+    timer.set_timeout_ticks(sysclk * 1);
+    timer.enable();
+    timer.listen(hal::timer::Event::TimeOut);
+
+    // usb
     let usb0 = UsbInterface0::new(
         peripherals.USB0,
         peripherals.USB0_SETUP,
         peripherals.USB0_EP_IN,
         peripherals.USB0_EP_OUT,
     );
-
     info!("Connecting USB device...");
-    leds.output.write(|w| unsafe { w.output().bits(0x00) });
     let speed = usb0.connect();
+    //usb0.listen();
     info!("Connected: {}", speed);
-    leds.output.write(|w| unsafe { w.output().bits(0x01) });
 
     unsafe {
         // set mstatus register: interrupt enable
@@ -45,29 +76,17 @@ fn main() -> ! {
         // set mie register: machine external interrupts enable
         riscv::register::mie::set_mext();
 
-
-        // write csr: enable usb interrupts
+        // write csr: enable interrupts
+        pac::csr::interrupt::enable(pac::Interrupt::TIMER);
         pac::csr::interrupt::enable(pac::Interrupt::USB0);
         pac::csr::interrupt::enable(pac::Interrupt::USB0_SETUP);
         pac::csr::interrupt::enable(pac::Interrupt::USB0_EP_IN);
         pac::csr::interrupt::enable(pac::Interrupt::USB0_EP_OUT);
     }
 
-    // enable interrupts
-    usb0.listen();
-
     loop {
-        // handle bus reset request
-        /*match handle_bus_reset(&usb0) {
-            Ok(true) => {
-                // TODO reset bus
-            },
-            Ok(false) => (),
-            Err(e) => {
-                error!("  Bus Error {:?}", e);
-                continue;
-            }
-        }*/
+        unsafe { riscv::asm::delay(sysclk) };
+        continue;
 
         // read setup request
         let packet = match read_setup_request(&usb0) {
@@ -95,18 +114,26 @@ fn main() -> ! {
 
 // - MachineExternal interrupt handler ----------------------------------------
 
+static mut STATE: bool = false;
+
 #[allow(non_snake_case)]
 #[no_mangle]
 fn MachineExternal() {
+    // peripherals
+    let peripherals = unsafe { pac::Peripherals::steal() };
+    let leds = &peripherals.LEDS;
+    let timer = &peripherals.TIMER;
     let mut usb0 = unsafe { UsbInterface0::summon() };
 
-    let irqno = unsafe { pac::csr::interrupt::irqno() };
+    // debug
+    let pending = unsafe { pac::csr::interrupt::reg_pending() };
+    leds.output.write(|w| unsafe { w.output().bits((1 << pending) as u8) });
 
-    //if unsafe { pac::csr::interrupt::pending(pac::Interrupt::USB0) } {
     if usb0.device.ev_pending.read().pending().bit() {
-        //usb0.device.ev_pending.write(|w| unsafe { w.bits(0xff) });
-        usb0.device.ev_pending
+        usb0.device
+            .ev_pending
             .modify(|r, w| w.pending().bit(r.pending().bit()));
+        // TODO usb0.reset();
         debug!("MachineExternal - usb0.device interrupt");
 
     } else if usb0.ep_setup.ev_pending.read().pending().bit() {
@@ -127,9 +154,15 @@ fn MachineExternal() {
             .modify(|r, w| w.pending().bit(r.pending().bit()));
         debug!("MachineExternal - usb0.ep_out interrupt");
 
+    } else if timer.ev_pending.read().pending().bit() {
+        timer
+            .ev_pending
+            .modify(|r, w| w.pending().bit(r.pending().bit()));
+        //debug!("MachineExternal - timer interrupt");
+
     } else {
-        //usb0.reset();
-        error!("MachineExternal - unknown interrupt: {:#035b}", irqno);
+        //error!("MachineExternal - unknown interrupt");
+        error!("pend: {:#035b}", pending);
     }
 }
 

@@ -50,7 +50,6 @@ where
             Some(writer) => {
                 writeln!(writer, "{} - {}", record.level(), record.args())
                     .expect("Logger failed to write to device");
-                //unsafe { riscv::asm::delay(6_000_000) };
             }
             None => {
                 panic!("Logger has not been initialized");
