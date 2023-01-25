@@ -35,6 +35,10 @@ riscv-rt = { version = "=0.10.0" }
 # - binaries ------------------------------------------------------------------
 
 [[bin]]
+name = "blinky_pac"
+required-features = ["lunasoc-pac/rt"]
+
+[[bin]]
 name = "firmware"
 required-features = ["lunasoc-pac/rt"]
 
@@ -43,9 +47,21 @@ name = "hello"
 required-features = ["lunasoc-pac/rt"]
 
 [[bin]]
-name = "blinky_pac"
+name = "interrupts"
+required-features = ["lunasoc-pac/rt"]
+
+[[bin]]
+name = "interrupts_pac"
+required-features = ["lunasoc-pac/rt"]
+
+[[bin]]
+name = "log"
 required-features = ["lunasoc-pac/rt"]
 
 [[bin]]
 name = "uart_pac"
+required-features = ["lunasoc-pac/rt"]
+
+[[bin]]
+name = "usb"
 required-features = ["lunasoc-pac/rt"]
