@@ -70,6 +70,12 @@ impl UsbInterface0 {
         // disconnect device controller
         self.device.connect.write(|w| w.connect().bit(false));
 
+        // disable endpoint events
+        self.device.ev_enable.write(|w| w.enable().bit(false));
+        self.ep_setup.ev_enable.write(|w| w.enable().bit(false));
+        self.ep_in.ev_enable.write(|w| w.enable().bit(false));
+        self.ep_out.ev_enable.write(|w| w.enable().bit(false));
+
         // reset FIFOs
         self.ep_setup.reset.write(|w| w.reset().bit(true));
         self.ep_in.reset.write(|w| w.reset().bit(true));
@@ -80,10 +86,8 @@ impl UsbInterface0 {
         // connect device controller
         self.device.connect.write(|w| w.connect().bit(true));
 
-        // TODO handle speed
         // 0: High, 1: Full, 2: Low, 3:SuperSpeed (incl SuperSpeed+)
-        let speed = 1; // self.device.speed.read().speed().bits();
-        speed
+        self.device.speed.read().speed().bits()
     }
 
     pub fn reset(&mut self) -> u8 {
@@ -115,14 +119,13 @@ impl UsbInterface0 {
         speed
     }
 
-    // TODO pass endpoint to enable events for
+    // TODO pass event to listen for
     pub fn listen(&self) {
         // clear all event handlers
-        //self.device.ev_pending.write(|w| unsafe { w.bits(0xff) });
         self.device
             .ev_pending
             .modify(|r, w| w.pending().bit(r.pending().bit()));
-        self.ep_setup
+        /*self.ep_setup
             .ev_pending
             .modify(|r, w| w.pending().bit(r.pending().bit()));
         self.ep_in
@@ -130,13 +133,13 @@ impl UsbInterface0 {
             .modify(|r, w| w.pending().bit(r.pending().bit()));
         self.ep_out
             .ev_pending
-            .modify(|r, w| w.pending().bit(r.pending().bit()));
+            .modify(|r, w| w.pending().bit(r.pending().bit()));*/
 
         // enable device controller events for bus reset signal
         self.device.ev_enable.write(|w| w.enable().bit(true));
-        self.ep_in.ev_enable.write(|w| w.enable().bit(true));
-        self.ep_out.ev_enable.write(|w| w.enable().bit(true));
-        self.ep_setup.ev_enable.write(|w| w.enable().bit(true));
+        //self.ep_in.ev_enable.write(|w| w.enable().bit(true));
+        //self.ep_out.ev_enable.write(|w| w.enable().bit(true));
+        //self.ep_setup.ev_enable.write(|w| w.enable().bit(true));
     }
 
     /// Acknowledge the status stage of an incoming control request.
@@ -193,17 +196,11 @@ impl UsbInterface0 {
     }
 
     pub fn ep_in_send_packet(&self, endpoint: u8, buffer: &[u8]) {
-        /*self.ep_in.reset.write(|w| w.reset().bit(true));
-        while self.ep_in.have.read().have().bit() {
-            trace!("  wait clear");
-            unsafe { riscv::asm::delay(1_000_000) };
-        }
-
-        // clear output buffer
+        // reset output fifo if needed
         if self.ep_in.have.read().have().bit() {
             trace!("  clear tx");
             self.ep_in.reset.write(|w| w.reset().bit(true));
-        }*/
+        }
 
         // send data
         for &word in buffer {

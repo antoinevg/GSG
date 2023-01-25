@@ -79,14 +79,14 @@ fn main() -> ! {
         // write csr: enable interrupts
         pac::csr::interrupt::enable(pac::Interrupt::TIMER);
         pac::csr::interrupt::enable(pac::Interrupt::USB0);
-        pac::csr::interrupt::enable(pac::Interrupt::USB0_SETUP);
-        pac::csr::interrupt::enable(pac::Interrupt::USB0_EP_IN);
-        pac::csr::interrupt::enable(pac::Interrupt::USB0_EP_OUT);
+        //pac::csr::interrupt::enable(pac::Interrupt::USB0_SETUP);
+        //pac::csr::interrupt::enable(pac::Interrupt::USB0_EP_IN);
+        //pac::csr::interrupt::enable(pac::Interrupt::USB0_EP_OUT);
     }
 
     loop {
-        unsafe { riscv::asm::delay(sysclk) };
-        continue;
+        //unsafe { riscv::asm::delay(sysclk) };
+        //continue;
 
         // read setup request
         let packet = match read_setup_request(&usb0) {
@@ -133,36 +133,36 @@ fn MachineExternal() {
         usb0.device
             .ev_pending
             .modify(|r, w| w.pending().bit(r.pending().bit()));
-        // TODO usb0.reset();
-        debug!("MachineExternal - usb0.device interrupt");
+
+        usb0.reset();
+        //debug!("MachineExternal - usb0.device interrupt");
 
     } else if usb0.ep_setup.ev_pending.read().pending().bit() {
         usb0.ep_setup
             .ev_pending
             .modify(|r, w| w.pending().bit(r.pending().bit()));
-        debug!("MachineExternal - usb0.ep_setup interrupt");
+        //debug!("MachineExternal - usb0.ep_setup interrupt");
 
     } else if usb0.ep_in.ev_pending.read().pending().bit() {
         usb0.ep_in
             .ev_pending
             .modify(|r, w| w.pending().bit(r.pending().bit()));
-        debug!("MachineExternal - usb0.ep_in interrupt");
+        //debug!("MachineExternal - usb0.ep_in interrupt");
 
     } else if usb0.ep_out.ev_pending.read().pending().bit() {
         usb0.ep_out
             .ev_pending
             .modify(|r, w| w.pending().bit(r.pending().bit()));
-        debug!("MachineExternal - usb0.ep_out interrupt");
+        //debug!("MachineExternal - usb0.ep_out interrupt");
 
     } else if timer.ev_pending.read().pending().bit() {
         timer
             .ev_pending
             .modify(|r, w| w.pending().bit(r.pending().bit()));
-        //debug!("MachineExternal - timer interrupt");
 
     } else {
-        //error!("MachineExternal - unknown interrupt");
-        error!("pend: {:#035b}", pending);
+        error!("MachineExternal - unknown interrupt");
+        error!("  pend: {:#035b}", pending);
     }
 }
 
@@ -254,12 +254,6 @@ fn handle_setup_request(usb0: &UsbInterface0, packet: &SetupPacket) -> Result<()
         recipient, direction, request, packet.value, packet.length
     );
 
-    /*if usb0.ep_setup_address() == 0 && request != Request::SetAddress {
-        warn!("   stall: ignoring all requests until I have an address");
-        usb0.stall_request();
-        return Ok(());
-    }*/
-
     match request {
         Request::SetAddress => handle_set_address(usb0, packet),
         Request::GetStatus => handle_get_status(usb0, packet),
@@ -327,14 +321,6 @@ fn handle_get_descriptor(usb0: &UsbInterface0, packet: &SetupPacket) -> Result<(
 
     match (&descriptor_type, descriptor_number) {
         (DescriptorType::Device, _) => {
-            if packet.length as usize != USB_DEVICE_DESCRIPTOR.len() {
-                /*warn!(
-                    "   stall: invalid requested device descriptor length: {}",
-                    packet.length
-                );
-                usb0.stall_request();
-                return Ok(());*/
-            }
             usb0.ep_in_send_control_response(packet, USB_DEVICE_DESCRIPTOR)
         }
         (DescriptorType::Configuration, 0) => {
