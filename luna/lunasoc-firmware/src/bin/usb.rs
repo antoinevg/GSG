@@ -281,15 +281,17 @@ fn handle_set_address(usb0: &UsbInterface0, packet: &SetupPacket) -> Result<()> 
 
 /// ???
 fn handle_get_status(usb0: &UsbInterface0, packet: &SetupPacket) -> Result<()> {
-    debug!("  -> handle_get_status()");
-
     usb0.ack_status_stage(packet);
+
+    debug!("  -> handle_get_status()");
 
     Ok(())
 }
 
 /// ???
 fn handle_set_descriptor(usb0: &UsbInterface0, packet: &SetupPacket) -> Result<()> {
+    usb0.ack_status_stage(packet);
+
     debug!("  -> handle_set_descriptor()");
 
     let descriptor = packet.value;
@@ -299,7 +301,6 @@ fn handle_set_descriptor(usb0: &UsbInterface0, packet: &SetupPacket) -> Result<(
         return Ok(());
     }
 
-    usb0.ack_status_stage(packet);
 
     Ok(())
 }
@@ -356,6 +357,8 @@ fn handle_get_descriptor(usb0: &UsbInterface0, packet: &SetupPacket) -> Result<(
 }
 
 fn handle_set_configuration(usb0: &UsbInterface0, packet: &SetupPacket) -> Result<()> {
+    usb0.ack_status_stage(packet);
+
     debug!("  -> handle_set_configuration()");
 
     let configuration = packet.value;
@@ -365,7 +368,6 @@ fn handle_set_configuration(usb0: &UsbInterface0, packet: &SetupPacket) -> Resul
         return Ok(());
     }
 
-    usb0.ack_status_stage(packet);
 
     Ok(())
 }
@@ -377,8 +379,9 @@ const USB_DEVICE_DESCRIPTOR: &[u8] = &[
     0x00, 0x01,
 ];
 
+// different serial number to above
 const _USB_DEVICE_DESCRIPTOR: &[u8] = &[
-    0x12, // DEVICE DESCRIPTOR
+    0x12, // Length = 18
     0x01, // DescriptorType = DEVICE
     0x00, 0x02, // bcdUSB = 0x0200
     0x00, // DeviceClass
@@ -394,12 +397,13 @@ const _USB_DEVICE_DESCRIPTOR: &[u8] = &[
     0x01, // bNumConfigurations
 ];
 
-const _USB_CONFIG_DESCRIPTOR: &[u8] = &[
+const USB_CONFIG_DESCRIPTOR: &[u8] = &[
     0x09, 0x02, 0x12, 0x00, 0x01, 0x01, 0x01, 0x80, 0x32, 0x09, 0x04, 0x00, 0x00, 0x00, 0xfe, 0x00,
     0x00, 0x02,
 ];
 
-const __USB_CONFIG_DESCRIPTOR: &[u8] = &[
+// same as above
+const _USB_CONFIG_DESCRIPTOR: &[u8] = &[
     0x09, // Length
     0x02, // DescriptorType = CONFIG
     0x12, 0x00, // TotalLength = 18 bytes
@@ -422,7 +426,8 @@ const __USB_CONFIG_DESCRIPTOR: &[u8] = &[
           // ENDPOINT
 ];
 
-const USB_CONFIG_DESCRIPTOR: &[u8] = &[
+// counter example
+const __USB_CONFIG_DESCRIPTOR: &[u8] = &[
     0x09, 0x02, 0x19, 0x00, 0x01, 0x01, 0x00, 0x80, 0xfa, 0x09, 0x04, 0x00, 0x00, 0x01, 0xff, 0xff,
     0xff, 0x00, 0x07, 0x05, 0x81, 0x02, 0x00, 0x02, 0xff,
 ];
@@ -436,6 +441,7 @@ const _USB_STRING2_DESCRIPTOR: &[u8] = &[
     b'E', 0, b'x', 0, b'a', 0, b'm', 0, b'p', 0, b'l', 0, b'e', 0,
 ];
 
+// counter example
 const USB_STRING2_DESCRIPTOR: &[u8] = &[
     0x30, 0x03, 0x43, 0x00, 0x6f, 0x00, 0x75, 0x00, 0x6e, 0x00, 0x74, 0x00, 0x65, 0x00, 0x72, 0x00,
     0x2f, 0x00, 0x54, 0x00, 0x68, 0x00, 0x72, 0x00, 0x6f, 0x00, 0x75, 0x00, 0x67, 0x00, 0x68, 0x00,

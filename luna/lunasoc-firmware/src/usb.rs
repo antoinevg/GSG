@@ -163,7 +163,10 @@ impl UsbInterface0 {
             .epno
             .write(|w| unsafe { w.epno().bits(endpoint) });
 
-        // enable it to prime a read
+        // prime endpoint
+        self.ep_out.prime.write(|w| w.prime().bit(true));
+
+        // enable it
         self.ep_out.enable.write(|w| w.enable().bit(true));
     }
 
@@ -178,7 +181,7 @@ impl UsbInterface0 {
         };
 
         // handle case where device is asking for _more_
-        let mut response_buffer = [0_u8; 128];
+        /*let mut response_buffer = [0_u8; 128];
         let buffer = if requested_length > buffer.len() {
             for i in 0..buffer.len() {
                 response_buffer[i] = buffer[i];
@@ -190,7 +193,7 @@ impl UsbInterface0 {
             }
         } else {
             buffer
-        };
+        };*/
 
         self.ep_in_send_packet(0, buffer);
     }
