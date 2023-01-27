@@ -392,11 +392,27 @@ TODO Investigate existing USBProxy implementation for GreatFET/Facedancer.
 
 * [x] Implement `hello-blinky` for LunaSoC.
 * [x] Implement `hello-uart` for LunaSoC.
+* [x] Implement `hello-timer` for LunaSoC.
+* [x] Implement `hello-interrupts` for LunaSoC.
+* [x] Implement `hello-usb` for LunaSoC.
+
+#### Luna SoC Board Support
+
+* [x] Initial implementation of `lunasoc-pac`
+* [x] Initial implementation of `lunasoc-hal`
+
+#### Luna SoC Peripheral Drivers
+
+* [ ] Implement an `embedded-hal` driver for `luna.gateware.soc.GpioPeripheral`
+* [x] Implement an `embedded-hal` driver for `lambdasoc.periph.timer.TimerPeripheral`
+* [x] Implement an `embedded-hal` driver for `amaranth_stdio.serial.AsyncSerial`
+* [ ] Implement an `embedded-hal` driver for `luna.gateware.usb2.USBDeviceController`
+* [ ] Optional: Implement an `embedded-hal` driver for `luna.gateware.interface.flash.ECP5ConfigurationFlashInterface`
 
 #### Luna SoC Firmware
 
-* [ ] Implement clock and reset control for the SoC.
-* [ ] Configure memory access for:
+* [x] Implement clock and reset control for the SoC.
+* [x] Configure memory access for:
     - SoC SRAM
     - Optional: SoC SPI Flash peripheral
     - Optional: SoC HyperRAMInterface Peripheral
@@ -408,14 +424,6 @@ TODO Investigate existing USBProxy implementation for GreatFET/Facedancer.
 * [ ] Implement a device heartbeat mechanism.
 * [ ] Implement a SoC firmware loading strategy.
 * [ ] Implement a SoC firmware update mechanism.
-
-#### Luna SoC Peripheral Drivers
-
-* [ ] Implement an `embedded-hal` driver for `luna.gateware.soc.GpioPeripheral`
-* [ ] Implement an `embedded-hal` driver for `lambdasoc.periph.timer.TimerPeripheral`
-* [ ] Implement an `embedded-hal` driver for `amaranth_stdio.serial.AsyncSerial`
-* [ ] Implement an `embedded-hal` driver for `luna.gateware.usb2.USBDeviceController`
-* [ ] Optional: Implement an `embedded-hal` driver for `luna.gateware.interface.flash.ECP5ConfigurationFlashInterface`
 
 #### Command Serialisation and Transport Library
 
@@ -483,7 +491,7 @@ Gateware shall be implemented in [Amaranth](https://github.com/amaranth-lang/ama
 
 * [ ] GpioPeripheral
 * [ ] Optional: SPIFlashPeripheral / ECP5ConfigurationFlashInterface
-* [ ] USBDeviceController
+* [x] USBDeviceController
 * [ ] HyperRAMInterface
 
 

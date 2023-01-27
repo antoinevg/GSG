@@ -200,12 +200,12 @@ TODO split into individual diagrams for each section
 <li>SoC firmware update</li>
 </ul>
 
-<p>The Firmware should have memory access to:</p>
+<p>The Firmware shall have memory access to:</p>
 
 <ul>
 <li>SoC SRAM</li>
-<li>SPI Flash</li>
-<li>HyperRAM</li>
+<li>Optional: Flash</li>
+<li>Optional: HyperRAM</li>
 </ul>
 
 <h4 id="referenceimplementation">Reference Implementation</h4>
@@ -395,7 +395,8 @@ TODO split into individual diagrams for each section
 <p>Debug utilities:</p>
 
 <ul>
-<li><code>verb_read_dmesg() -&gt; ?</code></li>
+<li>Deprecated: <code>verb_read_dmesg()</code></li>
+<li> Replace with a dedicated USB endpoint for firmware logging output.</li>
 <li><code>verb_clear_dmesg()</code></li>
 <li><code>verb_peek(address: u32) -&gt; u32</code></li>
 <li><code>verb_poke(address: u32, value: u32)</code></li>
@@ -406,22 +407,15 @@ TODO split into individual diagrams for each section
 <p>Utilities for self-testing libgreat-based boards:</p>
 
 <ul>
-<li><code>selftest_verb_measure_clock_frequencies(clock_numbers: [u32]) -&gt; [clock_frequencies_mhz: u32]</code></li>
-<li><code>selftest_verb_measure_raw_clock_frequencies(clock_numbers: [u32]) -&gt;  [clock_frequencies_mhz: u32]</code></li>
+<li>Optional: <code>selftest_verb_measure_clock_frequencies(clock_numbers: [u32]) -&gt; [clock_frequencies_mhz: u32]</code></li>
+<li>Optional: <code>selftest_verb_measure_raw_clock_frequencies(clock_numbers: [u32]) -&gt;  [clock_frequencies_mhz: u32]</code></li>
 </ul>
 
-<h4 id="0x105usbhost-"><code>0x105 usbhost</code> - <a href="">``</a></h4>
+<h4 id="del0x105usbhostdel"><del>0x105 usbhost</del></h4>
 
 <p>Remote control over Luna's USB ports in host mode, for e.g. FaceDancer</p>
 
-<p><em>(is this currently supported ? see <a href="#10-open-questions">Open Questions</a>)</em></p>
-
-<!--
-*``
-*``
-*``
-*``
--->
+<p><em>no support planned at present</em></p>
 
 <h4 id="0x10aleds-greatfet.git:firmwaregreatfet_usbclassesleds.chttps:github.comgreatscottgadgetsgreatfettreemasterfirmwaregreatfet_usbclassesleds.c"><code>0x10A leds</code> - <a href="https://github.com/greatscottgadgets/greatfet/tree/master/firmware/greatfet_usb/classes/leds.c"><code>greatfet.git:/firmware/greatfet_usb/classes/leds.c</code></a></h4>
 
@@ -472,9 +466,9 @@ TODO split into individual diagrams for each section
 
 <h4 id="0x10fusbproxy-"><code>0x10F usbproxy</code> - <a href="">``</a></h4>
 
-<p>Firmware functionality supporting USBProxy</p>
+<p>Firmware functionality supporting USBProxy.</p>
 
-<p><em>(is this currently supported ? see <a href="#10-open-questions">Open Questions</a>)</em></p>
+<p>TODO Investigate existing USBProxy implementation for GreatFET/Facedancer.</p>
 
 <!--
 *``
@@ -488,20 +482,40 @@ TODO split into individual diagrams for each section
 <h4 id="initialbring-up">Initial Bring-up</h4>
 
 <ul>
-<li>[ ] Implement <code>hello-blinky</code> for LunaSoC.</li>
-<li>[ ] Implement <code>hello-uart</code> for LunaSoC.</li>
+<li>[x] Implement <code>hello-blinky</code> for LunaSoC.</li>
+<li>[x] Implement <code>hello-uart</code> for LunaSoC.</li>
+<li>[x] Implement <code>hello-timer</code> for LunaSoC.</li>
+<li>[x] Implement <code>hello-interrupts</code> for LunaSoC.</li>
+<li>[x] Implement <code>hello-usb</code> for LunaSoC.</li>
+</ul>
+
+<h4 id="lunasocboardsupport">Luna SoC Board Support</h4>
+
+<ul>
+<li>[x] Initial implementation of <code>lunasoc-pac</code></li>
+<li>[x] Initial implementation of <code>lunasoc-hal</code></li>
+</ul>
+
+<h4 id="lunasocperipheraldrivers">Luna SoC Peripheral Drivers</h4>
+
+<ul>
+<li>[ ] Implement an <code>embedded-hal</code> driver for <code>luna.gateware.soc.GpioPeripheral</code></li>
+<li>[x] Implement an <code>embedded-hal</code> driver for <code>lambdasoc.periph.timer.TimerPeripheral</code></li>
+<li>[x] Implement an <code>embedded-hal</code> driver for <code>amaranth_stdio.serial.AsyncSerial</code></li>
+<li>[ ] Implement an <code>embedded-hal</code> driver for <code>luna.gateware.usb2.USBDeviceController</code></li>
+<li>[ ] Optional: Implement an <code>embedded-hal</code> driver for <code>luna.gateware.interface.flash.ECP5ConfigurationFlashInterface</code></li>
 </ul>
 
 <h4 id="lunasocfirmware">Luna SoC Firmware</h4>
 
 <ul>
-<li>[ ] Implement clock and reset control for the SoC.</li>
-<li>[ ] Configure memory access for:
+<li>[x] Implement clock and reset control for the SoC.</li>
+<li>[x] Configure memory access for:
 
 <ul>
 <li>SoC SRAM</li>
-<li>SoC SPI Flash peripheral</li>
-<li>SoC HyperRAMInterface Peripheral</li>
+<li>Optional: SoC SPI Flash peripheral</li>
+<li>Optional: SoC HyperRAMInterface Peripheral</li>
 </ul></li>
 <li>[ ] Implement a <code>no_std</code> error handling strategy that does not rely on the <code>alloc</code> feature.</li>
 <li>[ ] Implement a device logging strategy:
@@ -516,16 +530,6 @@ TODO split into individual diagrams for each section
 <li>[ ] Implement a SoC firmware update mechanism.</li>
 </ul>
 
-<h4 id="lunasocperipheraldrivers">Luna SoC Peripheral Drivers</h4>
-
-<ul>
-<li>[ ] Implement an <code>embedded-hal</code> driver for <code>luna.gateware.soc.GpioPeripheral</code></li>
-<li>[ ] Implement an <code>embedded-hal</code> driver for <code>lambdasoc.periph.timer.TimerPeripheral</code></li>
-<li>[ ] Implement an <code>embedded-hal</code> driver for <code>amaranth_stdio.serial.AsyncSerial</code></li>
-<li>[ ] Implement an <code>embedded-hal</code> driver for <code>luna.gateware.usb2.USBDeviceController</code></li>
-<li>[ ] Implement an <code>embedded-hal</code> driver for <code>luna.gateware.interface.flash.ECP5ConfigurationFlashInterface</code></li>
-</ul>
-
 <h4 id="commandserialisationandtransportlibrary">Command Serialisation and Transport Library</h4>
 
 <ul>
@@ -534,8 +538,10 @@ TODO split into individual diagrams for each section
 
 <ul>
 <li>Option: <a href="https://serde.rs/data-format.html"><code>serde</code></a></li>
-<li>TODO Option: <a href="https://hachyderm.io/@ekuber/109513137375293238"><code>yoke</code></a></li>
+<li>Option: <a href="https://hachyderm.io/@ekuber/109513137375293238"><code>yoke</code></a></li>
 </ul></li>
+<li>[ ] Extend GCP to add support for multiple concurrent USB streams.</li>
+<li>[ ] Implement GCP support for multiple concurrent USB streams.</li>
 <li>[ ] Implement a dispatch mechanism for GCP commands and responses.</li>
 </ul>
 
@@ -545,9 +551,12 @@ TODO split into individual diagrams for each section
 <li>[ ] Implement the device api for: <code>0x0 core</code></li>
 <li>[ ] Implement the device api for: <code>0x1 firmware</code></li>
 <li>[ ] Implement the device api for: <code>0x10 debug</code></li>
-<li>[ ] Implement the device api for: <code>0x11 selftest</code></li>
+<li>[ ] Implement firmware log output via a dedicated USB endpoint.</li>
+<li> Message metadata should include a monotonic counter in order to detect dropped messages.</li>
+<li>[ ] Optional: Implement the device api for: <code>0x11 selftest</code></li>
 <li>[ ] Implement the device api for: <code>0x10A leds</code></li>
 <li>[ ] Implement the device api for: <code>0x120 moondancer</code></li>
+<li>[ ] Investigate existing USBProxy implementation for GreatFET/Facedancer.</li>
 <li>[ ] Implement the device api for: <code>0x10F usbproxy</code></li>
 </ul>
 
@@ -584,8 +593,8 @@ TODO split into individual diagrams for each section
 <h4 id="initialbring-up">Initial Bring-Up</h4>
 
 <ul>
-<li>[ ] Update the <code>simplesoc.py</code> placeholder to the latest versions of the <code>amaranth-soc</code> and <code>lambdasoc</code> libraries.</li>
-<li>[ ] Implement SVD export for SoC designs
+<li>[x] Update the <code>simplesoc.py</code> placeholder to the latest versions of the <code>amaranth-soc</code> and <code>lambdasoc</code> libraries.</li>
+<li>[x] Implement SVD export for SoC designs
 
 <ul>
 <li>Bear in mind that this would benefit from finding a cosy home upstream.</li>
@@ -596,15 +605,15 @@ TODO split into individual diagrams for each section
 
 <ul>
 <li>[ ] GpioPeripheral</li>
-<li>[ ] SPIFlashPeripheral ?</li>
+<li>[ ] Optional: SPIFlashPeripheral</li>
 </ul>
 
 <h4 id="wireupadditionalperipherals">Wire up additional Peripherals</h4>
 
 <ul>
 <li>[ ] GpioPeripheral</li>
-<li>[ ] SPIFlashPeripheral / ECP5ConfigurationFlashInterface ?</li>
-<li>[ ] USBDeviceController</li>
+<li>[ ] Optional: SPIFlashPeripheral / ECP5ConfigurationFlashInterface</li>
+<li>[x] USBDeviceController</li>
 <li>[ ] HyperRAMInterface</li>
 </ul>
 
@@ -907,42 +916,61 @@ TODO split into individual diagrams for each section
 
 <p>This strategy is hard work that can cost a couple days work but we pay it forward because, in Glorious Socialist Federation of Neighbours, upstream project take care of you!</p>
 
+<h3 id="9.5facedancerapplets">9.5 Facedancer &quot;Applets&quot;</h3>
+
+<p>Replace the term Facedancer &quot;Applet&quot; with the term Facedancer &quot;Device Emulation&quot;.</p>
+
 <hr />
 
 <h2 id="10openquestions">10 Open Questions</h2>
 
 <ul>
-<li><p>[ ] are the Great Communication Protocol <code>0x105 usbhost</code> and <code>0x10F usbproxy</code> classes supported anywhere currently?</p>
+<li><p>[x] are the Great Communication Protocol <code>0x105 usbhost</code> and <code>0x10F usbproxy</code> classes supported anywhere currently?</p>
 
 <ul>
-<li>if so, where are the implementations hiding?</li>
+<li><code>0x105 usbhost</code> - <em>no support planned at present</em></li>
+<li><code>0x10F usbproxy</code> - investigate current GreatFET/Facedancer implementation.</li>
 </ul></li>
-<li><p>[ ] how do we want to manage SoC firmware uploads to SPI flash</p>
+<li><p>[x] how do we want to manage SoC firmware uploads to SPI flash</p>
 
 <ul>
 <li>appended to the bitstream uploaded to SPI flash?</li>
 <li>SoC bios takes over SPI flash after ECP5 boot and uses a dedicated region for separate upload?</li>
 <li>Which of the many available tools should Luna CLI use if we support a separate flash operations?</li>
-<li>other ?</li>
+<li>@martinling: <em>&quot;my feeling is that it would be preferable for this to be a separate mechanism implemented by the SoC bios after ECP5 boot, rather than the firmware being tacked onto the end of the bitstream image, because it would be nice to be able to iterate on the SoC firmware without reflashing the bitstream. I think dfu-util would be the most obvious choice of upload tool, but it's not the only option.&quot;</em></li>
+<li>Decision:
+
+<ul>
+<li>Separate from gateware.</li>
+<li>Start with <code>dfu-util</code> to SRAM.</li>
+<li>Add support for SPI Flash later.</li>
 </ul></li>
-<li><p>[ ] do we want to support these additional usb-related classes for Luna:</p>
+</ul></li>
+<li><p>[x] do we want to support these additional usb-related classes for Luna:</p>
 
 <ul>
 <li><code>0x107 glitchkit_usb</code> - control over functionality intended to help with timing USB fault injection</li>
 <li><code>0x113 usb_analysis</code> - functionality for USB analysis e.g. with Rhododendron</li>
+<li>Decision: Optional</li>
 </ul></li>
-<li><p>[ ] are there any constraints on the &quot;Great Communications Protocol&quot; implementation that will place limits on what we can do with Luna vs GreatFET?</p></li>
-<li><p>[ ] <code>libgreat-rs.git</code> -&gt; <code>libgreat.git/firmware-rs/greatsoc-hal, greatsoc-pac</code> etc. or somesuch ?</p>
+<li><p>[x] are there any constraints on the &quot;Great Communications Protocol&quot; implementation that will place limits on what we can do with Luna vs GreatFET?</p>
+
+<ul>
+<li>@martinling: <em>&quot;Constraints of GCP that might affect what we can do with LUNA: At a quick glance, it looks like one thing that's currently missing in the protocol is a way to set up multiple independent data streams to/from the host. There is a streaming mechanism in usb_streaming.c used by e.g. the logic analyzer function, but looking at the code for it, it seems to assume a single fixed endpoint in use. This makes sense for GreatFET, where we have a fixed number of hardware endpoints, but with LUNA we don't have that constraint, and there are bound to be use cases that would benefit from multiple concurrent streams.&quot;</em></li>
+</ul></li>
+<li><p>[x] <code>libgreat-rs.git</code> -&gt; <code>libgreat.git/firmware-rs/greatsoc-hal, greatsoc-pac</code> etc. or somesuch ?</p>
 
 <ul>
 <li>the problem with having two repo's that both start with libgreat is that it may not be clear which one to look in?</li>
 <li>on the other hand, nervous about putting the rust crate into libgreat because more complex CI and releases might ensue ?</li>
+<li>Decided: There are more big reasons to stick to a single repo than small reasons not to.</li>
 </ul></li>
-<li><p>[ ] Should we implement the main device firmware in a pure Rust <code>no_std</code> environment without the use of the <code>alloc</code> feature?</p>
+<li><p>[x] Should we implement the main device firmware in a pure Rust <code>no_std</code> environment without the use of the <code>alloc</code> feature?</p>
 
 <ul>
 <li><code>alloc</code> comes with its own share of problems in the form of memory fragmentation and unpredictable latency.</li>
 <li>are there any high-alloc areas of the code that can't be handled by e.g. the <code>heapless</code> crate.</li>
+<li>@martinling: <em>&quot;My feeling would be that we should aim to initially, but that we should be prepared to bring in an allocator if it proves to be unnecessarily difficult without one.&quot;</em></li>
 </ul></li>
 </ul>
 
