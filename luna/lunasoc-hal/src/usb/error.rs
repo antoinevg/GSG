@@ -1,23 +1,10 @@
-#![feature(error_in_core)]
-#![no_std]
-
-// - modules ------------------------------------------------------------------
-
-pub mod log;
-
-// - aliases ------------------------------------------------------------------
-
-pub use lunasoc_hal as hal;
-pub use lunasoc_pac as pac;
-
-// - constants ----------------------------------------------------------------
-
-pub const SYSTEM_CLOCK_FREQUENCY: u32 = 60_000_000;
-
-// - Error --------------------------------------------------------------------
-
 #[derive(Debug)]
 pub enum Error {
+    // TODO move these into a usb::Error
+    FailedConversion,
+    Timeout,
+    Overflow,
+    Underflow,
     Unknown,
 }
 

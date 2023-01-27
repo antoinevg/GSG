@@ -1,19 +1,20 @@
 //! Simple USB implementation
 
 mod control;
+mod error;
 
 pub use control::*;
+pub use error::*;
 
 // - UsbInterface0 ------------------------------------------------------------
 
 use crate::pac;
-use crate::{Error, Result};
 
 use log::trace;
 
 pub struct UsbInterface0 {
     pub device: pac::USB0,
-    pub ep_setup: pac::USB0_SETUP,
+    pub ep_control: pac::USB0_SETUP,
     pub ep_in: pac::USB0_EP_IN,
     pub ep_out: pac::USB0_EP_OUT,
     pub reset_count: usize,
@@ -29,7 +30,7 @@ impl UsbInterface0 {
     ) -> Self {
         Self {
             device,
-            ep_setup,
+            ep_control: ep_setup,
             ep_in,
             ep_out,
             reset_count: 0,
@@ -45,7 +46,7 @@ impl UsbInterface0 {
         pac::USB0_EP_IN,
         pac::USB0_EP_OUT,
     ) {
-        (self.device, self.ep_setup, self.ep_in, self.ep_out)
+        (self.device, self.ep_control, self.ep_in, self.ep_out)
     }
 
     /// Obtain a static `Usb` instance for use in e.g. interrupt handlers
@@ -56,7 +57,7 @@ impl UsbInterface0 {
     pub unsafe fn summon() -> Self {
         Self {
             device: pac::Peripherals::steal().USB0,
-            ep_setup: pac::Peripherals::steal().USB0_SETUP,
+            ep_control: pac::Peripherals::steal().USB0_SETUP,
             ep_in: pac::Peripherals::steal().USB0_EP_IN,
             ep_out: pac::Peripherals::steal().USB0_EP_OUT,
             reset_count: 0,
@@ -72,12 +73,12 @@ impl UsbInterface0 {
 
         // disable endpoint events
         self.device.ev_enable.write(|w| w.enable().bit(false));
-        self.ep_setup.ev_enable.write(|w| w.enable().bit(false));
+        self.ep_control.ev_enable.write(|w| w.enable().bit(false));
         self.ep_in.ev_enable.write(|w| w.enable().bit(false));
         self.ep_out.ev_enable.write(|w| w.enable().bit(false));
 
         // reset FIFOs
-        self.ep_setup.reset.write(|w| w.reset().bit(true));
+        self.ep_control.reset.write(|w| w.reset().bit(true));
         self.ep_in.reset.write(|w| w.reset().bit(true));
         self.ep_out.reset.write(|w| w.reset().bit(true));
 
@@ -96,17 +97,17 @@ impl UsbInterface0 {
         self.reset_count += 1;
 
         // disable endpoint events
-        self.ep_setup.ev_enable.write(|w| w.enable().bit(false));
+        self.ep_control.ev_enable.write(|w| w.enable().bit(false));
         self.ep_in.ev_enable.write(|w| w.enable().bit(false));
         self.ep_out.ev_enable.write(|w| w.enable().bit(false));
 
         // reset device address to 0
-        self.ep_setup
+        self.ep_control
             .address
             .write(|w| unsafe { w.address().bits(0) });
 
         // reset FIFOs
-        self.ep_setup.reset.write(|w| w.reset().bit(true));
+        self.ep_control.reset.write(|w| w.reset().bit(true));
         self.ep_in.reset.write(|w| w.reset().bit(true));
         self.ep_out.reset.write(|w| w.reset().bit(true));
 
@@ -221,7 +222,7 @@ impl UsbInterface0 {
     pub fn ep_setup_read_packet(&self, buffer: &mut [u8]) -> Result<()> {
         // block until setup data is available
         let mut counter = 0;
-        while !self.ep_setup.have.read().have().bit() {
+        while !self.ep_control.have.read().have().bit() {
             counter += 1;
             if counter > 60_000_000 {
                 return Err(Error::Timeout);
@@ -232,13 +233,13 @@ impl UsbInterface0 {
         let mut bytes_read = 0;
         let mut overflow = 0;
         let mut drain = 0;
-        while self.ep_setup.have.read().have().bit() {
+        while self.ep_control.have.read().have().bit() {
             if bytes_read >= buffer.len() {
                 // drain
-                drain = self.ep_setup.data.read().data().bits();
+                drain = self.ep_control.data.read().data().bits();
                 overflow += 1;
             } else {
-                buffer[bytes_read] = self.ep_setup.data.read().data().bits();
+                buffer[bytes_read] = self.ep_control.data.read().data().bits();
                 bytes_read += 1;
             }
         }
@@ -261,11 +262,11 @@ impl UsbInterface0 {
     }
 
     pub fn ep_setup_address(&self) -> u8 {
-        self.ep_setup.address.read().address().bits()
+        self.ep_control.address.read().address().bits()
     }
 
     pub fn ep_setup_set_address(&self, address: u8) {
-        self.ep_setup
+        self.ep_control
             .address
             .write(|w| unsafe { w.address().bits(address & 0x7f) });
     }

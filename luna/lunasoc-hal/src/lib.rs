@@ -3,6 +3,7 @@
 pub mod gpio;
 pub mod serial;
 pub mod timer;
+pub mod usb;
 
 // export peripherals
 pub use serial::Serial;

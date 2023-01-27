@@ -34,6 +34,10 @@ lunasoc-pac = { path = "../lunasoc-pac", default-features = false}
 nb = "=1.0.0"
 riscv = { version = "=0.10.0", default-features = false }
 
+# https://github.com/rust-lang/log/issues/526
+#log = "=0.4.17"
+log = { path = "../toolchain/log.git" }
+
 
 # - dev-dependencies ----------------------------------------------------------
 

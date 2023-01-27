@@ -32,10 +32,10 @@ use riscv_rt::entry;
 use firmware::{hal, pac};
 use lunasoc_firmware as firmware;
 
-use firmware::usb::{
+use hal::usb::{
     DescriptorType, Direction, Recipient, Request, RequestType, SetupPacket, UsbInterface0,
 };
-use firmware::{Error, Result};
+use hal::usb::{Error, Result};
 
 use log::{debug, error, info, trace, warn};
 
@@ -137,8 +137,8 @@ fn MachineExternal() {
         usb0.reset();
         //debug!("MachineExternal - usb0.device interrupt");
 
-    } else if usb0.ep_setup.ev_pending.read().pending().bit() {
-        usb0.ep_setup
+    } else if usb0.ep_control.ev_pending.read().pending().bit() {
+        usb0.ep_control
             .ev_pending
             .modify(|r, w| w.pending().bit(r.pending().bit()));
         //debug!("MachineExternal - usb0.ep_setup interrupt");
