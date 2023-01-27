@@ -4,7 +4,7 @@ mod control;
 mod error;
 
 pub use control::*;
-pub use error::*;
+pub use error::{Result, ErrorKind};
 
 // - UsbInterface0 ------------------------------------------------------------
 
@@ -225,7 +225,7 @@ impl UsbInterface0 {
         while !self.ep_control.have.read().have().bit() {
             counter += 1;
             if counter > 60_000_000 {
-                return Err(Error::Timeout);
+                return Err(ErrorKind::Timeout);
             }
         }
 

@@ -17,7 +17,7 @@ pub const SYSTEM_CLOCK_FREQUENCY: u32 = 60_000_000;
 // - Error --------------------------------------------------------------------
 
 #[derive(Debug)]
-pub enum Error {
+pub enum FirmwareError {
     Unknown,
 }
 
@@ -29,10 +29,10 @@ pub enum Error {
 //impl core::error::Error for Error {}
 
 // Ugly little hack for now - https://stackoverflow.com/questions/48430836/
-impl<E: core::fmt::Display> core::convert::From<E> for Error {
+/*impl<E: core::fmt::Display> core::convert::From<E> for FirmwareError {
     fn from(_error: E) -> Self {
-        Error::Unknown
+        FirmwareError::Unknown
     }
 }
-
-pub type Result<T> = core::result::Result<T, Error>;
+*/
+pub type FirmwareResult<T> = core::result::Result<T, FirmwareError>;

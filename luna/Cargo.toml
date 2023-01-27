@@ -1,5 +1,6 @@
 [workspace]
 members = [
+    "libgreat",
     "lunasoc-firmware",
     "lunasoc-hal",
     "lunasoc-pac",

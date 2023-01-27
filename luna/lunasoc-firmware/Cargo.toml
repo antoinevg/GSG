@@ -9,6 +9,11 @@ edition = "2021"
 rust-version = "1.59"
 default-run = "firmware"
 
+[package.metadata.docs.rs]
+default-target = "riscv32im-unknown-none-elf"
+targets = [
+    "riscv32im-unknown-none-elf",
+]
 
 # - features ------------------------------------------------------------------
 
@@ -20,6 +25,7 @@ default = [
 # - dependencies --------------------------------------------------------------
 
 [dependencies]
+libgreat = { path = "../libgreat", features = [] }
 lunasoc-pac = { path = "../lunasoc-pac", features = ["critical-section", "rt"]}
 lunasoc-hal = { path = "../lunasoc-hal", features = []}
 panic-halt = "0.2.0"

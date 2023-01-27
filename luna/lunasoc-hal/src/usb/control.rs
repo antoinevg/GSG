@@ -1,7 +1,7 @@
 ///! The Setup Packet
 ///!
 ///! see: https://www.beyondlogic.org/usbnutshell/usb6.shtml
-use crate::usb::Error;
+use crate::usb::ErrorKind;
 
 // - UsbSetupRequest ----------------------------------------------------------
 
@@ -31,7 +31,7 @@ pub enum Recipient {
 }
 
 impl TryFrom<u8> for Recipient {
-    type Error = crate::usb::Error;
+    type Error = crate::usb::ErrorKind;
 
     fn try_from(value: u8) -> core::result::Result<Self, Self::Error> {
         let result = match value {
@@ -40,7 +40,7 @@ impl TryFrom<u8> for Recipient {
             2 => Recipient::Endpoint,
             3 => Recipient::Other,
             4..=31 => Recipient::Reserved,
-            _ => return Err(Error::FailedConversion),
+            _ => return Err(ErrorKind::FailedConversion),
         };
         Ok(result)
     }
@@ -56,7 +56,7 @@ pub enum RequestType {
 }
 
 impl TryFrom<u8> for RequestType {
-    type Error = crate::usb::Error;
+    type Error = crate::usb::ErrorKind;
 
     fn try_from(value: u8) -> core::result::Result<Self, Self::Error> {
         let result = match value {
@@ -64,7 +64,7 @@ impl TryFrom<u8> for RequestType {
             1 => RequestType::Class,
             2 => RequestType::Vendor,
             3 => RequestType::Reserved,
-            _ => return Err(Error::FailedConversion),
+            _ => return Err(ErrorKind::FailedConversion),
         };
         Ok(result)
     }
@@ -81,13 +81,13 @@ pub enum Direction {
 }
 
 impl TryFrom<u8> for Direction {
-    type Error = crate::usb::Error;
+    type Error = crate::usb::ErrorKind;
 
     fn try_from(value: u8) -> core::result::Result<Self, Self::Error> {
         let result = match value {
             0 => Direction::HostToDevice,
             1 => Direction::DeviceToHost,
-            _ => return Err(Error::FailedConversion),
+            _ => return Err(ErrorKind::FailedConversion),
         };
         Ok(result)
     }
@@ -112,7 +112,7 @@ pub enum Request {
 }
 
 impl TryFrom<u8> for Request {
-    type Error = crate::usb::Error;
+    type Error = crate::usb::ErrorKind;
 
     fn try_from(value: u8) -> core::result::Result<Self, Self::Error> {
         let result = match value {
@@ -127,7 +127,7 @@ impl TryFrom<u8> for Request {
             10 => Request::GetInterface,
             11 => Request::SetInterface,
             12 => Request::SynchronizeFrame,
-            _ => return Err(Error::FailedConversion),
+            _ => return Err(ErrorKind::FailedConversion),
         };
         Ok(result)
     }
@@ -141,13 +141,13 @@ pub enum Feature {
 }
 
 impl TryFrom<u8> for Feature {
-    type Error = crate::usb::Error;
+    type Error = crate::usb::ErrorKind;
 
     fn try_from(value: u8) -> core::result::Result<Self, Self::Error> {
         let result = match value {
             0 => Feature::EndpointHalt,
             1 => Feature::DeviceRemoteWakeup,
-            _ => return Err(Error::FailedConversion),
+            _ => return Err(ErrorKind::FailedConversion),
         };
         Ok(result)
     }
@@ -170,7 +170,7 @@ pub enum DescriptorType {
 }
 
 impl TryFrom<u8> for DescriptorType {
-    type Error = crate::usb::Error;
+    type Error = crate::usb::ErrorKind;
 
     fn try_from(value: u8) -> core::result::Result<Self, Self::Error> {
         let result = match value {
@@ -185,7 +185,7 @@ impl TryFrom<u8> for DescriptorType {
             9 => DescriptorType::OnTheGo,
             10 => DescriptorType::Debug,
             11 => DescriptorType::InterfaceAssociation,
-            _ => return Err(Error::FailedConversion),
+            _ => return Err(ErrorKind::FailedConversion),
         };
         Ok(result)
     }

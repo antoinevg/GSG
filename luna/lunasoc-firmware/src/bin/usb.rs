@@ -1,5 +1,5 @@
-#![feature(panic_info_message)]
 #![feature(error_in_core)]
+#![feature(panic_info_message)]
 #![allow(
     dead_code,
     unused_imports,
@@ -35,7 +35,7 @@ use lunasoc_firmware as firmware;
 use hal::usb::{
     DescriptorType, Direction, Recipient, Request, RequestType, SetupPacket, UsbInterface0,
 };
-use hal::usb::{Error, Result};
+use hal::usb::{ErrorKind, Result};
 
 use log::{debug, error, info, trace, warn};
 

@@ -1,6 +1,7 @@
-#[derive(Debug)]
-pub enum Error {
-    // TODO move these into a usb::Error
+/// USB Error type
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[non_exhaustive] // ... is a double-edged sword
+pub enum ErrorKind {
     FailedConversion,
     Timeout,
     Overflow,
@@ -8,18 +9,42 @@ pub enum Error {
     Unknown,
 }
 
-/*impl core::fmt::Display for Error {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        core::fmt::Debug::fmt(&self, f)
-    }
-}*/
-//impl core::error::Error for Error {}
-
-// Ugly little hack for now - https://stackoverflow.com/questions/48430836/
-impl<E: core::fmt::Display> core::convert::From<E> for Error {
-    fn from(_error: E) -> Self {
-        Error::Unknown
+// trait: core::error::Error
+impl core::error::Error for ErrorKind {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        use ErrorKind::*;
+        match self {
+            FailedConversion => "TODO FailedConversion",
+            Timeout => "TODO Timeout",
+            Overflow => "TODO Overflow",
+            Underflow => "TODO Underflow",
+            Unknown => "TODO Unknown",
+        }
     }
 }
 
-pub type Result<T> = core::result::Result<T, Error>;
+// trait:: core::fmt::Display
+impl core::fmt::Display for ErrorKind {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        core::fmt::Debug::fmt(&self, f)
+    }
+}
+
+// trait: core::num::TryFromIntError
+impl core::convert::From<core::num::TryFromIntError> for ErrorKind {
+    fn from(_error: core::num::TryFromIntError) -> Self {
+        ErrorKind::FailedConversion
+    }
+}
+
+// trait: libreat::error::Error
+impl libgreat::error::Error for ErrorKind {
+    type Error = ErrorKind; // TODO can we just say `Self`?
+    fn kind(&self) -> Self::Error {
+        *self
+    }
+}
+
+/// USB Result<T>
+pub type Result<T> = core::result::Result<T, ErrorKind>;

@@ -12,10 +12,15 @@ edition = "2021"
 rust-version = "1.59"
 include = ["examples/**/*", "src/**/*", "README.md", "memory.x"]
 
+[package.metadata.docs.rs]
+default-target = "riscv32im-unknown-none-elf"
+targets = [
+    "riscv32im-unknown-none-elf",
+]
+
 [lib]
 test = false
 bench = false
-
 
 # - features ------------------------------------------------------------------
 
@@ -30,7 +35,8 @@ embedded-hal = "=1.0.0-alpha.9"
 embedded-hal-0 = { package = "embedded-hal", version = "=0.2.7", features = ["unproven"] }
 embedded-hal-nb = "=1.0.0-alpha.1"
 fugit = "=0.3.6"
-lunasoc-pac = { path = "../lunasoc-pac", default-features = false}
+libgreat = { path = "../libgreat", features = [] }
+lunasoc-pac = { path = "../lunasoc-pac", default-features = false }
 nb = "=1.0.0"
 riscv = { version = "=0.10.1", default-features = false }
 
@@ -42,6 +48,7 @@ log = { path = "../toolchain/log.git" }
 # - dev-dependencies ----------------------------------------------------------
 
 [dev-dependencies]
+libgreat = { path = "../libgreat", features = [] }
 lunasoc-pac = { path = "../lunasoc-pac", features = ["critical-section", "rt"]}
 panic-halt = "=0.2.0"
 riscv = { version = "=0.10.1", features = ["critical-section-single-hart"] }
