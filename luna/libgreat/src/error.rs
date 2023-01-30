@@ -6,13 +6,14 @@
  *   * https://doc.rust-lang.org/rust-by-example/error/multiple_error_types.html
  *   * https://doc.rust-lang.org/book/ch09-02-recoverable-errors-with-result.html
  *   * https://stevedonovan.github.io/rust-gentle-intro/6-error-handling.html
+ *   * https://www.sheshbabu.com/posts/rust-error-handling/
+ *   * https://richard.dallaway.com/posts/2020-01-20-rust-error-chaining/
  *
  * Useful documentation:
  *
  *   * https://doc.rust-lang.org/beta/core/error/trait.Error.html
  *
  */
-
 
 /// The libgreat Error trait
 pub trait Error: core::fmt::Debug {

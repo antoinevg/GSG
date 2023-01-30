@@ -8,8 +8,6 @@ use riscv_rt::entry;
 use lunasoc_pac as pac;
 use pac::csr;
 
-const SYSTEM_CLOCK_FREQUENCY: u32 = 60_000_000;
-
 #[entry]
 fn main() -> ! {
     let peripherals = pac::Peripherals::take().unwrap();
@@ -20,7 +18,7 @@ fn main() -> ! {
     // configure and enable timer
     timer
         .reload
-        .write(|w| unsafe { w.reload().bits(SYSTEM_CLOCK_FREQUENCY / 2) });
+        .write(|w| unsafe { w.reload().bits(pac::clock::sysclk() / 2) });
     timer.en.write(|w| w.en().bit(true));
 
     // enable timer events
@@ -40,7 +38,7 @@ fn main() -> ! {
 
     loop {
         unsafe {
-            riscv::asm::delay(SYSTEM_CLOCK_FREQUENCY);
+            riscv::asm::delay(pac::clock::sysclk());
         }
         uart_tx("Ping\n");
     }

@@ -12,7 +12,7 @@ pub use lunasoc_pac as pac;
 
 // - constants ----------------------------------------------------------------
 
-pub const SYSTEM_CLOCK_FREQUENCY: u32 = 60_000_000;
+pub const SYSTEM_CLOCK_FREQUENCY: u32 = pac::clock::sysclk();
 
 // - Error --------------------------------------------------------------------
 

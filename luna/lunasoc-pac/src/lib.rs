@@ -11,6 +11,14 @@ pub mod register {
     pub use crate::cpu::minerva;
 }
 
+pub mod clock {
+    const SYSTEM_CLOCK_FREQUENCY: u32 = 60_000_000;
+
+    pub const fn sysclk() -> u32 {
+        SYSTEM_CLOCK_FREQUENCY
+    }
+}
+
 #[deny(dead_code)]
 #[deny(improper_ctypes)]
 #[deny(missing_docs)]

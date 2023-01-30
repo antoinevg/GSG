@@ -4,21 +4,18 @@
 use panic_halt as _;
 use riscv_rt::entry;
 
-use firmware::{hal, pac};
-use lunasoc_firmware as firmware;
+use lunasoc_hal as hal;
+use lunasoc_pac as pac;
 
-use log::{debug, error, info};
+use core::fmt::Write;
 
 #[entry]
 fn main() -> ! {
     let peripherals = pac::Peripherals::take().unwrap();
-
-    // initialize logging
-    let serial = hal::Serial::new(peripherals.UART);
-    firmware::log::init(serial);
+    let mut serial = hal::Serial::new(peripherals.UART);
 
     // configure and enable timer
-    let one_second = firmware::SYSTEM_CLOCK_FREQUENCY;
+    let one_second = pac::clock::sysclk();
     let mut timer = hal::Timer::new(peripherals.TIMER, one_second);
     timer.set_timeout_ticks(one_second / 2);
     timer.enable();
@@ -38,14 +35,14 @@ fn main() -> ! {
         pac::csr::interrupt::enable(pac::Interrupt::TIMER)
     }
 
-    info!("Peripherals initialized, entering main loop.");
+    writeln!(serial, "Peripherals initialized, entering main loop.").unwrap();
 
     let mut uptime = 1;
     loop {
-        info!("Uptime: {} seconds", uptime);
+        writeln!(serial, "Uptime: {} seconds", uptime).unwrap();
 
         unsafe {
-            riscv::asm::delay(firmware::SYSTEM_CLOCK_FREQUENCY);
+            riscv::asm::delay(pac::clock::sysclk());
         }
         uptime += 1;
     }
@@ -57,11 +54,13 @@ fn main() -> ! {
 fn MachineExternal() {
     static mut TOGGLE: bool = true;
 
+    let mut serial = unsafe { hal::Serial::summon() };
+
     if unsafe { pac::csr::interrupt::pending(pac::Interrupt::TIMER) } {
         let mut timer = unsafe { hal::Timer::summon() };
         timer.clear_irq();
 
-        debug!("MachineExternal - timer interrupt");
+        writeln!(serial, "MachineExternal - timer interrupt").unwrap();
 
         // blinkenlights
         let peripherals = unsafe { pac::Peripherals::steal() };
@@ -74,6 +73,6 @@ fn MachineExternal() {
         }
         unsafe { TOGGLE = !TOGGLE };
     } else {
-        error!("MachineExternal - unknown interrupt");
+        writeln!(serial, "MachineExternal - unknown interrupt").unwrap();
     }
 }

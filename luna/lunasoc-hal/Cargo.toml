@@ -66,5 +66,17 @@ name = "blinky_pac"
 required-features = ["lunasoc-pac/rt"]
 
 [[example]]
+name = "interrupts"
+required-features = ["lunasoc-pac/rt"]
+
+[[example]]
+name = "interrupts_pac"
+required-features = ["lunasoc-pac/rt"]
+
+[[example]]
 name = "uart"
+required-features = ["lunasoc-pac/rt"]
+
+[[example]]
+name = "uart_pac"
 required-features = ["lunasoc-pac/rt"]

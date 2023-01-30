@@ -40,31 +40,11 @@ log = { path = "../toolchain/log.git" }
 # - binaries ------------------------------------------------------------------
 
 [[bin]]
-name = "blinky_pac"
-required-features = ["lunasoc-pac/rt"]
-
-[[bin]]
 name = "firmware"
 required-features = ["lunasoc-pac/rt"]
 
 [[bin]]
 name = "hello"
-required-features = ["lunasoc-pac/rt"]
-
-[[bin]]
-name = "interrupts"
-required-features = ["lunasoc-pac/rt"]
-
-[[bin]]
-name = "interrupts_pac"
-required-features = ["lunasoc-pac/rt"]
-
-[[bin]]
-name = "log"
-required-features = ["lunasoc-pac/rt"]
-
-[[bin]]
-name = "uart_pac"
 required-features = ["lunasoc-pac/rt"]
 
 [[bin]]

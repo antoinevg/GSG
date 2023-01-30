@@ -127,7 +127,8 @@ fn MachineExternal() {
 
     // debug
     let pending = unsafe { pac::csr::interrupt::reg_pending() };
-    leds.output.write(|w| unsafe { w.output().bits((1 << pending) as u8) });
+    leds.output
+        .write(|w| unsafe { w.output().bits((1 << pending) as u8) });
 
     if usb0.device.ev_pending.read().pending().bit() {
         usb0.device
@@ -136,30 +137,25 @@ fn MachineExternal() {
 
         usb0.reset();
         //debug!("MachineExternal - usb0.device interrupt");
-
     } else if usb0.ep_control.ev_pending.read().pending().bit() {
         usb0.ep_control
             .ev_pending
             .modify(|r, w| w.pending().bit(r.pending().bit()));
         //debug!("MachineExternal - usb0.ep_setup interrupt");
-
     } else if usb0.ep_in.ev_pending.read().pending().bit() {
         usb0.ep_in
             .ev_pending
             .modify(|r, w| w.pending().bit(r.pending().bit()));
         //debug!("MachineExternal - usb0.ep_in interrupt");
-
     } else if usb0.ep_out.ev_pending.read().pending().bit() {
         usb0.ep_out
             .ev_pending
             .modify(|r, w| w.pending().bit(r.pending().bit()));
         //debug!("MachineExternal - usb0.ep_out interrupt");
-
     } else if timer.ev_pending.read().pending().bit() {
         timer
             .ev_pending
             .modify(|r, w| w.pending().bit(r.pending().bit()));
-
     } else {
         error!("MachineExternal - unknown interrupt");
         error!("  pend: {:#035b}", pending);
@@ -301,7 +297,6 @@ fn handle_set_descriptor(usb0: &UsbInterface0, packet: &SetupPacket) -> Result<(
         return Ok(());
     }
 
-
     Ok(())
 }
 
@@ -367,7 +362,6 @@ fn handle_set_configuration(usb0: &UsbInterface0, packet: &SetupPacket) -> Resul
         usb0.stall_request();
         return Ok(());
     }
-
 
     Ok(())
 }

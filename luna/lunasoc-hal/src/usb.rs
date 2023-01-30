@@ -4,7 +4,7 @@ mod control;
 mod error;
 
 pub use control::*;
-pub use error::{Result, ErrorKind};
+pub use error::{ErrorKind, Result};
 
 // - UsbInterface0 ------------------------------------------------------------
 
