@@ -76,8 +76,8 @@ class LunaSoCExample(Elaboratable):
         self.soc.add_peripheral(self.usb0, addr=0x80002000)
 
         # ... our eptri peripherals.
-        self.usb0_setup = SetupFIFOInterface()
-        self.soc.add_peripheral(self.usb0_setup, as_submodule=False)
+        self.usb0_ep_control = SetupFIFOInterface()
+        self.soc.add_peripheral(self.usb0_ep_control, as_submodule=False)
 
         self.usb0_ep_in = InFIFOInterface()
         self.soc.add_peripheral(self.usb0_ep_in, as_submodule=False)
@@ -115,7 +115,7 @@ class LunaSoCExample(Elaboratable):
         m.d.comb += self.usb0.attach(usb_device)
 
         # add our eptri endpoint handlers
-        usb_device.add_endpoint(self.usb0_setup)
+        usb_device.add_endpoint(self.usb0_ep_control)
         usb_device.add_endpoint(self.usb0_ep_in)
         usb_device.add_endpoint(self.usb0_ep_out)
 

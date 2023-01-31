@@ -34,19 +34,19 @@ impl From<crate::W<EV_ENABLE_SPEC>> for W {
         W(writer)
     }
 }
-#[doc = "Field `enable` reader - usb0_setup enable register field"]
+#[doc = "Field `enable` reader - usb0_ep_control enable register field"]
 pub type ENABLE_R = crate::BitReader<bool>;
-#[doc = "Field `enable` writer - usb0_setup enable register field"]
+#[doc = "Field `enable` writer - usb0_ep_control enable register field"]
 pub type ENABLE_W<'a, const O: u8> = crate::BitWriter<'a, u32, EV_ENABLE_SPEC, bool, O>;
 impl R {
-    #[doc = "Bit 0 - usb0_setup enable register field"]
+    #[doc = "Bit 0 - usb0_ep_control enable register field"]
     #[inline(always)]
     pub fn enable(&self) -> ENABLE_R {
         ENABLE_R::new((self.bits & 1) != 0)
     }
 }
 impl W {
-    #[doc = "Bit 0 - usb0_setup enable register field"]
+    #[doc = "Bit 0 - usb0_ep_control enable register field"]
     #[inline(always)]
     #[must_use]
     pub fn enable(&mut self) -> ENABLE_W<0> {
@@ -59,7 +59,7 @@ impl W {
         self
     }
 }
-#[doc = "usb0_setup ev_enable register\n\nThis register you can [`read`](crate::generic::Reg::read), [`write_with_zero`](crate::generic::Reg::write_with_zero), [`reset`](crate::generic::Reg::reset), [`write`](crate::generic::Reg::write), [`modify`](crate::generic::Reg::modify). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [ev_enable](index.html) module"]
+#[doc = "usb0_ep_control ev_enable register\n\nThis register you can [`read`](crate::generic::Reg::read), [`write_with_zero`](crate::generic::Reg::write_with_zero), [`reset`](crate::generic::Reg::reset), [`write`](crate::generic::Reg::write), [`modify`](crate::generic::Reg::modify). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [ev_enable](index.html) module"]
 pub struct EV_ENABLE_SPEC;
 impl crate::RegisterSpec for EV_ENABLE_SPEC {
     type Ux = u32;

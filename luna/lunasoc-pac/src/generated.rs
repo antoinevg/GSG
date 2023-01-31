@@ -11,7 +11,7 @@ extern "C" {
     fn TIMER();
     fn UART();
     fn USB0();
-    fn USB0_SETUP();
+    fn USB0_EP_CONTROL();
     fn USB0_EP_IN();
     fn USB0_EP_OUT();
 }
@@ -28,7 +28,7 @@ pub static __EXTERNAL_INTERRUPTS: [Vector; 6] = [
     Vector { _handler: UART },
     Vector { _handler: USB0 },
     Vector {
-        _handler: USB0_SETUP,
+        _handler: USB0_EP_CONTROL,
     },
     Vector {
         _handler: USB0_EP_IN,
@@ -124,34 +124,34 @@ impl core::fmt::Debug for USB0 {
 }
 #[doc = "USB0"]
 pub mod usb0;
-#[doc = "USB0_SETUP"]
-pub struct USB0_SETUP {
+#[doc = "USB0_EP_CONTROL"]
+pub struct USB0_EP_CONTROL {
     _marker: PhantomData<*const ()>,
 }
-unsafe impl Send for USB0_SETUP {}
-impl USB0_SETUP {
+unsafe impl Send for USB0_EP_CONTROL {}
+impl USB0_EP_CONTROL {
     #[doc = r"Pointer to the register block"]
-    pub const PTR: *const usb0_setup::RegisterBlock = 0x8000_2040 as *const _;
+    pub const PTR: *const usb0_ep_control::RegisterBlock = 0x8000_2040 as *const _;
     #[doc = r"Return the pointer to the register block"]
     #[inline(always)]
-    pub const fn ptr() -> *const usb0_setup::RegisterBlock {
+    pub const fn ptr() -> *const usb0_ep_control::RegisterBlock {
         Self::PTR
     }
 }
-impl Deref for USB0_SETUP {
-    type Target = usb0_setup::RegisterBlock;
+impl Deref for USB0_EP_CONTROL {
+    type Target = usb0_ep_control::RegisterBlock;
     #[inline(always)]
     fn deref(&self) -> &Self::Target {
         unsafe { &*Self::PTR }
     }
 }
-impl core::fmt::Debug for USB0_SETUP {
+impl core::fmt::Debug for USB0_EP_CONTROL {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        f.debug_struct("USB0_SETUP").finish()
+        f.debug_struct("USB0_EP_CONTROL").finish()
     }
 }
-#[doc = "USB0_SETUP"]
-pub mod usb0_setup;
+#[doc = "USB0_EP_CONTROL"]
+pub mod usb0_ep_control;
 #[doc = "USB0_EP_IN"]
 pub struct USB0_EP_IN {
     _marker: PhantomData<*const ()>,
@@ -247,8 +247,8 @@ pub struct Peripherals {
     pub UART: UART,
     #[doc = "USB0"]
     pub USB0: USB0,
-    #[doc = "USB0_SETUP"]
-    pub USB0_SETUP: USB0_SETUP,
+    #[doc = "USB0_EP_CONTROL"]
+    pub USB0_EP_CONTROL: USB0_EP_CONTROL,
     #[doc = "USB0_EP_IN"]
     pub USB0_EP_IN: USB0_EP_IN,
     #[doc = "USB0_EP_OUT"]
@@ -286,7 +286,7 @@ impl Peripherals {
             USB0: USB0 {
                 _marker: PhantomData,
             },
-            USB0_SETUP: USB0_SETUP {
+            USB0_EP_CONTROL: USB0_EP_CONTROL {
                 _marker: PhantomData,
             },
             USB0_EP_IN: USB0_EP_IN {

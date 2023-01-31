@@ -10,6 +10,7 @@ pub mod usb;
 // export peripherals
 pub use serial::Serial;
 pub use timer::Timer;
+pub use usb::UsbInterface0;
 
 // re-export dependencies
 pub use lunasoc_pac as pac;

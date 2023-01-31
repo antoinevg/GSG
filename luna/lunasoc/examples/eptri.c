@@ -163,10 +163,10 @@ void read_setup_request(void)
     for (uint8_t i = 0; i < 8; ++i) {
 
         // Block until we have setup data to read.
-        while(!usb0_setup_have_read());
+        while(!usb0_ep_control_have_read());
 
         // Once it's available, read the setup field for our packet.
-        uint8_t byte = usb0_setup_data_read();
+        uint8_t byte = usb0_ep_control_data_read();
         last_setup_packet.raw_data[i] = byte;
     }
 }
@@ -285,7 +285,7 @@ void handle_set_address(void)
     // FIXME: we should wait to get our final ACK on the status stage before applying this address
 
     // Apply our address.
-    usb0_setup_address_write(last_setup_packet.wValue);
+    usb0_ep_control_address_write(last_setup_packet.wValue);
 }
 
 

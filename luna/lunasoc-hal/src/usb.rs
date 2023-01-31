@@ -14,7 +14,7 @@ use log::trace;
 
 pub struct UsbInterface0 {
     pub device: pac::USB0,
-    pub ep_control: pac::USB0_SETUP,
+    pub ep_control: pac::USB0_EP_CONTROL,
     pub ep_in: pac::USB0_EP_IN,
     pub ep_out: pac::USB0_EP_OUT,
     pub reset_count: usize,
@@ -24,7 +24,7 @@ impl UsbInterface0 {
     /// Create a new `Usb` from the [`USB`](pac::USB) peripheral.
     pub fn new(
         device: pac::USB0,
-        ep_setup: pac::USB0_SETUP,
+        ep_setup: pac::USB0_EP_CONTROL,
         ep_in: pac::USB0_EP_IN,
         ep_out: pac::USB0_EP_OUT,
     ) -> Self {
@@ -42,7 +42,7 @@ impl UsbInterface0 {
         self,
     ) -> (
         pac::USB0,
-        pac::USB0_SETUP,
+        pac::USB0_EP_CONTROL,
         pac::USB0_EP_IN,
         pac::USB0_EP_OUT,
     ) {
@@ -57,7 +57,7 @@ impl UsbInterface0 {
     pub unsafe fn summon() -> Self {
         Self {
             device: pac::Peripherals::steal().USB0,
-            ep_control: pac::Peripherals::steal().USB0_SETUP,
+            ep_control: pac::Peripherals::steal().USB0_EP_CONTROL,
             ep_in: pac::Peripherals::steal().USB0_EP_IN,
             ep_out: pac::Peripherals::steal().USB0_EP_OUT,
             reset_count: 0,

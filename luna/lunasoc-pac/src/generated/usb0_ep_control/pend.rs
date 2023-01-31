@@ -22,7 +22,7 @@ impl R {
         PEND_R::new((self.bits & 1) != 0)
     }
 }
-#[doc = "usb0_setup pend register\n\nThis register you can [`read`](crate::generic::Reg::read). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [pend](index.html) module"]
+#[doc = "usb0_ep_control pend register\n\nThis register you can [`read`](crate::generic::Reg::read). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [pend](index.html) module"]
 pub struct PEND_SPEC;
 impl crate::RegisterSpec for PEND_SPEC {
     type Ux = u32;

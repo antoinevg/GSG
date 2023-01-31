@@ -22,7 +22,7 @@ impl R {
         EPNO_R::new((self.bits & 0x0f) as u8)
     }
 }
-#[doc = "usb0_setup epno register\n\nThis register you can [`read`](crate::generic::Reg::read). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [epno](index.html) module"]
+#[doc = "usb0_ep_control epno register\n\nThis register you can [`read`](crate::generic::Reg::read). See [API](https://docs.rs/svd2rust/#read--modify--write-api).\n\nFor information about available fields see [epno](index.html) module"]
 pub struct EPNO_SPEC;
 impl crate::RegisterSpec for EPNO_SPEC {
     type Ux = u32;

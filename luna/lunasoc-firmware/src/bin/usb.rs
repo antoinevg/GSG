@@ -60,7 +60,7 @@ fn main() -> ! {
     // usb
     let usb0 = UsbInterface0::new(
         peripherals.USB0,
-        peripherals.USB0_SETUP,
+        peripherals.USB0_EP_CONTROL,
         peripherals.USB0_EP_IN,
         peripherals.USB0_EP_OUT,
     );
@@ -160,16 +160,6 @@ fn MachineExternal() {
         error!("MachineExternal - unknown interrupt");
         error!("  pend: {:#035b}", pending);
     }
-}
-
-// - handle_bus_reset ---------------------------------------------------------
-
-fn handle_bus_reset(usb0: &UsbInterface0) -> Result<bool> {
-    if usb0.device.ev_pending.read().pending().bit() {
-        debug!("# handle_bus_reset()");
-        debug!("  received bus reset: {}", usb0.reset_count);
-    }
-    Ok(false)
 }
 
 // - read_setup_request -------------------------------------------------------
@@ -454,7 +444,6 @@ const USB_STRING2_DESCRIPTOR: &[u8] = &[
 # - Read Windows extended descriptors. [optional]
 # - Read string descriptors from device descriptor (wIndex=language id).
 # - Set configuration.
-# -ccurehrvdvhrlccdnulgrvihjlvdletgdknngbfh
-Read back configuration number and validate.
+# - Read back configuration number and validate.
 
 */

@@ -364,8 +364,8 @@
       </registers>
     </peripheral>
     <peripheral>
-      <name>USB0_SETUP</name>
-      <groupName>USB0_SETUP</groupName>
+      <name>USB0_EP_CONTROL</name>
+      <groupName>USB0_EP_CONTROL</groupName>
       <baseAddress>0x80002040</baseAddress>
       <addressBlock>
         <offset>0</offset>
@@ -373,13 +373,13 @@
         <usage>registers</usage>
       </addressBlock>
       <interrupt>
-        <name>usb0_setup</name>
+        <name>usb0_ep_control</name>
         <value>3</value>
       </interrupt>
       <registers>
         <register>
           <name>data</name>
-          <description>usb0_setup data register</description>
+          <description>usb0_ep_control data register</description>
           <addressOffset>0x0000</addressOffset>
           <size>32</size>
           <resetValue>0x00</resetValue>
@@ -398,7 +398,7 @@
         </register>
         <register>
           <name>reset</name>
-          <description>usb0_setup reset register</description>
+          <description>usb0_ep_control reset register</description>
           <addressOffset>0x0004</addressOffset>
           <size>32</size>
           <resetValue>0x00</resetValue>
@@ -415,7 +415,7 @@
         </register>
         <register>
           <name>epno</name>
-          <description>usb0_setup epno register</description>
+          <description>usb0_ep_control epno register</description>
           <addressOffset>0x0008</addressOffset>
           <size>32</size>
           <resetValue>0x00</resetValue>
@@ -430,7 +430,7 @@
         </register>
         <register>
           <name>have</name>
-          <description>usb0_setup have register</description>
+          <description>usb0_ep_control have register</description>
           <addressOffset>0x000c</addressOffset>
           <size>32</size>
           <resetValue>0x00</resetValue>
@@ -445,7 +445,7 @@
         </register>
         <register>
           <name>pend</name>
-          <description>usb0_setup pend register</description>
+          <description>usb0_ep_control pend register</description>
           <addressOffset>0x0010</addressOffset>
           <size>32</size>
           <resetValue>0x00</resetValue>
@@ -460,7 +460,7 @@
         </register>
         <register>
           <name>address</name>
-          <description>usb0_setup address register</description>
+          <description>usb0_ep_control address register</description>
           <addressOffset>0x0014</addressOffset>
           <size>32</size>
           <resetValue>0x00</resetValue>
@@ -478,7 +478,7 @@
         </register>
         <register>
           <name>ev_status</name>
-          <description>usb0_setup ev_status register</description>
+          <description>usb0_ep_control ev_status register</description>
           <addressOffset>0x0020</addressOffset>
           <size>32</size>
           <resetValue>0x00</resetValue>
@@ -486,14 +486,14 @@
           <fields>
             <field>
               <name>status</name>
-              <description>usb0_setup status register field</description>
+              <description>usb0_ep_control status register field</description>
               <bitRange>[0:0]</bitRange>
             </field>
           </fields>
         </register>
         <register>
           <name>ev_pending</name>
-          <description>usb0_setup ev_pending register</description>
+          <description>usb0_ep_control ev_pending register</description>
           <addressOffset>0x0024</addressOffset>
           <size>32</size>
           <resetValue>0x00</resetValue>
@@ -501,14 +501,14 @@
           <fields>
             <field>
               <name>pending</name>
-              <description>usb0_setup pending register field</description>
+              <description>usb0_ep_control pending register field</description>
               <bitRange>[0:0]</bitRange>
             </field>
           </fields>
         </register>
         <register>
           <name>ev_enable</name>
-          <description>usb0_setup ev_enable register</description>
+          <description>usb0_ep_control ev_enable register</description>
           <addressOffset>0x0028</addressOffset>
           <size>32</size>
           <resetValue>0x00</resetValue>
@@ -516,7 +516,7 @@
           <fields>
             <field>
               <name>enable</name>
-              <description>usb0_setup enable register field</description>
+              <description>usb0_ep_control enable register field</description>
               <bitRange>[0:0]</bitRange>
             </field>
           </fields>
