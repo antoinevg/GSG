@@ -102,17 +102,12 @@ macro_rules! impl_timer {
                 }
 
                 /// Check if the interrupt flag is pending
-                pub fn is_irq_pending(&mut self) -> bool {
+                pub fn is_pending(&self) -> bool {
                     self.registers.ev_pending.read().pending().bit_is_set()
                 }
 
-                /// Check if the interrupt flag is cleared
-                pub fn is_irq_clear(&mut self) -> bool {
-                    self.registers.ev_pending.read().pending().bit_is_clear()
-                }
-
                 /// Clear the interrupt flag
-                pub fn clear_irq(&mut self) {
+                pub fn clear_pending(&mut self) {
                     let pending = self.registers.ev_pending.read().pending().bit();
                     self.registers.ev_pending.write(|w| w.pending().bit(pending));
                 }

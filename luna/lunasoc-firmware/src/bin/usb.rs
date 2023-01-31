@@ -33,7 +33,7 @@ use firmware::{hal, pac};
 use lunasoc_firmware as firmware;
 
 use libgreat::Result;
-use libgreat::smolusb::control::{
+use hal::smolusb::control::{
     DescriptorType, Direction, Recipient, Request, RequestType, SetupPacket,
 };
 
@@ -57,10 +57,9 @@ fn main() -> ! {
     let mut timer = hal::Timer::new(peripherals.TIMER, sysclk);
     timer.set_timeout_ticks(sysclk * 1);
     timer.enable();
-    timer.listen(hal::timer::Event::TimeOut);
 
     // usb
-    let usb0 = hal::UsbInterface0::new(
+    let mut usb0 = hal::UsbInterface0::new(
         peripherals.USB0,
         peripherals.USB0_EP_CONTROL,
         peripherals.USB0_EP_IN,
@@ -68,9 +67,11 @@ fn main() -> ! {
     );
     info!("Connecting USB device...");
     let speed = usb0.connect();
-    //usb0.listen();
     info!("Connected: {}", speed);
 
+    // enable interrupts
+    timer.listen(hal::timer::Event::TimeOut);
+    usb0.listen();
     unsafe {
         // set mstatus register: interrupt enable
         riscv::interrupt::enable();
@@ -124,40 +125,29 @@ fn MachineExternal() {
     // peripherals
     let peripherals = unsafe { pac::Peripherals::steal() };
     let leds = &peripherals.LEDS;
-    let timer = &peripherals.TIMER;
-    let mut usb0 = unsafe { UsbInterface0::summon() };
+    let mut timer = unsafe { hal::Timer::summon() };
+    let mut usb0 = unsafe { hal::UsbInterface0::summon() };
 
     // debug
     let pending = unsafe { pac::csr::interrupt::reg_pending() };
     leds.output
         .write(|w| unsafe { w.output().bits((1 << pending) as u8) });
 
-    if usb0.device.ev_pending.read().pending().bit() {
-        usb0.device
-            .ev_pending
-            .modify(|r, w| w.pending().bit(r.pending().bit()));
-
+    if usb0.is_pending(pac::Interrupt::USB0) {
+        usb0.clear_pending(pac::Interrupt::USB0);
         usb0.reset();
         //debug!("MachineExternal - usb0.device interrupt");
-    } else if usb0.ep_control.ev_pending.read().pending().bit() {
-        usb0.ep_control
-            .ev_pending
-            .modify(|r, w| w.pending().bit(r.pending().bit()));
-        //debug!("MachineExternal - usb0.ep_setup interrupt");
-    } else if usb0.ep_in.ev_pending.read().pending().bit() {
-        usb0.ep_in
-            .ev_pending
-            .modify(|r, w| w.pending().bit(r.pending().bit()));
+    } else if usb0.is_pending(pac::Interrupt::USB0_EP_CONTROL) {
+        usb0.clear_pending(pac::Interrupt::USB0_EP_CONTROL);
+        //debug!("MachineExternal - usb0.ep_control interrupt");
+    } else if usb0.is_pending(pac::Interrupt::USB0_EP_IN) {
+        usb0.clear_pending(pac::Interrupt::USB0_EP_IN);
         //debug!("MachineExternal - usb0.ep_in interrupt");
-    } else if usb0.ep_out.ev_pending.read().pending().bit() {
-        usb0.ep_out
-            .ev_pending
-            .modify(|r, w| w.pending().bit(r.pending().bit()));
+    } else if usb0.is_pending(pac::Interrupt::USB0_EP_OUT) {
+        usb0.clear_pending(pac::Interrupt::USB0_EP_OUT);
         //debug!("MachineExternal - usb0.ep_out interrupt");
-    } else if timer.ev_pending.read().pending().bit() {
-        timer
-            .ev_pending
-            .modify(|r, w| w.pending().bit(r.pending().bit()));
+    } else if timer.is_pending() {
+        timer.clear_pending();
     } else {
         error!("MachineExternal - unknown interrupt");
         error!("  pend: {:#035b}", pending);
@@ -171,7 +161,7 @@ fn read_setup_request(usb0: &UsbInterface0) -> Result<SetupPacket> {
 
     // read data packet
     let mut buffer = [0_u8; 8];
-    usb0.ep_setup_read_packet(&mut buffer)?;
+    usb0.ep_control_read_packet(&mut buffer)?;
 
     // Deserialize into a SetupRequest in the most cursed manner available to us
     let packet = unsafe { core::mem::transmute::<[u8; 8], SetupPacket>(buffer) };
@@ -260,7 +250,7 @@ fn handle_set_address(usb0: &UsbInterface0, packet: &SetupPacket) -> Result<()> 
     usb0.ack_status_stage(packet);
 
     let address: u8 = (packet.value & 0x7f) as u8;
-    usb0.ep_setup_set_address(address);
+    usb0.ep_control_set_address(address);
     debug!("  -> handle_set_address({})", address);
 
     Ok(())

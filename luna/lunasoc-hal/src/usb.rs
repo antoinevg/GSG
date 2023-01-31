@@ -5,12 +5,14 @@ pub use error::ErrorKind;
 
 // - UsbInterface0 ------------------------------------------------------------
 
-use libgreat::smolusb::control::*;
+//use libgreat::smolusb::control::*;
+use crate::smolusb::control::*; // TODO
 use libgreat::Result;
 
 use crate::pac;
+use pac::interrupt::Interrupt;
 
-use log::trace;
+use log::{trace, warn};
 
 pub struct UsbInterface0 {
     pub device: pac::USB0,
@@ -24,13 +26,13 @@ impl UsbInterface0 {
     /// Create a new `Usb` from the [`USB`](pac::USB) peripheral.
     pub fn new(
         device: pac::USB0,
-        ep_setup: pac::USB0_EP_CONTROL,
+        ep_control: pac::USB0_EP_CONTROL,
         ep_in: pac::USB0_EP_IN,
         ep_out: pac::USB0_EP_OUT,
     ) -> Self {
         Self {
             device,
-            ep_control: ep_setup,
+            ep_control,
             ep_in,
             ep_out,
             reset_count: 0,
@@ -67,22 +69,20 @@ impl UsbInterface0 {
 
 impl UsbInterface0 {
     /// Set the interface up for new connections
-    pub fn connect(&self) -> u8 {
+    pub fn connect(&mut self) -> u8 {
         // disconnect device controller
         self.device.connect.write(|w| w.connect().bit(false));
 
         // disable endpoint events
-        self.device.ev_enable.write(|w| w.enable().bit(false));
-        self.ep_control.ev_enable.write(|w| w.enable().bit(false));
-        self.ep_in.ev_enable.write(|w| w.enable().bit(false));
-        self.ep_out.ev_enable.write(|w| w.enable().bit(false));
+        self.disable_interrupt(Interrupt::USB0);
+        self.disable_interrupt(Interrupt::USB0_EP_CONTROL);
+        self.disable_interrupt(Interrupt::USB0_EP_IN);
+        self.disable_interrupt(Interrupt::USB0_EP_OUT);
 
         // reset FIFOs
         self.ep_control.reset.write(|w| w.reset().bit(true));
         self.ep_in.reset.write(|w| w.reset().bit(true));
         self.ep_out.reset.write(|w| w.reset().bit(true));
-
-        self.listen();
 
         // connect device controller
         self.device.connect.write(|w| w.connect().bit(true));
@@ -97,9 +97,9 @@ impl UsbInterface0 {
         self.reset_count += 1;
 
         // disable endpoint events
-        self.ep_control.ev_enable.write(|w| w.enable().bit(false));
-        self.ep_in.ev_enable.write(|w| w.enable().bit(false));
-        self.ep_out.ev_enable.write(|w| w.enable().bit(false));
+        self.disable_interrupt(Interrupt::USB0_EP_CONTROL);
+        self.disable_interrupt(Interrupt::USB0_EP_IN);
+        self.disable_interrupt(Interrupt::USB0_EP_OUT);
 
         // reset device address to 0
         self.ep_control
@@ -121,26 +121,67 @@ impl UsbInterface0 {
     }
 
     // TODO pass event to listen for
-    pub fn listen(&self) {
+    pub fn listen(&mut self) {
         // clear all event handlers
-        self.device
-            .ev_pending
-            .modify(|r, w| w.pending().bit(r.pending().bit()));
-        /*self.ep_setup
-            .ev_pending
-            .modify(|r, w| w.pending().bit(r.pending().bit()));
-        self.ep_in
-            .ev_pending
-            .modify(|r, w| w.pending().bit(r.pending().bit()));
-        self.ep_out
-            .ev_pending
-            .modify(|r, w| w.pending().bit(r.pending().bit()));*/
+        self.clear_pending(Interrupt::USB0);
+        //self.clear_pending(Interrupt::USB0_EP_CONTROL);
+        //self.clear_pending(Interrupt::USB0_EP_IN);
+        //self.clear_pending(Interrupt::USB0_EP_OUT);
 
         // enable device controller events for bus reset signal
-        self.device.ev_enable.write(|w| w.enable().bit(true));
-        //self.ep_in.ev_enable.write(|w| w.enable().bit(true));
-        //self.ep_out.ev_enable.write(|w| w.enable().bit(true));
-        //self.ep_setup.ev_enable.write(|w| w.enable().bit(true));
+        self.enable_interrupt(Interrupt::USB0);
+        //self.enable_interrupt(Interrupt::USB0_EP_CONTROL);
+        //self.enable_interrupt(Interrupt::USB0_EP_IN);
+        //self.enable_interrupt(Interrupt::USB0_EP_OUT);
+    }
+
+    pub fn is_pending(&self, interrupt: Interrupt) -> bool {
+        match interrupt {
+            Interrupt::USB0 => self.device.ev_pending.read().pending().bit_is_set(),
+            Interrupt::USB0_EP_CONTROL => self.ep_control.ev_pending.read().pending().bit_is_set(),
+            Interrupt::USB0_EP_IN => self.ep_in.ev_pending.read().pending().bit_is_set(),
+            Interrupt::USB0_EP_OUT => self.ep_out.ev_pending.read().pending().bit_is_set(),
+            _ => {
+                warn!("Ignoring invalid interrupt is pending: {:?}", interrupt);
+                false
+            }
+        }
+    }
+
+    pub fn clear_pending(&mut self, interrupt: Interrupt) {
+        match interrupt {
+            Interrupt::USB0 => self.device.ev_pending.modify(|r, w| w.pending().bit(r.pending().bit())),
+            Interrupt::USB0_EP_CONTROL => self.ep_control.ev_pending.modify(|r, w| w.pending().bit(r.pending().bit())),
+            Interrupt::USB0_EP_IN => self.ep_in.ev_pending.modify(|r, w| w.pending().bit(r.pending().bit())),
+            Interrupt::USB0_EP_OUT => self.ep_out.ev_pending.modify(|r, w| w.pending().bit(r.pending().bit())),
+            _ => {
+                warn!("Ignoring invalid interrupt clear pending: {:?}", interrupt);
+            }
+        }
+    }
+
+    pub fn enable_interrupt(&mut self, interrupt: Interrupt) {
+        match interrupt {
+            Interrupt::USB0 => self.device.ev_enable.write(|w| w.enable().bit(true)),
+            Interrupt::USB0_EP_CONTROL => self.ep_control.ev_enable.write(|w| w.enable().bit(true)),
+            Interrupt::USB0_EP_IN => self.ep_in.ev_enable.write(|w| w.enable().bit(true)),
+            Interrupt::USB0_EP_OUT => self.ep_out.ev_enable.write(|w| w.enable().bit(true)),
+            _ => {
+                warn!("Ignoring invalid interrupt enable: {:?}", interrupt);
+            }
+        }
+    }
+
+    pub fn disable_interrupt(&mut self, interrupt: Interrupt) {
+        match interrupt {
+            Interrupt::USB0 => self.device.ev_enable.write(|w| w.enable().bit(false)),
+            Interrupt::USB0_EP_CONTROL => self.ep_control.ev_enable.write(|w| w.enable().bit(false)),
+            Interrupt::USB0_EP_IN => self.ep_in.ev_enable.write(|w| w.enable().bit(false)),
+            Interrupt::USB0_EP_OUT => self.ep_out.ev_enable.write(|w| w.enable().bit(false)),
+            _ => {
+                warn!("Ignoring invalid interrupt enable: {:?}", interrupt);
+            }
+        }
     }
 
     /// Acknowledge the status stage of an incoming control request.
@@ -181,21 +222,6 @@ impl UsbInterface0 {
             buffer
         };
 
-        // handle case where device is asking for _more_
-        /*let mut response_buffer = [0_u8; 128];
-        let buffer = if requested_length > buffer.len() {
-            for i in 0..buffer.len() {
-                response_buffer[i] = buffer[i];
-            }
-            if requested_length > response_buffer.len() {
-                &response_buffer
-            } else {
-                &response_buffer[0..requested_length]
-            }
-        } else {
-            buffer
-        };*/
-
         self.ep_in_send_packet(0, buffer);
     }
 
@@ -219,7 +245,7 @@ impl UsbInterface0 {
         trace!("  TX {} bytes: {:x?}", buffer.len(), buffer);
     }
 
-    pub fn ep_setup_read_packet(&self, buffer: &mut [u8]) -> Result<()> {
+    pub fn ep_control_read_packet(&self, buffer: &mut [u8]) -> Result<()> {
         // block until setup data is available
         let mut counter = 0;
         while !self.ep_control.have.read().have().bit() {
@@ -261,11 +287,11 @@ impl UsbInterface0 {
         self.ep_out.stall.write(|w| w.stall().bit(true));
     }
 
-    pub fn ep_setup_address(&self) -> u8 {
+    pub fn ep_control_address(&self) -> u8 {
         self.ep_control.address.read().address().bits()
     }
 
-    pub fn ep_setup_set_address(&self, address: u8) {
+    pub fn ep_control_set_address(&self, address: u8) {
         self.ep_control
             .address
             .write(|w| unsafe { w.address().bits(address & 0x7f) });

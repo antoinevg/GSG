@@ -1,7 +1,6 @@
 ///! The Setup Packet
 ///!
 ///! see: https://www.beyondlogic.org/usbnutshell/usb6.shtml
-
 use crate::smolusb::ErrorKind;
 
 // - UsbSetupRequest ----------------------------------------------------------
@@ -189,5 +188,29 @@ impl TryFrom<u8> for DescriptorType {
             _ => return Err(ErrorKind::FailedConversion),
         };
         Ok(result)
+    }
+}
+
+/// USB Speed
+///
+/// TODO there may be some impedance mismatch between the gateware peripheral and spec here
+#[derive(Debug, PartialEq)]
+#[repr(u8)]
+pub enum Speed {
+    Low = 2,        // 1.5 Mbps
+    Full = 1,       //  12 Mbps
+    High = 0,       // 480 Mbps
+    SuperSpeed = 3, // 5/10 Gbps (includes SuperSpeed+)
+}
+
+impl From<u8> for Speed {
+    fn from(value: u8) -> Self {
+        match value & 0b11 {
+            0 => Speed::High,
+            1 => Speed::Full,
+            2 => Speed::Low,
+            3 => Speed::SuperSpeed,
+            4..=u8::MAX => unimplemented!()
+        }
     }
 }
