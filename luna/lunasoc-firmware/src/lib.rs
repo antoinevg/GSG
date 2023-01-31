@@ -14,25 +14,44 @@ pub use lunasoc_pac as pac;
 
 pub const SYSTEM_CLOCK_FREQUENCY: u32 = pac::clock::sysclk();
 
-// - Error --------------------------------------------------------------------
+// - messages -----------------------------------------------------------------
 
 #[derive(Debug)]
-pub enum FirmwareError {
+pub enum Message {
+    Timer(u32),
+    UsbReset,
+    UnknownInterrupt(usize),
+}
+
+// - Error --------------------------------------------------------------------
+
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
+pub enum ErrorKind {
     Unknown,
 }
 
-/*impl core::fmt::Display for Error {
+// trait: core::error::Error
+impl core::error::Error for ErrorKind {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        use ErrorKind::*;
+        match self {
+            Unknown => "TODO Unknown",
+        }
+    }
+}
+
+// trait:: core::fmt::Display
+impl core::fmt::Display for ErrorKind {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         core::fmt::Debug::fmt(&self, f)
     }
-}*/
-//impl core::error::Error for Error {}
+}
 
-// Ugly little hack for now - https://stackoverflow.com/questions/48430836/
-/*impl<E: core::fmt::Display> core::convert::From<E> for FirmwareError {
-    fn from(_error: E) -> Self {
-        FirmwareError::Unknown
+// trait: libgreat::error::Error
+impl libgreat::error::Error for ErrorKind {
+    type Error = ErrorKind; // TODO can we just say `Self`?
+    fn kind(&self) -> Self::Error {
+        *self
     }
 }
-*/
-pub type FirmwareResult<T> = core::result::Result<T, FirmwareError>;

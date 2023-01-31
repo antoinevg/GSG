@@ -32,10 +32,12 @@ use riscv_rt::entry;
 use firmware::{hal, pac};
 use lunasoc_firmware as firmware;
 
-use hal::usb::{
-    DescriptorType, Direction, Recipient, Request, RequestType, SetupPacket, UsbInterface0,
+use libgreat::Result;
+use libgreat::smolusb::control::{
+    DescriptorType, Direction, Recipient, Request, RequestType, SetupPacket,
 };
-use hal::usb::{ErrorKind, Result};
+
+use hal::UsbInterface0;
 
 use log::{debug, error, info, trace, warn};
 
@@ -58,7 +60,7 @@ fn main() -> ! {
     timer.listen(hal::timer::Event::TimeOut);
 
     // usb
-    let usb0 = UsbInterface0::new(
+    let usb0 = hal::UsbInterface0::new(
         peripherals.USB0,
         peripherals.USB0_EP_CONTROL,
         peripherals.USB0_EP_IN,
@@ -257,8 +259,7 @@ fn handle_setup_request(usb0: &UsbInterface0, packet: &SetupPacket) -> Result<()
 fn handle_set_address(usb0: &UsbInterface0, packet: &SetupPacket) -> Result<()> {
     usb0.ack_status_stage(packet);
 
-    let address: u8 = packet.value.try_into()?;
-    let address: u8 = address & 0x7f;
+    let address: u8 = (packet.value & 0x7f) as u8;
     usb0.ep_setup_set_address(address);
     debug!("  -> handle_set_address({})", address);
 

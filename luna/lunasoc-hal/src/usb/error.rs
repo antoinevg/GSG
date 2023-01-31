@@ -1,12 +1,7 @@
 /// USB Error type
 #[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
-#[non_exhaustive] // ... is a double-edged sword
 pub enum ErrorKind {
-    FailedConversion,
     Timeout,
-    Overflow,
-    Underflow,
-    Unknown,
 }
 
 // trait: core::error::Error
@@ -15,11 +10,7 @@ impl core::error::Error for ErrorKind {
     fn description(&self) -> &str {
         use ErrorKind::*;
         match self {
-            FailedConversion => "TODO FailedConversion",
-            Timeout => "TODO Timeout",
-            Overflow => "TODO Overflow",
-            Underflow => "TODO Underflow",
-            Unknown => "TODO Unknown",
+            Timeout => "Blocking operation timed-out",
         }
     }
 }
@@ -32,11 +23,12 @@ impl core::fmt::Display for ErrorKind {
 }
 
 // trait: core::num::TryFromIntError
-impl core::convert::From<core::num::TryFromIntError> for ErrorKind {
+/*impl core::convert::From<core::num::TryFromIntError> for ErrorKind {
     fn from(_error: core::num::TryFromIntError) -> Self {
-        ErrorKind::FailedConversion
+        //libgreat::smolusb::error::ErrorKind::FailedConversion
+        ErrorKind::Timeout
     }
-}
+}*/
 
 // trait: libgreat::error::Error
 impl libgreat::error::Error for ErrorKind {
@@ -46,5 +38,7 @@ impl libgreat::error::Error for ErrorKind {
     }
 }
 
+/*
 /// USB Result<T>
 pub type Result<T> = core::result::Result<T, ErrorKind>;
+*/

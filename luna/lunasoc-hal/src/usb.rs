@@ -1,12 +1,12 @@
 //! Simple USB implementation
 
-mod control;
 mod error;
-
-pub use control::*;
-pub use error::{ErrorKind, Result};
+pub use error::ErrorKind;
 
 // - UsbInterface0 ------------------------------------------------------------
+
+use libgreat::smolusb::control::*;
+use libgreat::Result;
 
 use crate::pac;
 
@@ -225,7 +225,7 @@ impl UsbInterface0 {
         while !self.ep_control.have.read().have().bit() {
             counter += 1;
             if counter > 60_000_000 {
-                return Err(ErrorKind::Timeout);
+                return Err(&ErrorKind::Timeout);
             }
         }
 

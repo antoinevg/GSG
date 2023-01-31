@@ -25,6 +25,8 @@ default = [
 # - dependencies --------------------------------------------------------------
 
 [dependencies]
+atomic-polyfill = "=1.0.1"
+heapless = { version = "=0.7.16" } # TODO 0.8.0 is en-route
 libgreat = { path = "../libgreat", features = [] }
 lunasoc-pac = { path = "../lunasoc-pac", features = ["critical-section", "rt"]}
 lunasoc-hal = { path = "../lunasoc-hal", features = []}
@@ -35,7 +37,7 @@ riscv-rt = { version = "=0.11.0" }
 # https://github.com/rust-lang/log/issues/526
 #log = "=0.4.17"
 log = { path = "../toolchain/log.git" }
-
+critical-section = "=1.1.1"
 
 # - binaries ------------------------------------------------------------------
 

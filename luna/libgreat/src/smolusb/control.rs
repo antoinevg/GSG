@@ -1,7 +1,8 @@
 ///! The Setup Packet
 ///!
 ///! see: https://www.beyondlogic.org/usbnutshell/usb6.shtml
-use crate::usb::ErrorKind;
+
+use crate::smolusb::ErrorKind;
 
 // - UsbSetupRequest ----------------------------------------------------------
 
@@ -31,7 +32,7 @@ pub enum Recipient {
 }
 
 impl TryFrom<u8> for Recipient {
-    type Error = crate::usb::ErrorKind;
+    type Error = ErrorKind;
 
     fn try_from(value: u8) -> core::result::Result<Self, Self::Error> {
         let result = match value {
@@ -56,7 +57,7 @@ pub enum RequestType {
 }
 
 impl TryFrom<u8> for RequestType {
-    type Error = crate::usb::ErrorKind;
+    type Error = ErrorKind;
 
     fn try_from(value: u8) -> core::result::Result<Self, Self::Error> {
         let result = match value {
@@ -81,7 +82,7 @@ pub enum Direction {
 }
 
 impl TryFrom<u8> for Direction {
-    type Error = crate::usb::ErrorKind;
+    type Error = ErrorKind;
 
     fn try_from(value: u8) -> core::result::Result<Self, Self::Error> {
         let result = match value {
@@ -112,7 +113,7 @@ pub enum Request {
 }
 
 impl TryFrom<u8> for Request {
-    type Error = crate::usb::ErrorKind;
+    type Error = ErrorKind;
 
     fn try_from(value: u8) -> core::result::Result<Self, Self::Error> {
         let result = match value {
@@ -141,7 +142,7 @@ pub enum Feature {
 }
 
 impl TryFrom<u8> for Feature {
-    type Error = crate::usb::ErrorKind;
+    type Error = ErrorKind;
 
     fn try_from(value: u8) -> core::result::Result<Self, Self::Error> {
         let result = match value {
@@ -170,7 +171,7 @@ pub enum DescriptorType {
 }
 
 impl TryFrom<u8> for DescriptorType {
-    type Error = crate::usb::ErrorKind;
+    type Error = ErrorKind;
 
     fn try_from(value: u8) -> core::result::Result<Self, Self::Error> {
         let result = match value {
