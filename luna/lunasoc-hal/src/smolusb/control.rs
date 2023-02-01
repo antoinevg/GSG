@@ -1,9 +1,7 @@
-///! The Setup Packet
-///!
-///! see: https://www.beyondlogic.org/usbnutshell/usb6.shtml
-use crate::smolusb::ErrorKind;
+///! Types for working with the SETUP packet.
+use crate::smolusb::error::ErrorKind;
 
-// - UsbSetupRequest ----------------------------------------------------------
+// - SetupPacket --------------------------------------------------------------
 
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
@@ -18,7 +16,35 @@ pub struct SetupPacket {
     pub length: u16,
 }
 
-// - request_type -------------------------------------------------------------
+impl TryFrom<[u8; 8]> for SetupPacket {
+    type Error = &'static dyn core::error::Error;
+
+    fn try_from(buffer: [u8; 8]) -> core::result::Result<Self, Self::Error> {
+        // Deserialize into a SetupRequest in the most cursed manner available to us
+        // TODO parse properly
+        Ok(unsafe { core::mem::transmute::<[u8; 8], SetupPacket>(buffer) })
+    }
+}
+
+impl SetupPacket {
+    pub fn recipient(&self) -> Recipient {
+        Recipient::from(self.request_type)
+    }
+
+    pub fn request_type(&self) -> RequestType {
+        RequestType::from(self.request_type)
+    }
+
+    pub fn direction(&self) -> Direction {
+        Direction::from(self.request_type)
+    }
+
+    pub fn request(&self) -> core::result::Result<Request, ErrorKind> {
+        Request::try_from(self.request)
+    }
+}
+
+// - SetupPacket.request_type -------------------------------------------------
 
 #[derive(Debug, PartialEq)]
 #[repr(u8)]
@@ -30,19 +56,16 @@ pub enum Recipient {
     Reserved = 4,
 }
 
-impl TryFrom<u8> for Recipient {
-    type Error = ErrorKind;
-
-    fn try_from(value: u8) -> core::result::Result<Self, Self::Error> {
-        let result = match value {
+impl From<u8> for Recipient {
+    fn from(value: u8) -> Self {
+        match value & 0b0001_1111 {
             0 => Recipient::Device,
             1 => Recipient::Interface,
             2 => Recipient::Endpoint,
             3 => Recipient::Other,
             4..=31 => Recipient::Reserved,
-            _ => return Err(ErrorKind::FailedConversion),
-        };
-        Ok(result)
+            _ => unimplemented!(),
+        }
     }
 }
 
@@ -55,45 +78,38 @@ pub enum RequestType {
     Reserved = 3,
 }
 
-impl TryFrom<u8> for RequestType {
-    type Error = ErrorKind;
-
-    fn try_from(value: u8) -> core::result::Result<Self, Self::Error> {
-        let result = match value {
+impl From<u8> for RequestType {
+    fn from(value: u8) -> Self {
+        match (value >> 5) & 0b0000_0011 {
             0 => RequestType::Standard,
             1 => RequestType::Class,
             2 => RequestType::Vendor,
             3 => RequestType::Reserved,
-            _ => return Err(ErrorKind::FailedConversion),
-        };
-        Ok(result)
+            _ => unimplemented!(),
+        }
     }
 }
 
-/// 0x80
-pub const MASK_DIRECTION_IN: u8 = 0b1000_0000;
-
+/// USB traffic direction
 #[derive(Debug, PartialEq)]
 #[repr(u8)]
 pub enum Direction {
-    HostToDevice = 0,
-    DeviceToHost = 1,
+    /// Host to device (OUT)
+    HostToDevice = 0x00,
+    /// Device to host (IN)
+    DeviceToHost = 0x80, // 0b1000_0000,
 }
 
-impl TryFrom<u8> for Direction {
-    type Error = ErrorKind;
-
-    fn try_from(value: u8) -> core::result::Result<Self, Self::Error> {
-        let result = match value {
-            0 => Direction::HostToDevice,
-            1 => Direction::DeviceToHost,
-            _ => return Err(ErrorKind::FailedConversion),
-        };
-        Ok(result)
+impl From<u8> for Direction {
+    fn from(value: u8) -> Self {
+        match (value & 0b1000_0000) == 0 {
+            true => Direction::HostToDevice,
+            false => Direction::DeviceToHost,
+        }
     }
 }
 
-// - request ------------------------------------------------------------------
+// - SetupPacket.request ------------------------------------------------------
 
 #[derive(Debug, PartialEq)]
 #[repr(u8)]
@@ -150,67 +166,5 @@ impl TryFrom<u8> for Feature {
             _ => return Err(ErrorKind::FailedConversion),
         };
         Ok(result)
-    }
-}
-
-#[derive(Debug, PartialEq)]
-#[repr(u8)]
-pub enum DescriptorType {
-    Device = 1,
-    Configuration = 2,
-    String = 3,
-    Interface = 4,
-    Endpoint = 5,
-    DeviceQualifier = 6,
-    OtherSpeedConfiguration = 7,
-    InterfacePower = 8,
-    OnTheGo = 9,
-    Debug = 10,
-    InterfaceAssociation = 11,
-}
-
-impl TryFrom<u8> for DescriptorType {
-    type Error = ErrorKind;
-
-    fn try_from(value: u8) -> core::result::Result<Self, Self::Error> {
-        let result = match value {
-            1 => DescriptorType::Device,
-            2 => DescriptorType::Configuration,
-            3 => DescriptorType::String,
-            4 => DescriptorType::Interface,
-            5 => DescriptorType::Endpoint,
-            6 => DescriptorType::DeviceQualifier,
-            7 => DescriptorType::OtherSpeedConfiguration,
-            8 => DescriptorType::InterfacePower,
-            9 => DescriptorType::OnTheGo,
-            10 => DescriptorType::Debug,
-            11 => DescriptorType::InterfaceAssociation,
-            _ => return Err(ErrorKind::FailedConversion),
-        };
-        Ok(result)
-    }
-}
-
-/// USB Speed
-///
-/// TODO there may be some impedance mismatch between the gateware peripheral and spec here
-#[derive(Debug, PartialEq)]
-#[repr(u8)]
-pub enum Speed {
-    Low = 2,        // 1.5 Mbps
-    Full = 1,       //  12 Mbps
-    High = 0,       // 480 Mbps
-    SuperSpeed = 3, // 5/10 Gbps (includes SuperSpeed+)
-}
-
-impl From<u8> for Speed {
-    fn from(value: u8) -> Self {
-        match value & 0b11 {
-            0 => Speed::High,
-            1 => Speed::Full,
-            2 => Speed::Low,
-            3 => Speed::SuperSpeed,
-            4..=u8::MAX => unimplemented!()
-        }
     }
 }

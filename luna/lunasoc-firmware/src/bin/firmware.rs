@@ -7,7 +7,7 @@ use lunasoc_firmware as firmware;
 use firmware::hal;
 use firmware::pac;
 
-use hal::smolusb::SmolUsb;
+use hal::smolusb::Device;
 
 use log::{debug, error, info};
 
@@ -38,7 +38,7 @@ fn main() -> ! {
     timer.enable();
 
     // initialize usb
-    let mut usb0 = SmolUsb::new(hal::UsbInterface0::new(
+    let mut usb0 = Device::new(hal::UsbInterface0::new(
         peripherals.USB0,
         peripherals.USB0_EP_CONTROL,
         peripherals.USB0_EP_IN,
@@ -48,9 +48,10 @@ fn main() -> ! {
     let speed = usb0.connect();
     info!("Connected: {:?}", speed);
 
-    // enable interrupts
+    // enable interrupt events
     timer.listen(hal::timer::Event::TimeOut);
-    //usb0.enable_interrupts();
+    usb0.enable_interrupts();
+
     unsafe {
         // set mstatus register: interrupt enable
         riscv::interrupt::enable();

@@ -29,13 +29,14 @@ fn panic(panic_info: &core::panic::PanicInfo) -> ! {
 
 use riscv_rt::entry;
 
-use firmware::{hal, pac};
 use lunasoc_firmware as firmware;
 
+use firmware::{hal, pac};
+use hal::smolusb;
+
+use smolusb::control::{Direction, Recipient, Request, RequestType, SetupPacket};
+use smolusb::descriptor::{DeviceDescriptor, DescriptorType};
 use libgreat::Result;
-use hal::smolusb::control::{
-    DescriptorType, Direction, Recipient, Request, RequestType, SetupPacket,
-};
 
 use hal::UsbInterface0;
 
@@ -52,12 +53,6 @@ fn main() -> ! {
     firmware::log::init(serial);
     info!("logging initialized");
 
-    // timer
-    let sysclk = firmware::SYSTEM_CLOCK_FREQUENCY;
-    let mut timer = hal::Timer::new(peripherals.TIMER, sysclk);
-    timer.set_timeout_ticks(sysclk * 1);
-    timer.enable();
-
     // usb
     let mut usb0 = hal::UsbInterface0::new(
         peripherals.USB0,
@@ -70,7 +65,6 @@ fn main() -> ! {
     info!("Connected: {}", speed);
 
     // enable interrupts
-    timer.listen(hal::timer::Event::TimeOut);
     usb0.listen();
     unsafe {
         // set mstatus register: interrupt enable
@@ -80,11 +74,7 @@ fn main() -> ! {
         riscv::register::mie::set_mext();
 
         // write csr: enable interrupts
-        pac::csr::interrupt::enable(pac::Interrupt::TIMER);
         pac::csr::interrupt::enable(pac::Interrupt::USB0);
-        //pac::csr::interrupt::enable(pac::Interrupt::USB0_SETUP);
-        //pac::csr::interrupt::enable(pac::Interrupt::USB0_EP_IN);
-        //pac::csr::interrupt::enable(pac::Interrupt::USB0_EP_OUT);
     }
 
     loop {
@@ -125,7 +115,6 @@ fn MachineExternal() {
     // peripherals
     let peripherals = unsafe { pac::Peripherals::steal() };
     let leds = &peripherals.LEDS;
-    let mut timer = unsafe { hal::Timer::summon() };
     let mut usb0 = unsafe { hal::UsbInterface0::summon() };
 
     // debug
@@ -136,18 +125,6 @@ fn MachineExternal() {
     if usb0.is_pending(pac::Interrupt::USB0) {
         usb0.clear_pending(pac::Interrupt::USB0);
         usb0.reset();
-        //debug!("MachineExternal - usb0.device interrupt");
-    } else if usb0.is_pending(pac::Interrupt::USB0_EP_CONTROL) {
-        usb0.clear_pending(pac::Interrupt::USB0_EP_CONTROL);
-        //debug!("MachineExternal - usb0.ep_control interrupt");
-    } else if usb0.is_pending(pac::Interrupt::USB0_EP_IN) {
-        usb0.clear_pending(pac::Interrupt::USB0_EP_IN);
-        //debug!("MachineExternal - usb0.ep_in interrupt");
-    } else if usb0.is_pending(pac::Interrupt::USB0_EP_OUT) {
-        usb0.clear_pending(pac::Interrupt::USB0_EP_OUT);
-        //debug!("MachineExternal - usb0.ep_out interrupt");
-    } else if timer.is_pending() {
-        timer.clear_pending();
     } else {
         error!("MachineExternal - unknown interrupt");
         error!("  pend: {:#035b}", pending);
@@ -163,10 +140,8 @@ fn read_setup_request(usb0: &UsbInterface0) -> Result<SetupPacket> {
     let mut buffer = [0_u8; 8];
     usb0.ep_control_read_packet(&mut buffer)?;
 
-    // Deserialize into a SetupRequest in the most cursed manner available to us
-    let packet = unsafe { core::mem::transmute::<[u8; 8], SetupPacket>(buffer) };
-
-    Ok(packet)
+    // parse data packet
+    SetupPacket::try_from(buffer)
 }
 
 // - handle_setup_request -----------------------------------------------------
@@ -174,54 +149,21 @@ fn read_setup_request(usb0: &UsbInterface0) -> Result<SetupPacket> {
 fn handle_setup_request(usb0: &UsbInterface0, packet: &SetupPacket) -> Result<()> {
     debug!("# handle_setup_request()",);
 
-    // extract the recipient (e.g. device/interface/endpoint)
-    let bits: u8 = packet.request_type & 0b0001_1111;
-    let recipient = match Recipient::try_from(bits) {
-        Ok(recipient) => recipient,
-        Err(e) => {
-            warn!("   stall: invalid recipient: {}", bits);
-            usb0.stall_request();
-            return Ok(());
-        }
-    };
-
-    // extract the request type (e.g. standard/class/vendor) from our SETUP request.
-    let bits: u8 = (packet.request_type >> 5) & 0b0000_0011;
-    let request_type = match RequestType::try_from(bits) {
-        Ok(request_type) => request_type,
-        Err(e) => {
-            warn!("   stall: invalid request type: {}", bits);
-            usb0.stall_request();
-            return Ok(());
-        }
-    };
-
-    // extract the direction
-    let bits: u8 = (packet.request_type >> 7) & 0b0000_0001;
-    let direction = match Direction::try_from(bits) {
-        Ok(direction) => direction,
-        Err(e) => {
-            warn!("   stall: invalid direction: {}", bits);
-            usb0.stall_request();
-            return Ok(());
-        }
-    };
-
-    // TODO: Get rid of this once we move to be fully compatible with ValentyUSB.
-    //usb0.ep_in.pid.write(|w| w.pid().bit(true));
-
     // if this isn't a standard request, stall it.
-    if request_type != RequestType::Standard {
-        warn!("   stall: unsupported request type {:?}", request_type);
+    if packet.request_type() != RequestType::Standard {
+        warn!(
+            "   stall: unsupported request type {:?}",
+            packet.request_type
+        );
         usb0.stall_request();
         return Ok(());
     }
 
-    // Extract the request
-    let request = match Request::try_from(packet.request) {
+    // extract the request
+    let request = match packet.request() {
         Ok(request) => request,
         Err(e) => {
-            warn!("   stall: invalid request: {}", packet.request);
+            warn!("   stall: unsupported request {}: {:?}", packet.request, e);
             usb0.stall_request();
             return Ok(());
         }
@@ -229,13 +171,15 @@ fn handle_setup_request(usb0: &UsbInterface0, packet: &SetupPacket) -> Result<()
 
     debug!(
         "  dispatch: {:?} {:?} {:?} {}, {}",
-        recipient, direction, request, packet.value, packet.length
+        packet.recipient(),
+        packet.direction(),
+        request,
+        packet.value,
+        packet.length
     );
 
     match request {
         Request::SetAddress => handle_set_address(usb0, packet),
-        Request::GetStatus => handle_get_status(usb0, packet),
-        Request::SetDescriptor => handle_set_descriptor(usb0, packet),
         Request::GetDescriptor => handle_get_descriptor(usb0, packet),
         Request::SetConfiguration => handle_set_configuration(usb0, packet),
         _ => {
@@ -252,31 +196,6 @@ fn handle_set_address(usb0: &UsbInterface0, packet: &SetupPacket) -> Result<()> 
     let address: u8 = (packet.value & 0x7f) as u8;
     usb0.ep_control_set_address(address);
     debug!("  -> handle_set_address({})", address);
-
-    Ok(())
-}
-
-/// ???
-fn handle_get_status(usb0: &UsbInterface0, packet: &SetupPacket) -> Result<()> {
-    usb0.ack_status_stage(packet);
-
-    debug!("  -> handle_get_status()");
-
-    Ok(())
-}
-
-/// ???
-fn handle_set_descriptor(usb0: &UsbInterface0, packet: &SetupPacket) -> Result<()> {
-    usb0.ack_status_stage(packet);
-
-    debug!("  -> handle_set_descriptor()");
-
-    let descriptor = packet.value;
-    if descriptor > 1 {
-        warn!("   stall: unknown descriptor {}", descriptor);
-        usb0.stall_request();
-        return Ok(());
-    }
 
     Ok(())
 }
@@ -298,7 +217,8 @@ fn handle_get_descriptor(usb0: &UsbInterface0, packet: &SetupPacket) -> Result<(
 
     match (&descriptor_type, descriptor_number) {
         (DescriptorType::Device, _) => {
-            usb0.ep_in_send_control_response(packet, USB_DEVICE_DESCRIPTOR)
+            let descriptor: [u8; 18] = USB_DEVICE_DESCRIPTOR.into();
+            usb0.ep_in_send_control_response(packet, &descriptor)
         }
         (DescriptorType::Configuration, 0) => {
             usb0.ep_in_send_control_response(packet, USB_CONFIG_DESCRIPTOR)
@@ -349,10 +269,22 @@ fn handle_set_configuration(usb0: &UsbInterface0, packet: &SetupPacket) -> Resul
 
 // - usb constants ------------------------------------------------------------
 
-const USB_DEVICE_DESCRIPTOR: &[u8] = &[
-    0x12, 0x01, 0x00, 0x02, 0x00, 0x00, 0x00, 0x40, 0xd0, 0x16, 0x3b, 0x0f, 0x01, 0x01, 0x01, 0x02,
-    0x00, 0x01,
-];
+const USB_DEVICE_DESCRIPTOR: DeviceDescriptor = DeviceDescriptor {
+    descriptor_length: 18,
+    descriptor_type: DescriptorType::Device as u8,
+    descriptor_version: 0x0200,
+    device_class: 0x00,
+    device_subclass: 0x00,
+    device_protocol: 0x00,
+    max_packet_size: 64,
+    vendor_id: 0x16d0,
+    product_id: 0x0f3b,
+    device_version_number: 0x0001,
+    manufacturer_index: 1,
+    product_index: 2,
+    serial_index: 0,
+    num_configurations: 1,
+};
 
 // different serial number to above
 const _USB_DEVICE_DESCRIPTOR: &[u8] = &[
@@ -365,10 +297,10 @@ const _USB_DEVICE_DESCRIPTOR: &[u8] = &[
     0x40, // MaxPacketSize = 64
     0xd0, 0x16, // idVendor
     0x3b, 0x0f, // idProduct
-    0x00, 0x00, // bcdDevice
+    0x01, 0x00, // bcdDevice
     0x01, // iManufacturer
     0x02, // iProduct
-    0x03, // iSerialNumber
+    0x00, // iSerialNumber
     0x01, // bNumConfigurations
 ];
 

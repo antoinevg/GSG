@@ -22,7 +22,7 @@ impl core::fmt::Display for ErrorKind {
     }
 }
 
-// trait: core::num::TryFromIntError
+// trait: core::convert::From<core::num::TryFromIntError>
 impl core::convert::From<core::num::TryFromIntError> for ErrorKind {
     fn from(_error: core::num::TryFromIntError) -> Self {
         ErrorKind::FailedConversion

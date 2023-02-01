@@ -150,10 +150,22 @@ impl UsbInterface0 {
 
     pub fn clear_pending(&mut self, interrupt: Interrupt) {
         match interrupt {
-            Interrupt::USB0 => self.device.ev_pending.modify(|r, w| w.pending().bit(r.pending().bit())),
-            Interrupt::USB0_EP_CONTROL => self.ep_control.ev_pending.modify(|r, w| w.pending().bit(r.pending().bit())),
-            Interrupt::USB0_EP_IN => self.ep_in.ev_pending.modify(|r, w| w.pending().bit(r.pending().bit())),
-            Interrupt::USB0_EP_OUT => self.ep_out.ev_pending.modify(|r, w| w.pending().bit(r.pending().bit())),
+            Interrupt::USB0 => self
+                .device
+                .ev_pending
+                .modify(|r, w| w.pending().bit(r.pending().bit())),
+            Interrupt::USB0_EP_CONTROL => self
+                .ep_control
+                .ev_pending
+                .modify(|r, w| w.pending().bit(r.pending().bit())),
+            Interrupt::USB0_EP_IN => self
+                .ep_in
+                .ev_pending
+                .modify(|r, w| w.pending().bit(r.pending().bit())),
+            Interrupt::USB0_EP_OUT => self
+                .ep_out
+                .ev_pending
+                .modify(|r, w| w.pending().bit(r.pending().bit())),
             _ => {
                 warn!("Ignoring invalid interrupt clear pending: {:?}", interrupt);
             }
@@ -175,7 +187,9 @@ impl UsbInterface0 {
     pub fn disable_interrupt(&mut self, interrupt: Interrupt) {
         match interrupt {
             Interrupt::USB0 => self.device.ev_enable.write(|w| w.enable().bit(false)),
-            Interrupt::USB0_EP_CONTROL => self.ep_control.ev_enable.write(|w| w.enable().bit(false)),
+            Interrupt::USB0_EP_CONTROL => {
+                self.ep_control.ev_enable.write(|w| w.enable().bit(false))
+            }
             Interrupt::USB0_EP_IN => self.ep_in.ev_enable.write(|w| w.enable().bit(false)),
             Interrupt::USB0_EP_OUT => self.ep_out.ev_enable.write(|w| w.enable().bit(false)),
             _ => {
@@ -186,12 +200,11 @@ impl UsbInterface0 {
 
     /// Acknowledge the status stage of an incoming control request.
     pub fn ack_status_stage(&self, packet: &SetupPacket) {
-        // If this is an IN request, read a zero-length packet (ZLP) from the host..
-        if (packet.request_type & MASK_DIRECTION_IN) != 0 {
-            self.ep_out_prime_receive(0);
-        } else {
+        match Direction::from(packet.request_type) {
+            // If this is an IN request, read a zero-length packet (ZLP) from the host..
+            Direction::DeviceToHost => self.ep_out_prime_receive(0),
             // ... otherwise, send a ZLP.
-            self.ep_in_send_packet(0, &[]);
+            Direction::HostToDevice => self.ep_in_send_packet(0, &[]),
         }
     }
 

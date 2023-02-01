@@ -1,10 +1,35 @@
 //! Simple peripheral-level USB stack
 
 pub mod control;
+pub mod descriptor;
 pub mod error;
 pub use error::ErrorKind;
 
 use crate::Result;
+
+/// USB Speed
+///
+/// Note: These match the gateware peripheral so the mapping isn't particularly meaningful in other contexts.
+#[derive(Debug, PartialEq)]
+#[repr(u8)]
+pub enum Speed {
+    Low = 2,        // 1.5 Mbps
+    Full = 1,       //  12 Mbps
+    High = 0,       // 480 Mbps
+    SuperSpeed = 3, // 5/10 Gbps (includes SuperSpeed+)
+}
+
+impl From<u8> for Speed {
+    fn from(value: u8) -> Self {
+        match value & 0b11 {
+            0 => Speed::High,
+            1 => Speed::Full,
+            2 => Speed::Low,
+            3 => Speed::SuperSpeed,
+            _ => unimplemented!(),
+        }
+    }
+}
 
 // - SmolUsb ------------------------------------------------------------------
 
@@ -13,20 +38,18 @@ use crate::UsbInterface0;
 
 use crate::pac::Interrupt;
 
-pub struct SmolUsb {
-    peripheral: UsbInterface0
+pub struct Device {
+    peripheral: UsbInterface0,
 }
 
-impl SmolUsb {
+impl Device {
     pub fn new(peripheral: UsbInterface0) -> Self {
-        Self {
-            peripheral
-        }
+        Self { peripheral }
     }
 }
 
-impl SmolUsb {
-    pub fn connect(&mut self) -> control::Speed {
+impl Device {
+    pub fn connect(&mut self) -> Speed {
         self.peripheral.connect().into()
     }
 
@@ -54,24 +77,27 @@ impl SmolUsb {
         //self.peripheral.disable_interrupt(Interrupt::USB0_EP_IN);
         //self.peripheral.disable_interrupt(Interrupt::USB0_EP_OUT);
     }
-
 }
 
 // - Endpoints ----------------------------------------------------------------
 
 pub trait Endpoint {}
 
-pub struct EndpointControl {
-}
+pub struct EndpointControl {}
 
 impl EndpointControl {
     pub fn receive(&self) -> control::SetupPacket {
         unimplemented!();
     }
+
+    pub fn address(&self) -> u8 {
+        unimplemented!();
+    }
+
+    pub fn set_address(&self, _address: u8) {}
 }
 
-pub struct EndpointIn {
-}
+pub struct EndpointIn {}
 
 impl EndpointIn {
     pub fn send(&self, _buffer: &[u8]) -> Result<usize> {
@@ -79,6 +105,4 @@ impl EndpointIn {
     }
 }
 
-
-pub struct EndpointOut {
-}
+pub struct EndpointOut {}

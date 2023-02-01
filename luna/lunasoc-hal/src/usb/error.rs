@@ -22,14 +22,6 @@ impl core::fmt::Display for ErrorKind {
     }
 }
 
-// trait: core::num::TryFromIntError
-/*impl core::convert::From<core::num::TryFromIntError> for ErrorKind {
-    fn from(_error: core::num::TryFromIntError) -> Self {
-        //libgreat::smolusb::error::ErrorKind::FailedConversion
-        ErrorKind::Timeout
-    }
-}*/
-
 // trait: libgreat::error::Error
 impl libgreat::error::Error for ErrorKind {
     type Error = ErrorKind; // TODO can we just say `Self`?
@@ -37,8 +29,3 @@ impl libgreat::error::Error for ErrorKind {
         *self
     }
 }
-
-/*
-/// USB Result<T>
-pub type Result<T> = core::result::Result<T, ErrorKind>;
-*/
