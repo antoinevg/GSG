@@ -35,7 +35,7 @@ use firmware::{hal, pac};
 use hal::smolusb;
 
 use smolusb::control::{Direction, Recipient, Request, RequestType, SetupPacket};
-use smolusb::descriptor::{DeviceDescriptor, DescriptorType};
+use smolusb::descriptor::{DeviceDescriptor, DescriptorType, StringDescriptor};
 use libgreat::Result;
 
 use hal::UsbInterface0;
@@ -227,10 +227,10 @@ fn handle_get_descriptor(usb0: &UsbInterface0, packet: &SetupPacket) -> Result<(
             usb0.ep_in_send_control_response(packet, USB_STRING0_DESCRIPTOR)
         }
         (DescriptorType::String, 1) => {
-            usb0.ep_in_send_control_response(packet, USB_STRING1_DESCRIPTOR)
+            usb0.ep_in_write_descriptor(packet, USB_STRING1_DESCRIPTOR.iter())
         }
         (DescriptorType::String, 2) => {
-            usb0.ep_in_send_control_response(packet, USB_STRING2_DESCRIPTOR)
+            usb0.ep_in_write_descriptor(packet, USB_STRING2_DESCRIPTOR.iter())
         }
         _ => {
             warn!(
@@ -267,9 +267,18 @@ fn handle_set_configuration(usb0: &UsbInterface0, packet: &SetupPacket) -> Resul
     Ok(())
 }
 
-// - usb constants ------------------------------------------------------------
+// - usb descriptors ----------------------------------------------------------
 
-const USB_DEVICE_DESCRIPTOR: DeviceDescriptor = DeviceDescriptor {
+
+// fun product id's in 0x1d50:
+//
+// 604b  HackRF Jawbreaker Software-Defined Radio
+// 6089  Great Scott Gadgets HackRF One SDR
+// 60e6  replacement for GoodFET/FaceDancer - GreatFet
+// 60e7  replacement for GoodFET/FaceDancer - GreatFet target
+//
+// From: http://www.linux-usb.org/usb.ids
+static USB_DEVICE_DESCRIPTOR: DeviceDescriptor = DeviceDescriptor {
     descriptor_length: 18,
     descriptor_type: DescriptorType::Device as u8,
     descriptor_version: 0x0200,
@@ -277,32 +286,14 @@ const USB_DEVICE_DESCRIPTOR: DeviceDescriptor = DeviceDescriptor {
     device_subclass: 0x00,
     device_protocol: 0x00,
     max_packet_size: 64,
-    vendor_id: 0x16d0,
-    product_id: 0x0f3b,
-    device_version_number: 0x0001,
+    vendor_id: 0x1d50,  // display order
+    product_id: 0x60e7, // display order
+    device_version_number: 0x1234,
     manufacturer_index: 1,
     product_index: 2,
     serial_index: 0,
     num_configurations: 1,
 };
-
-// different serial number to above
-const _USB_DEVICE_DESCRIPTOR: &[u8] = &[
-    0x12, // Length = 18
-    0x01, // DescriptorType = DEVICE
-    0x00, 0x02, // bcdUSB = 0x0200
-    0x00, // DeviceClass
-    0x00, // DeviceSubClass
-    0x00, // DeviceProtocol
-    0x40, // MaxPacketSize = 64
-    0xd0, 0x16, // idVendor
-    0x3b, 0x0f, // idProduct
-    0x01, 0x00, // bcdDevice
-    0x01, // iManufacturer
-    0x02, // iProduct
-    0x00, // iSerialNumber
-    0x01, // bNumConfigurations
-];
 
 const USB_CONFIG_DESCRIPTOR: &[u8] = &[
     0x09, 0x02, 0x12, 0x00, 0x01, 0x01, 0x01, 0x80, 0x32, 0x09, 0x04, 0x00, 0x00, 0x00, 0xfe, 0x00,
@@ -333,27 +324,9 @@ const _USB_CONFIG_DESCRIPTOR: &[u8] = &[
           // ENDPOINT
 ];
 
-// counter example
-const __USB_CONFIG_DESCRIPTOR: &[u8] = &[
-    0x09, 0x02, 0x19, 0x00, 0x01, 0x01, 0x00, 0x80, 0xfa, 0x09, 0x04, 0x00, 0x00, 0x01, 0xff, 0xff,
-    0xff, 0x00, 0x07, 0x05, 0x81, 0x02, 0x00, 0x02, 0xff,
-];
-
-const USB_STRING0_DESCRIPTOR: &[u8] = &[0x04, 0x03, 0x09, 0x04];
-
-const USB_STRING1_DESCRIPTOR: &[u8] = &[0x0a, 0x03, b'L', 0x00, b'U', 0x00, b'N', 0x00, b'A', 0x00];
-
-const _USB_STRING2_DESCRIPTOR: &[u8] = &[
-    0x22, 0x03, b'T', 0, b'r', 0, b'i', 0, b'-', 0, b'F', 0, b'I', 0, b'F', 0, b'O', 0, b' ', 0,
-    b'E', 0, b'x', 0, b'a', 0, b'm', 0, b'p', 0, b'l', 0, b'e', 0,
-];
-
-// counter example
-const USB_STRING2_DESCRIPTOR: &[u8] = &[
-    0x30, 0x03, 0x43, 0x00, 0x6f, 0x00, 0x75, 0x00, 0x6e, 0x00, 0x74, 0x00, 0x65, 0x00, 0x72, 0x00,
-    0x2f, 0x00, 0x54, 0x00, 0x68, 0x00, 0x72, 0x00, 0x6f, 0x00, 0x75, 0x00, 0x67, 0x00, 0x68, 0x00,
-    0x70, 0x00, 0x75, 0x00, 0x74, 0x00, 0x20, 0x00, 0x54, 0x00, 0x65, 0x00, 0x73, 0x00, 0x74, 0x00,
-];
+static USB_STRING0_DESCRIPTOR: &[u8] = &[0x04, 0x03, 0x09, 0x04];
+static USB_STRING1_DESCRIPTOR: StringDescriptor = StringDescriptor::new("LUNA");
+static USB_STRING2_DESCRIPTOR: StringDescriptor = StringDescriptor::new("Counter/Throughput Test");
 
 /*
 # Reference enumeration process (quirks merged from Linux, macOS, and Windows):

@@ -1,7 +1,6 @@
 ///! USB Descriptor types
 use crate::smolusb::ErrorKind;
 
-
 /// DescriptorType
 #[derive(Debug, PartialEq)]
 #[repr(u8)]
@@ -65,8 +64,8 @@ pub enum LanguageId {
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 pub struct DeviceDescriptor {
-    pub descriptor_length: u8,          // 18
-    pub descriptor_type: u8, // 1 = Device
+    pub descriptor_length: u8, // 18
+    pub descriptor_type: u8,   // 1 = Device
     pub descriptor_version: u16,
     pub device_class: u8,
     pub device_subclass: u8,
@@ -80,30 +79,42 @@ pub struct DeviceDescriptor {
     pub serial_index: u8,
     pub num_configurations: u8,
 }
+type DeviceDescriptorBuffer = [u8; core::mem::size_of::<DeviceDescriptor>()];
 
-impl From<DeviceDescriptor> for [u8; 18] {
-    fn from(descriptor: DeviceDescriptor) -> [u8; 18] {
-        let buffer = [
+impl From<DeviceDescriptor> for DeviceDescriptorBuffer {
+    fn from(descriptor: DeviceDescriptor) -> Self {
+        // cursed but proven - watch out for byte order!
+        let _option_1: Self = unsafe {
+            core::mem::transmute::<DeviceDescriptor, Self>(
+                descriptor,
+            )
+        };
+
+        // pedantic but proven
+        let _option_2: Self = [
             descriptor.descriptor_length,
             descriptor.descriptor_type,
-            descriptor.descriptor_version.to_le_bytes()[1], descriptor.descriptor_version.to_le_bytes()[0],
+            descriptor.descriptor_version.to_le_bytes()[0],
+            descriptor.descriptor_version.to_le_bytes()[1],
             descriptor.device_class,
             descriptor.device_subclass,
             descriptor.device_protocol,
             descriptor.max_packet_size,
-            descriptor.vendor_id.to_le_bytes()[1], descriptor.vendor_id.to_le_bytes()[0],
-            descriptor.product_id.to_le_bytes()[1], descriptor.product_id.to_le_bytes()[0],
-            descriptor.device_version_number.to_le_bytes()[1], descriptor.device_version_number.to_le_bytes()[0],
+            descriptor.vendor_id.to_le_bytes()[0],
+            descriptor.vendor_id.to_le_bytes()[1],
+            descriptor.product_id.to_le_bytes()[0],
+            descriptor.product_id.to_le_bytes()[1],
+            descriptor.device_version_number.to_le_bytes()[0],
+            descriptor.device_version_number.to_le_bytes()[1],
             descriptor.manufacturer_index,
             descriptor.product_index,
             descriptor.serial_index,
             descriptor.num_configurations,
         ];
 
-        buffer
+        _option_2
     }
 }
-
 
 /// USB configuration descriptor
 pub struct ConfigurationDescriptor<'a> {
@@ -150,18 +161,140 @@ pub struct StringDescriptorZero<'a> {
 }
 
 /// USB String Descriptor
-pub struct StringDescriptor<'a> {
-    pub length: u8,
-    pub descriptor_type: u8, // 3 = String
-    pub string: &'a str,
+pub struct StringDescriptor {
+    string: &'static str,
 }
 
-impl <'a> StringDescriptor<'a> {
-    pub fn new(string: &'a str) -> Self {
+impl StringDescriptor {
+    pub const fn new(string: &'static str) -> Self {
+        // TODO USB string descriptors can be a maximum of 126 characters
+        /*let string = match self.string.char_indices().nth(126) {
+            None => string,
+            Some((idx, _)) => &string[..idx],
+        };*/
         Self {
-            length: string.len().try_into().unwrap_or(0xff), // TODO
-            descriptor_type: DescriptorType::String as u8,
-            string
+            string,
+        }
+    }
+}
+
+impl StringDescriptor {
+    /// Descriptor length
+    pub fn length(&self) -> u8 {
+        // TODO USB string descriptors can be a maximum of 126 characters
+        2 + (self.string.encode_utf16().count() * 2) as u8
+    }
+
+    /// Descriptor type
+    pub fn descriptor_type(&self) -> DescriptorType {
+        DescriptorType::String
+    }
+
+    /// Returns an iterator to the descriptor
+    ///
+    /// Note that this
+    pub fn iter(&self) -> StringDescriptorIterator {
+        StringDescriptorIterator::new(self)
+    }
+}
+
+
+// - StringDescriptorIterator
+
+enum IteratorState {
+    Length,
+    DescriptorType,
+    String,
+}
+
+pub struct StringDescriptorIterator<'a> {
+    descriptor: &'a StringDescriptor,
+    string_iter: Utf16ByteIterator<'a>,
+    state: IteratorState,
+}
+
+impl<'a> StringDescriptorIterator<'a> {
+    fn new(descriptor: &'a StringDescriptor) -> Self {
+        Self {
+            descriptor,
+            string_iter: Utf16ByteIterator::new(descriptor.string.encode_utf16()),
+            state: IteratorState::Length,
+        }
+    }
+}
+
+impl<'a> Iterator for StringDescriptorIterator<'a> {
+    type Item = u8;
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.state {
+            IteratorState::Length => {
+                self.state = IteratorState::DescriptorType;
+                Some(self.descriptor.length())
+            },
+            IteratorState::DescriptorType => {
+                self.state = IteratorState::String;
+                Some(self.descriptor.descriptor_type() as u8)
+            }
+            IteratorState::String => {
+                // TODO USB string descriptors can be a maximum of 126 characters
+                match self.string_iter.next() {
+                    Some(byte) => {
+                        self.state = IteratorState::String;
+                        Some(byte)
+                    }
+                    None => {
+                        self.string_iter = Utf16ByteIterator::new(self.descriptor.string.encode_utf16());
+                        self.state = IteratorState::Length;
+                        None
+                    }
+                }
+            }
+        }
+    }
+}
+
+#[allow(dead_code)]
+fn test() {
+    let descriptor = StringDescriptor::new("TRI-FIFO Example");
+    for byte in descriptor.iter() {
+        let _byte: u8 = byte;
+    }
+}
+
+// - Utf16ByteIterator
+
+#[derive(Clone)]
+pub struct Utf16ByteIterator <'a> {
+    encode_utf16: core::str::EncodeUtf16<'a>,
+    byte: Option<u8>,
+}
+
+impl<'a> Utf16ByteIterator <'a> {
+    pub fn new(encode_utf16: core::str::EncodeUtf16<'a>) -> Self {
+        Self {
+            encode_utf16,
+            byte: None,
+        }
+    }
+}
+
+impl<'a> Iterator for Utf16ByteIterator<'a> {
+    type Item = u8;
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.byte {
+            Some(_) => self.byte.take(),
+            None => {
+                match self.encode_utf16.next() {
+                    Some(unicode_char) => {
+                        let bytes: [u8; 2] = unicode_char.to_le_bytes();
+                        self.byte = Some(bytes[1]);
+                        Some(bytes[0])
+                    }
+                    None => {
+                        None
+                    }
+                }
+            }
         }
     }
 }
