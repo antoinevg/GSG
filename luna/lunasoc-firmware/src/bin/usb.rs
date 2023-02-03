@@ -34,9 +34,12 @@ use lunasoc_firmware as firmware;
 use firmware::{hal, pac};
 use hal::smolusb;
 
-use smolusb::control::{Direction, Recipient, Request, RequestType, SetupPacket};
-use smolusb::descriptor::{DeviceDescriptor, DescriptorType, StringDescriptor};
 use libgreat::Result;
+use smolusb::control::{Direction, Recipient, Request, RequestType, SetupPacket};
+use smolusb::descriptor::{
+    ConfigurationDescriptor, DescriptorType, DeviceDescriptor, EndpointDescriptor,
+    InterfaceDescriptor, LanguageId, StringDescriptor, StringDescriptorZero,
+};
 
 use hal::UsbInterface0;
 
@@ -215,22 +218,26 @@ fn handle_get_descriptor(usb0: &UsbInterface0, packet: &SetupPacket) -> Result<(
         }
     };
 
+    // if the host is requesting less than the maximum amount of data,
+    // only respond with the amount requested
+    let requested_length = packet.length as usize;
+
     match (&descriptor_type, descriptor_number) {
         (DescriptorType::Device, _) => {
-            let descriptor: [u8; 18] = USB_DEVICE_DESCRIPTOR.into();
-            usb0.ep_in_send_control_response(packet, &descriptor)
+            usb0.ep_in_write(0, USB_DEVICE_DESCRIPTOR.into_iter().take(requested_length));
         }
         (DescriptorType::Configuration, 0) => {
-            usb0.ep_in_send_control_response(packet, USB_CONFIG_DESCRIPTOR)
+            usb0.ep_in_write(0, USB_CONFIG_DESCRIPTOR.into_iter().take(requested_length))
         }
-        (DescriptorType::String, 0) => {
-            usb0.ep_in_send_control_response(packet, USB_STRING0_DESCRIPTOR)
-        }
+        (DescriptorType::String, 0) => usb0.ep_in_write(
+            0,
+            USB_STRING_DESCRIPTOR_0.into_iter().take(requested_length),
+        ),
         (DescriptorType::String, 1) => {
-            usb0.ep_in_write_descriptor(packet, USB_STRING1_DESCRIPTOR.iter())
+            usb0.ep_in_write(0, USB_STRING_DESCRIPTOR_1.iter().take(requested_length))
         }
         (DescriptorType::String, 2) => {
-            usb0.ep_in_write_descriptor(packet, USB_STRING2_DESCRIPTOR.iter())
+            usb0.ep_in_write(0, USB_STRING_DESCRIPTOR_2.iter().take(requested_length))
         }
         _ => {
             warn!(
@@ -269,7 +276,6 @@ fn handle_set_configuration(usb0: &UsbInterface0, packet: &SetupPacket) -> Resul
 
 // - usb descriptors ----------------------------------------------------------
 
-
 // fun product id's in 0x1d50:
 //
 // 604b  HackRF Jawbreaker Software-Defined Radio
@@ -289,44 +295,81 @@ static USB_DEVICE_DESCRIPTOR: DeviceDescriptor = DeviceDescriptor {
     vendor_id: 0x1d50,  // display order
     product_id: 0x60e7, // display order
     device_version_number: 0x1234,
-    manufacturer_index: 1,
-    product_index: 2,
-    serial_index: 0,
+    manufacturer_string_index: 1,
+    product_string_index: 2,
+    serial_string_index: 0,
     num_configurations: 1,
 };
 
-const USB_CONFIG_DESCRIPTOR: &[u8] = &[
+static USB_CONFIG_DESCRIPTOR: [u8; 18] = [
     0x09, 0x02, 0x12, 0x00, 0x01, 0x01, 0x01, 0x80, 0x32, 0x09, 0x04, 0x00, 0x00, 0x00, 0xfe, 0x00,
     0x00, 0x02,
 ];
 
-// same as above
-const _USB_CONFIG_DESCRIPTOR: &[u8] = &[
-    0x09, // Length
-    0x02, // DescriptorType = CONFIG
-    0x12, 0x00, // TotalLength = 18 bytes
-    0x01, // NumInterfaces
-    0x01, // ConfigurationValue
-    0x01, // ConfigurationIndex
-    0x80, // Attributes = 0b1000_0000
-    0x32, // MaxPower = 50 * 2 mA = 100 mA
-    // INTERFACE
-    0x09, // Length
-    0x04, // DescriptorType = INTERFACE
-    0x00, // InterfaceNumber
-    0x00, // AlternateSetting
-    0x00, // NumEndpoints
-    0xfe, // InterfaceClass
-    0x00, // InterfaceSubClass
-    0x00, // InterfaceProtocol
-    0x02, // StringIndex
+static __USB_CONFIG_DESCRIPTOR_0: ConfigurationDescriptor = ConfigurationDescriptor {
+    length: 9,
+    descriptor_type: DescriptorType::Configuration as u8,
+    total_length: 18, // config descriptor + interface descriptors + endpoint descriptors
+    num_interfaces: 1,
+    configuration_value: 1,
+    configuration_string_index: 1,
+    attributes: 0x80, // 0b1000_0000
+    max_power: 50,    // 50 * 2 mA = 100 mA
+    interface_descriptors: &[&USB_INTERFACE_DESCRIPTOR_0],
+};
 
-          // ENDPOINT
-];
+static USB_INTERFACE_DESCRIPTOR_0: InterfaceDescriptor = InterfaceDescriptor {
+    length: 9,
+    descriptor_type: DescriptorType::Interface as u8,
+    interface_number: 0,
+    alternate_setting: 0,
+    num_endpoints: 3,
+    interface_class: 0xff, // Vendor Specific - https://www.usb.org/defined-class-codes
+    interface_subclass: 0x00,
+    interface_protocol: 0x00,
+    interface_string_index: 2,
+    endpoint_descriptors: &[
+        &USB_ENDPOINT_DESCRIPTOR_0,
+        &USB_ENDPOINT_DESCRIPTOR_1,
+        &USB_ENDPOINT_DESCRIPTOR_2,
+    ],
+};
 
-static USB_STRING0_DESCRIPTOR: &[u8] = &[0x04, 0x03, 0x09, 0x04];
-static USB_STRING1_DESCRIPTOR: StringDescriptor = StringDescriptor::new("LUNA");
-static USB_STRING2_DESCRIPTOR: StringDescriptor = StringDescriptor::new("Counter/Throughput Test");
+static USB_ENDPOINT_DESCRIPTOR_0: EndpointDescriptor = EndpointDescriptor {
+    length: 7,
+    descriptor_type: DescriptorType::Endpoint as u8,
+    endpoint_address: 0x82, // IN
+    attributes: 0x02,       // Bulk
+    max_packet_size: 64,
+    interval: 0,
+};
+
+static USB_ENDPOINT_DESCRIPTOR_1: EndpointDescriptor = EndpointDescriptor {
+    length: 7,
+    descriptor_type: DescriptorType::Endpoint as u8,
+    endpoint_address: 0x02, // OUT
+    attributes: 0x02,       // Bulk
+    max_packet_size: 64,
+    interval: 0,
+};
+
+static USB_ENDPOINT_DESCRIPTOR_2: EndpointDescriptor = EndpointDescriptor {
+    length: 7,
+    descriptor_type: DescriptorType::Endpoint as u8,
+    endpoint_address: 0x81, // IN
+    attributes: 0x03,       // Interrupt
+    max_packet_size: 8,
+    interval: 1, // 1ms
+};
+
+static USB_STRING_DESCRIPTOR_0: [u8; 4] = [0x04, 0x03, 0x09, 0x04];
+static _USB_STRING_DESCRIPTOR_0: StringDescriptorZero = StringDescriptorZero {
+    length: 4,
+    descriptor_type: DescriptorType::String as u8,
+    language_ids: &[LanguageId::EnglishUnitedStates],
+};
+static USB_STRING_DESCRIPTOR_1: StringDescriptor = StringDescriptor::new("LUNA");
+static USB_STRING_DESCRIPTOR_2: StringDescriptor = StringDescriptor::new("Simple Endpoint Test");
 
 /*
 # Reference enumeration process (quirks merged from Linux, macOS, and Windows):

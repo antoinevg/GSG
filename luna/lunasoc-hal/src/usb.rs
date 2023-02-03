@@ -204,7 +204,7 @@ impl UsbInterface0 {
             // If this is an IN request, read a zero-length packet (ZLP) from the host..
             Direction::DeviceToHost => self.ep_out_prime_receive(0),
             // ... otherwise, send a ZLP.
-            Direction::HostToDevice => self.ep_in_write_packet(0, &[]),
+            Direction::HostToDevice => self.ep_in_write(0, [].into_iter()),
         }
     }
 
@@ -225,28 +225,10 @@ impl UsbInterface0 {
         self.ep_out.enable.write(|w| w.enable().bit(true));
     }
 
-    pub fn ep_in_send_control_response(&self, packet: &SetupPacket, buffer: &[u8]) {
-        // if the host is requesting less than the maximum amount of data,
-        // only respond with the amount requested
-        let requested_length = packet.length as usize;
-        let buffer = if requested_length < buffer.len() {
-            &buffer[0..requested_length]
-        } else {
-            buffer
-        };
-
-        self.ep_in_write_packet(0, buffer);
-    }
-
-    pub fn ep_in_write_descriptor<I>(&self, packet: &SetupPacket, descriptor: I)
+    pub fn ep_in_write<I>(&self, endpoint: u8, iter: I)
     where
-        I: Iterator<Item = u8>
+        I: Iterator<Item = u8>,
     {
-        // if the host is requesting less than the maximum amount of data,
-        // only respond with the amount requested
-        let requested_length = packet.length as usize;
-        let mut bytes_written = 0;
-
         // reset output fifo if needed
         if self.ep_in.have.read().have().bit() {
             trace!("  clear tx");
@@ -254,32 +236,10 @@ impl UsbInterface0 {
         }
 
         // write data
-        for byte in descriptor {
+        let mut bytes_written = 0;
+        for byte in iter {
             self.ep_in.data.write(|w| unsafe { w.data().bits(byte) });
             bytes_written += 1;
-            if bytes_written >= requested_length {
-                break;
-            }
-        }
-
-        // finally, prime IN endpoint
-        self.ep_in
-            .epno
-            .write(|w| unsafe { w.epno().bits(0 & 0xf) });
-
-        trace!("  TX {} bytes", bytes_written);
-    }
-
-    fn ep_in_write_packet(&self, endpoint: u8, buffer: &[u8]) {
-        // reset output fifo if needed
-        if self.ep_in.have.read().have().bit() {
-            trace!("  clear tx");
-            self.ep_in.reset.write(|w| w.reset().bit(true));
-        }
-
-        // send data
-        for &byte in buffer {
-            self.ep_in.data.write(|w| unsafe { w.data().bits(byte) });
         }
 
         // finally, prime IN endpoint
@@ -287,7 +247,7 @@ impl UsbInterface0 {
             .epno
             .write(|w| unsafe { w.epno().bits(endpoint & 0xf) });
 
-        trace!("  TX {} bytes: {:x?}", buffer.len(), buffer);
+        trace!("  TX {} bytes", bytes_written);
     }
 
     pub fn ep_control_read_packet(&self, buffer: &mut [u8]) -> Result<()> {
