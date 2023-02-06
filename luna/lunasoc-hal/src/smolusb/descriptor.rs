@@ -3,7 +3,15 @@
 ///! USB Descriptor types
 use crate::smolusb::ErrorKind;
 
+use core::iter;
 use core::mem::size_of;
+use core::slice;
+
+// Serialization cases:
+//
+// 1. DONE Fixed size struct with primitive types and fixed byte order (LE)
+// 2. DONE Case #1 plus a variable length array of unicode characters
+// 3. Case #1 plus a variable length array of fixed size types (struct and enum)
 
 /// DescriptorType
 #[derive(Debug, PartialEq)]
@@ -68,8 +76,8 @@ use heapless::Vec;
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 pub struct DeviceDescriptor {
-    pub descriptor_length: u8, // 18
-    pub descriptor_type: u8,   // 1 = Device
+    pub length: u8,          // 18
+    pub descriptor_type: u8, // 1 = Device
     pub descriptor_version: u16,
     pub device_class: u8,
     pub device_subclass: u8,
@@ -93,7 +101,7 @@ impl IntoIterator for DeviceDescriptor {
 
         let iter: core::array::IntoIter<u8, 0> = [].into_iter();
         let chain: core::iter::Chain<_, core::array::IntoIter<u8, 1>> = iter
-            .chain(self.descriptor_length.to_le_bytes())
+            .chain(self.length.to_le_bytes())
             .chain(self.descriptor_type.to_le_bytes())
             .chain(self.descriptor_version.to_le_bytes())
             .chain(self.device_class.to_le_bytes())
@@ -116,40 +124,6 @@ impl IntoIterator for DeviceDescriptor {
     }
 }
 
-/*
-type DeviceDescriptorBuffer = [u8; core::mem::size_of::<DeviceDescriptor>()];
-impl From<DeviceDescriptor> for DeviceDescriptorBuffer {
-    fn from(descriptor: DeviceDescriptor) -> Self {
-        // cursed but proven - watch out for byte order!
-        let _option_1: Self = unsafe { core::mem::transmute::<DeviceDescriptor, Self>(descriptor) };
-
-        // pedantic but proven
-        let _option_2: Self = [
-            descriptor.descriptor_length,
-            descriptor.descriptor_type,
-            descriptor.descriptor_version.to_le_bytes()[0],
-            descriptor.descriptor_version.to_le_bytes()[1],
-            descriptor.device_class,
-            descriptor.device_subclass,
-            descriptor.device_protocol,
-            descriptor.max_packet_size,
-            descriptor.vendor_id.to_le_bytes()[0],
-            descriptor.vendor_id.to_le_bytes()[1],
-            descriptor.product_id.to_le_bytes()[0],
-            descriptor.product_id.to_le_bytes()[1],
-            descriptor.device_version_number.to_le_bytes()[0],
-            descriptor.device_version_number.to_le_bytes()[1],
-            descriptor.manufacturer_index,
-            descriptor.product_index,
-            descriptor.serial_index,
-            descriptor.num_configurations,
-        ];
-
-        _option_2
-    }
-}
-*/
-
 // - ConfigurationDescriptor --------------------------------------------------
 
 /// USB configuration descriptor
@@ -163,6 +137,63 @@ pub struct ConfigurationDescriptor<'a> {
     pub attributes: u8,
     pub max_power: u8,
     pub interface_descriptors: &'a [&'a InterfaceDescriptor<'a>],
+}
+
+impl<'a> ConfigurationDescriptor<'a> {
+    pub fn iter(&self) -> ConfigurationDescriptorIterator {
+        ConfigurationDescriptorIterator::new(self)
+    }
+}
+
+pub struct ConfigurationDescriptorIterator<'a> {
+    descriptor: &'a ConfigurationDescriptor<'a>,
+    state: IteratorState,
+}
+
+impl<'a> ConfigurationDescriptorIterator<'a> {
+    pub fn new(descriptor: &'a ConfigurationDescriptor) -> Self {
+        Self {
+            descriptor,
+            state: IteratorState::Body(0),
+        }
+    }
+
+    fn byte_at_offset(&self, index: usize) -> Option<u8> {
+        let descriptor = self.descriptor;
+        let mut chain: iter::Chain<
+            _,
+            iter::FlatMap<slice::Iter<&InterfaceDescriptor>, InterfaceDescriptorIterator, _>,
+        > = []
+            .into_iter()
+            .chain(descriptor.length.to_le_bytes())
+            .chain(descriptor.descriptor_type.to_le_bytes())
+            .chain(descriptor.total_length.to_le_bytes())
+            .chain(descriptor.num_interfaces.to_le_bytes())
+            .chain(descriptor.configuration_value.to_le_bytes())
+            .chain(descriptor.configuration_string_index.to_le_bytes())
+            .chain(descriptor.attributes.to_le_bytes())
+            .chain(descriptor.max_power.to_le_bytes())
+            .chain(
+                descriptor
+                    .interface_descriptors
+                    .iter()
+                    .flat_map(|x| x.iter()),
+            );
+        chain.nth(index)
+    }
+}
+
+impl<'a> Iterator for ConfigurationDescriptorIterator<'a> {
+    type Item = u8;
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.state {
+            IteratorState::Header => None,
+            IteratorState::Body(index) => {
+                self.state = IteratorState::Body(index + 1);
+                self.byte_at_offset(index)
+            }
+        }
+    }
 }
 
 // - InterfaceDescriptor ------------------------------------------------------
@@ -181,11 +212,69 @@ pub struct InterfaceDescriptor<'a> {
     pub endpoint_descriptors: &'a [&'a EndpointDescriptor],
 }
 
+impl<'a> InterfaceDescriptor<'a> {
+    pub fn iter(&'a self) -> InterfaceDescriptorIterator<'a> {
+        InterfaceDescriptorIterator::new(self)
+    }
+}
+
+pub struct InterfaceDescriptorIterator<'a> {
+    descriptor: &'a InterfaceDescriptor<'a>,
+    state: IteratorState,
+}
+
+impl<'a> InterfaceDescriptorIterator<'a> {
+    pub fn new(descriptor: &'a InterfaceDescriptor) -> Self {
+        Self {
+            descriptor,
+            state: IteratorState::Body(0),
+        }
+    }
+
+    fn byte_at_offset(&self, index: usize) -> Option<u8> {
+        let descriptor = self.descriptor;
+        let mut chain: iter::Chain<
+            _,
+            iter::FlatMap<slice::Iter<&EndpointDescriptor>, EndpointDescriptorIterator, _>,
+        > = []
+            .into_iter()
+            .chain(descriptor.length.to_le_bytes())
+            .chain(descriptor.descriptor_type.to_le_bytes())
+            .chain(descriptor.interface_number.to_le_bytes())
+            .chain(descriptor.alternate_setting.to_le_bytes())
+            .chain(descriptor.num_endpoints.to_le_bytes())
+            .chain(descriptor.interface_class.to_le_bytes())
+            .chain(descriptor.interface_subclass.to_le_bytes())
+            .chain(descriptor.interface_protocol.to_le_bytes())
+            .chain(descriptor.interface_string_index.to_le_bytes())
+            .chain(
+                descriptor
+                    .endpoint_descriptors
+                    .iter()
+                    .flat_map(|x| x.iter()),
+            );
+        chain.nth(index)
+    }
+}
+
+impl<'a> Iterator for InterfaceDescriptorIterator<'a> {
+    type Item = u8;
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.state {
+            IteratorState::Header => None,
+            IteratorState::Body(index) => {
+                self.state = IteratorState::Body(index + 1);
+                self.byte_at_offset(index)
+            }
+        }
+    }
+}
+
 // - EndpointDescriptor -------------------------------------------------------
 
 /// USB endpoint descriptor
 pub struct EndpointDescriptor {
-    pub length: u8,          // 7
+    pub length: u8,          // 6
     pub descriptor_type: u8, // 5 = Endpoint
     pub endpoint_address: u8,
     pub attributes: u8,
@@ -193,81 +282,127 @@ pub struct EndpointDescriptor {
     pub interval: u8,
 }
 
+impl EndpointDescriptor {
+    pub fn iter(&self) -> EndpointDescriptorIterator {
+        EndpointDescriptorIterator::new(self)
+    }
+
+    pub fn length(&self) -> u8 {
+        6
+    }
+}
+
+pub struct EndpointDescriptorIterator<'a> {
+    descriptor: &'a EndpointDescriptor,
+    iter: core::array::IntoIter<u8, 6>,
+}
+
+impl<'a> EndpointDescriptorIterator<'a> {
+    pub fn new(descriptor: &'a EndpointDescriptor) -> Self {
+        let iter = [
+            descriptor.length(),
+            descriptor.descriptor_type,
+            descriptor.endpoint_address,
+            descriptor.attributes,
+            descriptor.max_packet_size,
+            descriptor.interval,
+        ]
+        .into_iter();
+        Self { descriptor, iter }
+    }
+}
+
+impl<'a> Iterator for EndpointDescriptorIterator<'a> {
+    type Item = u8;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter.next()
+    }
+}
+
 // - StringDescriptorZero -----------------------------------------------------
 
 /// Language ID
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 #[repr(u16)]
 pub enum LanguageId {
     EnglishUnitedStates = 0x0409,
+    EnglishUnitedKingdom = 0x0809,
+    EnglishCanadian = 0x1009,
+    EnglishSouthAfrica = 0x1c09,
 }
 
 /// USB String descriptor for language ids
+#[derive(Clone, Copy, Debug)]
+#[repr(C)]
 pub struct StringDescriptorZero<'a> {
-    pub length: u8,
+    pub _length: u8,
     pub descriptor_type: u8, // 3 = String
     pub language_ids: &'a [LanguageId],
 }
 
-/*impl<'a> IntoIterator for StringDescriptorZero<'a>
-{
-    type Item = <ByteIterator as Iterator>::Item;
-    type IntoIter = ByteIterator;
-    fn into_iter(self) -> Self::IntoIter {
-        Self::IntoIter {
-            foo: 42,
+impl<'a> StringDescriptorZero<'a> {
+    pub fn iter(&self) -> StringDescriptorZeroIterator {
+        StringDescriptorZeroIterator::new(self)
+    }
+
+    pub fn length(&self) -> u8 {
+        2 + (size_of::<LanguageId>() * self.language_ids.len()) as u8
+    }
+}
+
+enum IteratorState {
+    Header,
+    Body(usize),
+}
+
+pub struct StringDescriptorZeroIterator<'a> {
+    descriptor: &'a StringDescriptorZero<'a>,
+    state: IteratorState,
+    header_iter: core::array::IntoIter<u8, 2>,
+}
+
+impl<'a> StringDescriptorZeroIterator<'a> {
+    pub fn new(descriptor: &'a StringDescriptorZero) -> Self {
+        let header_iter = [descriptor.length(), descriptor.descriptor_type].into_iter();
+        Self {
+            descriptor,
+            state: IteratorState::Header,
+            header_iter,
         }
     }
-}*/
-
-use core::iter;
-use core::slice;
-
-impl<'a> IntoIterator for StringDescriptorZero<'a> {
-    type Item = &'a u8;
-    type IntoIter = slice::Iter<'a, u8>;
-    fn into_iter(self) -> Self::IntoIter {
-        let slice: &[u8] = &[self.length, self.descriptor_type];
-        let mut iter: slice::Iter<u8> = slice.into_iter();
-
-        let iter_ids: slice::Iter<LanguageId> = self.language_ids.into_iter();
-
-        // LanguageId -> u16
-        let map_ids: iter::Map<slice::Iter<LanguageId>, _> =
-            iter_ids.clone().map(|x: &LanguageId| *x as u16);
-
-        // LanguageId -> [u8; 2]
-        let map_ids: iter::FlatMap<slice::Iter<LanguageId>, [u8; 2], _> =
-            iter_ids.clone().flat_map(|x: &LanguageId| {
-                let id = *x as u16;
-                id.to_le_bytes()
-            });
-
-        // LanguageId -> core::array::IntoIter<u8, 2>
-        let map_ids: iter::FlatMap<slice::Iter<LanguageId>, core::array::IntoIter<u8, 2>, _> =
-            iter_ids.clone().flat_map(|x: &LanguageId| {
-                let id = *x as u16;
-                id.to_le_bytes().into_iter()
-            });
-
-        let f: &dyn FnMut(&LanguageId) -> [u8; 2] = &|x: &LanguageId| {
-            let id = *x as u16;
-            id.to_le_bytes()
-        };
-
-        unimplemented!();
-    }
 }
 
-/// ByteIterator
-pub struct ByteIterator {
-    foo: u8,
-}
-
-impl Iterator for ByteIterator {
+impl<'a> Iterator for StringDescriptorZeroIterator<'a> {
     type Item = u8;
     fn next(&mut self) -> Option<Self::Item> {
-        None
+        match self.state {
+            IteratorState::Header => match self.header_iter.next() {
+                Some(byte) => Some(byte),
+                None => {
+                    self.state = IteratorState::Body(0);
+                    self.next()
+                }
+            },
+            IteratorState::Body(index) => {
+                match self
+                    .descriptor
+                    .language_ids
+                    .iter()
+                    .flat_map(|x: &LanguageId| (*x as u16).to_le_bytes().into_iter())
+                    .nth(index)
+                {
+                    Some(byte) => {
+                        self.state = IteratorState::Body(index + 1);
+                        Some(byte)
+                    }
+                    None => {
+                        // reset iterator
+                        self.state = IteratorState::Header;
+                        None
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -321,8 +456,8 @@ enum StringDescriptorIteratorState {
 
 pub struct StringDescriptorIterator<'a> {
     descriptor: &'a StringDescriptor<'a>,
-    string_iter: Utf16ByteIterator<'a>,
     state: StringDescriptorIteratorState,
+    string_iter: Utf16ByteIterator<'a>,
 }
 
 impl<'a> StringDescriptorIterator<'a> {
