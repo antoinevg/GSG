@@ -111,7 +111,7 @@ impl UsbInterface0 {
         self.ep_in.reset.write(|w| w.reset().bit(true));
         self.ep_out.reset.write(|w| w.reset().bit(true));
 
-        self.listen();
+        self.enable_interrupts();
 
         // TODO handle speed
         // 0: High, 1: Full, 2: Low, 3:SuperSpeed (incl SuperSpeed+)
@@ -121,18 +121,18 @@ impl UsbInterface0 {
     }
 
     // TODO pass event to listen for
-    pub fn listen(&mut self) {
+    pub fn enable_interrupts(&mut self) {
         // clear all event handlers
         self.clear_pending(Interrupt::USB0);
         //self.clear_pending(Interrupt::USB0_EP_CONTROL);
         //self.clear_pending(Interrupt::USB0_EP_IN);
-        //self.clear_pending(Interrupt::USB0_EP_OUT);
+        self.clear_pending(Interrupt::USB0_EP_OUT);
 
         // enable device controller events for bus reset signal
         self.enable_interrupt(Interrupt::USB0);
         //self.enable_interrupt(Interrupt::USB0_EP_CONTROL);
         //self.enable_interrupt(Interrupt::USB0_EP_IN);
-        //self.enable_interrupt(Interrupt::USB0_EP_OUT);
+        self.enable_interrupt(Interrupt::USB0_EP_OUT);
     }
 
     pub fn is_pending(&self, interrupt: Interrupt) -> bool {
@@ -198,31 +198,74 @@ impl UsbInterface0 {
         }
     }
 
-    /// Acknowledge the status stage of an incoming control request.
-    pub fn ack_status_stage(&self, packet: &SetupPacket) {
-        match Direction::from(packet.request_type) {
-            // If this is an IN request, read a zero-length packet (ZLP) from the host..
-            Direction::DeviceToHost => self.ep_out_prime_receive(0),
-            // ... otherwise, send a ZLP.
-            Direction::HostToDevice => self.ep_in_write(0, [].into_iter()),
+    pub fn ep_control_read_packet(&self, buffer: &mut [u8]) -> Result<()> {
+        // block until setup data is available
+        let mut counter = 0;
+        while !self.ep_control.have.read().have().bit() {
+            counter += 1;
+            if counter > 60_000_000 {
+                return Err(&ErrorKind::Timeout);
+            }
         }
+
+        // drain fifo
+        let mut bytes_read = 0;
+        let mut overflow = 0;
+        let mut drain = 0;
+        while self.ep_control.have.read().have().bit() {
+            if bytes_read >= buffer.len() {
+                // drain
+                drain = self.ep_control.data.read().data().bits();
+                overflow += 1;
+            } else {
+                buffer[bytes_read] = self.ep_control.data.read().data().bits();
+                bytes_read += 1;
+            }
+        }
+
+        if bytes_read > 0 {
+            trace!(
+                "  RX {} bytes + {} overflow - {:x?} - {:x}",
+                bytes_read,
+                overflow,
+                buffer,
+                drain
+            );
+        }
+
+        Ok(())
     }
 
-    /// Prepare endpoint to receive a single OUT packet.
-    pub fn ep_out_prime_receive(&self, endpoint: u8) {
-        // clear receive buffer
-        self.ep_out.reset.write(|w| w.reset().bit(true));
+    pub fn ep_out_read(&self, endpoint: u8, buffer: &mut [u8]) -> Result<()> {
+        // do we need to prime it after receiving the interrupt?
+        self.ep_out_prime_receive(endpoint); // TODO ???
 
-        // select endpoint
-        self.ep_out
-            .epno
-            .write(|w| unsafe { w.epno().bits(endpoint) });
+        // drain fifo
+        let mut bytes_read = 0;
+        let mut overflow = 0;
+        let mut drain = 0;
+        while self.ep_out.have.read().have().bit() {
+            if bytes_read >= buffer.len() {
+                // drain
+                drain = self.ep_out.data.read().data().bits();
+                overflow += 1;
+            } else {
+                buffer[bytes_read] = self.ep_out.data.read().data().bits();
+                bytes_read += 1;
+            }
+        }
 
-        // prime endpoint
-        self.ep_out.prime.write(|w| w.prime().bit(true));
+        if bytes_read > 0 {
+            trace!(
+                "  RX {} bytes + {} overflow - {:x?} - {:x}",
+                bytes_read,
+                overflow,
+                buffer,
+                drain
+            );
+        }
 
-        // enable it
-        self.ep_out.enable.write(|w| w.enable().bit(true));
+        Ok(())
     }
 
     pub fn ep_in_write<I>(&self, endpoint: u8, iter: I)
@@ -250,40 +293,31 @@ impl UsbInterface0 {
         trace!("  TX {} bytes", bytes_written);
     }
 
-    pub fn ep_control_read_packet(&self, buffer: &mut [u8]) -> Result<()> {
-        // block until setup data is available
-        let mut counter = 0;
-        while !self.ep_control.have.read().have().bit() {
-            counter += 1;
-            if counter > 60_000_000 {
-                return Err(&ErrorKind::Timeout);
-            }
+    /// Acknowledge the status stage of an incoming control request.
+    pub fn ack_status_stage(&self, packet: &SetupPacket) {
+        match Direction::from(packet.request_type) {
+            // If this is an IN request, read a zero-length packet (ZLP) from the host..
+            Direction::DeviceToHost => self.ep_out_prime_receive(0),
+            // ... otherwise, send a ZLP.
+            Direction::HostToDevice => self.ep_in_write(0, [].into_iter()),
         }
+    }
 
-        // drain fifo
-        let mut bytes_read = 0;
-        let mut overflow = 0;
-        let mut drain = 0;
-        while self.ep_control.have.read().have().bit() {
-            if bytes_read >= buffer.len() {
-                // drain
-                drain = self.ep_control.data.read().data().bits();
-                overflow += 1;
-            } else {
-                buffer[bytes_read] = self.ep_control.data.read().data().bits();
-                bytes_read += 1;
-            }
-        }
+    /// Prepare endpoint to receive a single OUT packet.
+    pub fn ep_out_prime_receive(&self, endpoint: u8) {
+        // clear receive buffer
+        self.ep_out.reset.write(|w| w.reset().bit(true));
 
-        trace!(
-            "  RX {} + {} bytes: {:x?} - {:x}",
-            bytes_read,
-            overflow,
-            buffer,
-            drain
-        );
+        // select endpoint
+        self.ep_out
+            .epno
+            .write(|w| unsafe { w.epno().bits(endpoint) });
 
-        Ok(())
+        // prime endpoint
+        self.ep_out.prime.write(|w| w.prime().bit(true));
+
+        // enable it
+        self.ep_out.enable.write(|w| w.enable().bit(true));
     }
 
     /// Stalls the current control request.

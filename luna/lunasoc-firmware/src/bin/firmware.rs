@@ -20,6 +20,48 @@ use firmware::Message;
 use heapless::mpmc::MpMcQueue as Queue;
 static MESSAGE_QUEUE: Queue<Message, 128> = Queue::new();
 
+// - MachineExternal interrupt handler ----------------------------------------
+
+#[allow(non_snake_case)]
+#[no_mangle]
+fn MachineExternal() {
+    static mut COUNTER_IRQ: u32 = 0;
+
+    let mut timer = unsafe { hal::Timer::summon() };
+    let mut usb0 = unsafe { hal::UsbInterface0::summon() };
+
+    let message = if usb0.is_pending(pac::Interrupt::USB0) {
+        usb0.clear_pending(pac::Interrupt::USB0);
+        Message::UsbReset
+    } else if usb0.is_pending(pac::Interrupt::USB0_EP_CONTROL) {
+        usb0.clear_pending(pac::Interrupt::USB0_EP_CONTROL);
+        panic!("MachineExternal - usb0.ep_control interrupt");
+    } else if usb0.is_pending(pac::Interrupt::USB0_EP_IN) {
+        usb0.clear_pending(pac::Interrupt::USB0_EP_IN);
+        panic!("MachineExternal - usb0.ep_in interrupt");
+    } else if usb0.is_pending(pac::Interrupt::USB0_EP_OUT) {
+        usb0.clear_pending(pac::Interrupt::USB0_EP_OUT);
+        panic!("MachineExternal - usb0.ep_out interrupt");
+    } else if timer.is_pending() {
+        timer.clear_pending();
+        Message::Timer(unsafe { COUNTER_IRQ })
+    } else {
+        let pending = unsafe { pac::csr::interrupt::reg_pending() };
+        Message::UnknownInterrupt(pending)
+    };
+
+    match MESSAGE_QUEUE.enqueue(message) {
+        Ok(_) => (),
+        Err(e) => {
+            panic!("MachineExternal - message queue overflow: {:?}", e);
+        }
+    }
+
+    unsafe {
+        COUNTER_IRQ += 1;
+    }
+}
+
 // - main entry point ---------------------------------------------------------
 
 #[entry]
@@ -76,47 +118,5 @@ fn main() -> ! {
                 }
             }
         }
-    }
-}
-
-// - MachineExternal interrupt handler ----------------------------------------
-
-#[allow(non_snake_case)]
-#[no_mangle]
-fn MachineExternal() {
-    static mut COUNTER_IRQ: u32 = 0;
-
-    let mut timer = unsafe { hal::Timer::summon() };
-    let mut usb0 = unsafe { hal::UsbInterface0::summon() };
-
-    let message = if usb0.is_pending(pac::Interrupt::USB0) {
-        usb0.clear_pending(pac::Interrupt::USB0);
-        Message::UsbReset
-    } else if usb0.is_pending(pac::Interrupt::USB0_EP_CONTROL) {
-        usb0.clear_pending(pac::Interrupt::USB0_EP_CONTROL);
-        panic!("MachineExternal - usb0.ep_control interrupt");
-    } else if usb0.is_pending(pac::Interrupt::USB0_EP_IN) {
-        usb0.clear_pending(pac::Interrupt::USB0_EP_IN);
-        panic!("MachineExternal - usb0.ep_in interrupt");
-    } else if usb0.is_pending(pac::Interrupt::USB0_EP_OUT) {
-        usb0.clear_pending(pac::Interrupt::USB0_EP_OUT);
-        panic!("MachineExternal - usb0.ep_out interrupt");
-    } else if timer.is_pending() {
-        timer.clear_pending();
-        Message::Timer(unsafe { COUNTER_IRQ })
-    } else {
-        let pending = unsafe { pac::csr::interrupt::reg_pending() };
-        Message::UnknownInterrupt(pending)
-    };
-
-    match MESSAGE_QUEUE.enqueue(message) {
-        Ok(_) => (),
-        Err(e) => {
-            panic!("MachineExternal - message queue overflow: {:?}", e);
-        }
-    }
-
-    unsafe {
-        COUNTER_IRQ += 1;
     }
 }

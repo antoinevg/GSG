@@ -45,6 +45,47 @@ use hal::UsbInterface0;
 
 use log::{debug, error, info, trace, warn};
 
+// - MachineExternal interrupt handler ----------------------------------------
+
+static mut STATE: bool = false;
+
+#[allow(non_snake_case)]
+#[no_mangle]
+fn MachineExternal() {
+    // peripherals
+    let peripherals = unsafe { pac::Peripherals::steal() };
+    let leds = &peripherals.LEDS;
+    let mut usb0 = unsafe { hal::UsbInterface0::summon() };
+
+    // debug
+    let pending = unsafe { pac::csr::interrupt::reg_pending() };
+    leds.output
+        .write(|w| unsafe { w.output().bits((1 << pending) as u8) });
+
+    if usb0.is_pending(pac::Interrupt::USB0) {
+        usb0.clear_pending(pac::Interrupt::USB0);
+        usb0.reset();
+    } else if usb0.is_pending(pac::Interrupt::USB0_EP_CONTROL) {
+        usb0.clear_pending(pac::Interrupt::USB0_EP_CONTROL);
+        //panic!("MachineExternal - usb0.ep_control interrupt");
+        trace!("MachineExternal - usb0.ep_control interrupt");
+    } else if usb0.is_pending(pac::Interrupt::USB0_EP_IN) {
+        usb0.clear_pending(pac::Interrupt::USB0_EP_IN);
+        //panic!("MachineExternal - usb0.ep_in interrupt");
+        trace!("MachineExternal - usb0.ep_in interrupt");
+    } else if usb0.is_pending(pac::Interrupt::USB0_EP_OUT) {
+        usb0.clear_pending(pac::Interrupt::USB0_EP_OUT);
+        //panic!("MachineExternal - usb0.ep_out interrupt");
+        trace!("MachineExternal - usb0.ep_out interrupt");
+    } else {
+        error!("MachineExternal - unknown interrupt");
+        error!("  pend: {:#035b}", pending);
+    }
+}
+
+
+// - main entry point ---------------------------------------------------------
+
 #[entry]
 fn main() -> ! {
     let peripherals = pac::Peripherals::take().unwrap();
@@ -68,7 +109,7 @@ fn main() -> ! {
     info!("Connected: {}", speed);
 
     // enable interrupts
-    usb0.listen();
+    usb0.enable_interrupts();
     unsafe {
         // set mstatus register: interrupt enable
         riscv::interrupt::enable();
@@ -78,60 +119,50 @@ fn main() -> ! {
 
         // write csr: enable interrupts
         pac::csr::interrupt::enable(pac::Interrupt::USB0);
+        pac::csr::interrupt::enable(pac::Interrupt::USB0_EP_OUT);
     }
 
     loop {
-        //unsafe { riscv::asm::delay(sysclk) };
-        //continue;
-
-        // read setup request
+        // read setup request and handle it
         let packet = match read_setup_request(&usb0) {
-            Ok(packet) => packet,
+            Ok(packet) => match handle_setup_request(&mut usb0, &packet) {
+                Ok(()) => {
+                    debug!("OK");
+                    debug!("");
+                }
+                Err(e) => {
+                    error!("  handle_setup_request: {:?}: {:?}", e, packet);
+                    leds.output.write(|w| unsafe { w.output().bits(128) });
+                    loop {}
+                }
+            }
             Err(e) => {
-                error!("  Setup Error {:?}", e);
+                error!("  read_setup_request: {:?}", e);
                 continue;
             }
         };
 
-        // handle setup request
-        match handle_setup_request(&usb0, &packet) {
-            Ok(()) => {
-                debug!("OK");
-                debug!("");
-            }
-            Err(e) => {
-                error!("  Request Error {:?}: {:?}", e, packet);
-                leds.output.write(|w| unsafe { w.output().bits(128) });
-                loop {}
-            }
-        };
     }
 }
 
-// - MachineExternal interrupt handler ----------------------------------------
 
-static mut STATE: bool = false;
+// - handle_read_ep_out -------------------------------------------------------
 
-#[allow(non_snake_case)]
-#[no_mangle]
-fn MachineExternal() {
-    // peripherals
-    let peripherals = unsafe { pac::Peripherals::steal() };
-    let leds = &peripherals.LEDS;
-    let mut usb0 = unsafe { hal::UsbInterface0::summon() };
+fn handle_read_ep_out(usb0: &UsbInterface0) -> Result<()> {
+    debug!("# handle_read_ep_out()");
 
-    // debug
-    let pending = unsafe { pac::csr::interrupt::reg_pending() };
-    leds.output
-        .write(|w| unsafe { w.output().bits((1 << pending) as u8) });
+    // read data packet
+    let mut buffer = [0_u8; 8];
+    usb0.ep_out_read(0, &mut buffer)?;
 
-    if usb0.is_pending(pac::Interrupt::USB0) {
-        usb0.clear_pending(pac::Interrupt::USB0);
-        usb0.reset();
-    } else {
-        error!("MachineExternal - unknown interrupt");
-        error!("  pend: {:#035b}", pending);
-    }
+    Ok(())
+}
+
+// - handle_write_ep_in -------------------------------------------------------
+
+fn handle_write_ep_out(usb0: &UsbInterface0) -> Result<()> {
+    debug!("# handle_write_ep_out()");
+    Ok(())
 }
 
 // - read_setup_request -------------------------------------------------------
@@ -149,7 +180,7 @@ fn read_setup_request(usb0: &UsbInterface0) -> Result<SetupPacket> {
 
 // - handle_setup_request -----------------------------------------------------
 
-fn handle_setup_request(usb0: &UsbInterface0, packet: &SetupPacket) -> Result<()> {
+fn handle_setup_request(usb0: &mut UsbInterface0, packet: &SetupPacket) -> Result<()> {
     debug!("# handle_setup_request()",);
 
     // if this isn't a standard request, stall it.
@@ -204,7 +235,7 @@ fn handle_set_address(usb0: &UsbInterface0, packet: &SetupPacket) -> Result<()> 
     Ok(())
 }
 
-fn handle_get_descriptor(usb0: &UsbInterface0, packet: &SetupPacket) -> Result<()> {
+fn handle_get_descriptor(usb0: &mut UsbInterface0, packet: &SetupPacket) -> Result<()> {
     // extract the descriptor type and number from our SETUP request
     let [descriptor_number, descriptor_type_bits] = packet.value.to_le_bytes();
     let descriptor_type = match DescriptorType::try_from(descriptor_type_bits) {
@@ -224,18 +255,18 @@ fn handle_get_descriptor(usb0: &UsbInterface0, packet: &SetupPacket) -> Result<(
     let requested_length = packet.length as usize;
 
     match (&descriptor_type, descriptor_number) {
-        (DescriptorType::Device, _) => {
+        (DescriptorType::Device, 0) => {
             usb0.ep_in_write(0, USB_DEVICE_DESCRIPTOR.into_iter().take(requested_length));
         }
         (DescriptorType::Configuration, 0) => {
             usb0.ep_in_write(0, USB_CONFIG_DESCRIPTOR_0.iter().take(requested_length))
         }
-        // (DescriptorType::DeviceQualifier, _) => {
-        //     usb0.ep_in_write(0, USB_DEVICE_QUALIFIER_DESCRIPTOR.into_iter().take(requested_length));
-        // }
-        // (DescriptorType::OtherSpeedConfiguration, 0) => {
-        //     usb0.ep_in_write(0, USB_OTHER_SPEED_CONFIG_DESCRIPTOR_0.iter().take(requested_length))
-        // }
+        (DescriptorType::DeviceQualifier, 0) => {
+            usb0.ep_in_write(0, USB_DEVICE_QUALIFIER_DESCRIPTOR.into_iter().take(requested_length));
+        }
+        (DescriptorType::OtherSpeedConfiguration, 0) => {
+            usb0.ep_in_write(0, USB_OTHER_SPEED_CONFIG_DESCRIPTOR_0.iter().take(requested_length))
+        }
         (DescriptorType::String, 0) => {
             usb0.ep_in_write(0, USB_STRING_DESCRIPTOR_0.iter().take(requested_length),
         )},
@@ -306,15 +337,13 @@ fn handle_get_configuration(usb0: &UsbInterface0, packet: &SetupPacket) -> Resul
 //
 // From: http://www.linux-usb.org/usb.ids
 static USB_DEVICE_DESCRIPTOR: DeviceDescriptor = DeviceDescriptor {
-    _length: 18,
-    _descriptor_type: DescriptorType::Device as u8,
     descriptor_version: 0x0200,
     device_class: 0x00,
     device_subclass: 0x00,
     device_protocol: 0x00,
     max_packet_size: 64,
-    vendor_id: 0x1d50,  // display order
-    product_id: 0x60e7, // display order
+    vendor_id: 0x1d50,
+    product_id: 0x60e7,
     device_version_number: 0x1234,
     manufacturer_string_index: 1,
     product_string_index: 2,
@@ -369,20 +398,10 @@ static USB_INTERFACE_DESCRIPTOR_0: InterfaceDescriptor = InterfaceDescriptor {
     interface_protocol: 0x00,
     interface_string_index: 2,
     endpoint_descriptors: &[
-        &DELETEME_USB_ENDPOINT_DESCRIPTOR_0,
-        //&USB_ENDPOINT_DESCRIPTOR_0,
-        //&USB_ENDPOINT_DESCRIPTOR_1,
+        &USB_ENDPOINT_DESCRIPTOR_0,
+        &USB_ENDPOINT_DESCRIPTOR_1,
         //&USB_ENDPOINT_DESCRIPTOR_2,
     ],
-};
-
-static DELETEME_USB_ENDPOINT_DESCRIPTOR_0: EndpointDescriptor = EndpointDescriptor {
-    _length: 7,
-    _descriptor_type: DescriptorType::Endpoint as u8,
-    endpoint_address: 0x82, // IN
-    attributes: 0x02,       // Bulk
-    max_packet_size: 512,
-    interval: 0xff,
 };
 
 static USB_ENDPOINT_DESCRIPTOR_0: EndpointDescriptor = EndpointDescriptor {

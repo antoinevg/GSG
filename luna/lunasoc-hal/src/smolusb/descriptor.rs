@@ -75,8 +75,6 @@ impl TryFrom<u8> for DescriptorType {
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 pub struct DeviceDescriptor {
-    pub _length: u8,          // 18
-    pub _descriptor_type: u8, // 1 = Device
     pub descriptor_version: u16,
     pub device_class: u8,
     pub device_subclass: u8,
