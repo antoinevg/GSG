@@ -6,6 +6,9 @@ use crate::smolusb::ErrorKind;
 use core::iter;
 use core::mem::size_of;
 use core::slice;
+use core::iter::Chain;
+use core::marker::PhantomData;
+use heapless::Vec;
 
 // Serialization cases:
 //
@@ -14,7 +17,7 @@ use core::slice;
 // 3. Case #1 plus a variable length array of fixed size types (struct and enum)
 
 /// DescriptorType
-#[derive(Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 #[repr(u8)]
 pub enum DescriptorType {
     Device = 1,
@@ -68,16 +71,12 @@ impl TryFrom<u8> for DescriptorType {
 
 // - DeviceDescriptor ---------------------------------------------------------
 
-use core::iter::Chain;
-use core::marker::PhantomData;
-use heapless::Vec;
-
 /// USB device descriptor
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 pub struct DeviceDescriptor {
-    pub length: u8,          // 18
-    pub descriptor_type: u8, // 1 = Device
+    pub _length: u8,          // 18
+    pub _descriptor_type: u8, // 1 = Device
     pub descriptor_version: u16,
     pub device_class: u8,
     pub device_subclass: u8,
@@ -92,17 +91,29 @@ pub struct DeviceDescriptor {
     pub num_configurations: u8,
 }
 
+impl DeviceDescriptor {
+    pub const N: usize = 18; //size_of::<DeviceDescriptor>();
+
+    pub const fn length(&self) -> u8 {
+        Self::N as u8
+    }
+
+    pub const fn descriptor_type(&self) -> u8 {
+        DescriptorType::Device as u8
+    }
+}
+
 impl IntoIterator for DeviceDescriptor {
     type Item = u8;
-    type IntoIter = core::array::IntoIter<u8, 18>;
+    type IntoIter = core::array::IntoIter<u8, { DeviceDescriptor::N }>;
 
     fn into_iter(self) -> Self::IntoIter {
-        const N: usize = size_of::<DeviceDescriptor>();
+        const N: usize = DeviceDescriptor::N;
 
         let iter: core::array::IntoIter<u8, 0> = [].into_iter();
         let chain: core::iter::Chain<_, core::array::IntoIter<u8, 1>> = iter
-            .chain(self.length.to_le_bytes())
-            .chain(self.descriptor_type.to_le_bytes())
+            .chain(self.length().to_le_bytes())
+            .chain(self.descriptor_type().to_le_bytes())
             .chain(self.descriptor_version.to_le_bytes())
             .chain(self.device_class.to_le_bytes())
             .chain(self.device_subclass.to_le_bytes())
@@ -124,14 +135,70 @@ impl IntoIterator for DeviceDescriptor {
     }
 }
 
+// - DeviceQualifierDescriptor ---------------------------------------------------------
+
+/// USB device qualifier descriptor
+#[repr(C)]
+#[derive(Clone, Copy, Debug)]
+pub struct DeviceQualifierDescriptor {
+    pub _length: u8,          // 10
+    pub _descriptor_type: u8, // 6 = DeviceQualifier
+    pub descriptor_version: u16,
+    pub device_class: u8,
+    pub device_subclass: u8,
+    pub device_protocol: u8,
+    pub max_packet_size: u8,
+    pub num_configurations: u8,
+    pub reserved: u8,
+}
+
+impl DeviceQualifierDescriptor {
+    pub const N: usize = 10; //size_of::<DeviceQualifierDescriptor>();
+
+    pub const fn length(&self) -> u8 {
+        Self::N as u8
+    }
+
+    pub const fn descriptor_type(&self) -> u8 {
+        DescriptorType::Device as u8
+    }
+}
+
+impl IntoIterator for DeviceQualifierDescriptor {
+    type Item = u8;
+    type IntoIter = core::array::IntoIter<u8, { size_of::<DeviceQualifierDescriptor>() }>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        const N: usize = DeviceQualifierDescriptor::N;
+
+        let iter: core::array::IntoIter<u8, 0> = [].into_iter();
+        let chain: core::iter::Chain<_, core::array::IntoIter<u8, 1>> = iter
+            .chain(self.length().to_le_bytes())
+            .chain(self.descriptor_type().to_le_bytes())
+            .chain(self.descriptor_version.to_le_bytes())
+            .chain(self.device_class.to_le_bytes())
+            .chain(self.device_subclass.to_le_bytes())
+            .chain(self.device_protocol.to_le_bytes())
+            .chain(self.max_packet_size.to_le_bytes())
+            .chain(self.num_configurations.to_le_bytes())
+            .chain(self.reserved.to_le_bytes());
+
+        let vec: Vec<u8, N> = chain.take(N).collect::<Vec<u8, N>>();
+        let _vec_iter: <heapless::Vec<u8, N> as IntoIterator>::IntoIter = vec.clone().into_iter();
+        let buffer: [u8; N] = vec.into_array().expect("unproven");
+        let iter: core::array::IntoIter<u8, N> = buffer.into_iter();
+        iter
+    }
+}
+
 // - ConfigurationDescriptor --------------------------------------------------
 
 /// USB configuration descriptor
 pub struct ConfigurationDescriptor<'a> {
-    pub length: u8,          // 9
-    pub descriptor_type: u8, // 2 = Config
-    pub total_length: u16,
-    pub num_interfaces: u8,
+    pub _length: u8,          // 9
+    pub descriptor_type: DescriptorType, // 2 = Configuration, 3 = OtherSpeedConfiguration TODO
+    pub _total_length: u16,
+    pub _num_interfaces: u8,
     pub configuration_value: u8,
     pub configuration_string_index: u8,
     pub attributes: u8,
@@ -140,6 +207,30 @@ pub struct ConfigurationDescriptor<'a> {
 }
 
 impl<'a> ConfigurationDescriptor<'a> {
+    pub const N: usize = 9;
+
+    pub const fn length(&self) -> u8 {
+        Self::N as u8
+    }
+
+    pub const fn descriptor_type(&self) -> u8 {
+        // TODO
+        self.descriptor_type as u8
+    }
+
+    pub fn total_length(&self) -> u16 {
+        let iter: slice::Iter<'a, &InterfaceDescriptor<'a>> = self.interface_descriptors.iter();
+        let map: iter::Map<_, _> = iter.map(|x: &'a &InterfaceDescriptor| {
+            x.length() as u16 + (x.num_endpoints() as u16 * EndpointDescriptor::N as u16)
+        });
+        let reduce: u16 = map.reduce(|a, x| a + x).expect("interface descriptor length overflow");
+        Self::N as u16 + reduce
+    }
+
+    pub fn num_interfaces(&self) -> u8 {
+        self.interface_descriptors.len() as u8
+    }
+
     pub fn iter(&self) -> ConfigurationDescriptorIterator {
         ConfigurationDescriptorIterator::new(self)
     }
@@ -165,10 +256,10 @@ impl<'a> ConfigurationDescriptorIterator<'a> {
             iter::FlatMap<slice::Iter<&InterfaceDescriptor>, InterfaceDescriptorIterator, _>,
         > = []
             .into_iter()
-            .chain(descriptor.length.to_le_bytes())
-            .chain(descriptor.descriptor_type.to_le_bytes())
-            .chain(descriptor.total_length.to_le_bytes())
-            .chain(descriptor.num_interfaces.to_le_bytes())
+            .chain(descriptor.length().to_le_bytes())
+            .chain(descriptor.descriptor_type().to_le_bytes())
+            .chain(descriptor.total_length().to_le_bytes())
+            .chain(descriptor.num_interfaces().to_le_bytes())
             .chain(descriptor.configuration_value.to_le_bytes())
             .chain(descriptor.configuration_string_index.to_le_bytes())
             .chain(descriptor.attributes.to_le_bytes())
@@ -200,11 +291,11 @@ impl<'a> Iterator for ConfigurationDescriptorIterator<'a> {
 
 /// USB interface descriptor
 pub struct InterfaceDescriptor<'a> {
-    pub length: u8,          // 9
-    pub descriptor_type: u8, // 4 = Interface
-    pub interface_number: u16,
+    pub _length: u8,          // 9
+    pub _descriptor_type: u8, // 4 = Interface
+    pub interface_number: u8,
     pub alternate_setting: u8,
-    pub num_endpoints: u8,
+    pub _num_endpoints: u8,
     pub interface_class: u8,
     pub interface_subclass: u8,
     pub interface_protocol: u8,
@@ -213,6 +304,20 @@ pub struct InterfaceDescriptor<'a> {
 }
 
 impl<'a> InterfaceDescriptor<'a> {
+    pub const N: usize = 9;
+
+    pub const fn length(&self) -> u8 {
+        Self::N as u8
+    }
+
+    pub const fn descriptor_type(&self) -> u8 {
+        DescriptorType::Interface as u8
+    }
+
+    pub fn num_endpoints(&self) -> u8 {
+        self.endpoint_descriptors.len() as u8
+    }
+
     pub fn iter(&'a self) -> InterfaceDescriptorIterator<'a> {
         InterfaceDescriptorIterator::new(self)
     }
@@ -231,6 +336,9 @@ impl<'a> InterfaceDescriptorIterator<'a> {
         }
     }
 
+    // TODO play with https://stackoverflow.com/questions/65739365/
+    //                https://stackoverflow.com/questions/66076379/
+    //                https://www.reddit.com/r/rust/comments/3q3edl/how_do_you_store_iterators/
     fn byte_at_offset(&self, index: usize) -> Option<u8> {
         let descriptor = self.descriptor;
         let mut chain: iter::Chain<
@@ -238,11 +346,11 @@ impl<'a> InterfaceDescriptorIterator<'a> {
             iter::FlatMap<slice::Iter<&EndpointDescriptor>, EndpointDescriptorIterator, _>,
         > = []
             .into_iter()
-            .chain(descriptor.length.to_le_bytes())
-            .chain(descriptor.descriptor_type.to_le_bytes())
+            .chain(descriptor.length().to_le_bytes())
+            .chain(descriptor.descriptor_type().to_le_bytes())
             .chain(descriptor.interface_number.to_le_bytes())
             .chain(descriptor.alternate_setting.to_le_bytes())
-            .chain(descriptor.num_endpoints.to_le_bytes())
+            .chain(descriptor.num_endpoints().to_le_bytes())
             .chain(descriptor.interface_class.to_le_bytes())
             .chain(descriptor.interface_subclass.to_le_bytes())
             .chain(descriptor.interface_protocol.to_le_bytes())
@@ -274,37 +382,44 @@ impl<'a> Iterator for InterfaceDescriptorIterator<'a> {
 
 /// USB endpoint descriptor
 pub struct EndpointDescriptor {
-    pub length: u8,          // 6
-    pub descriptor_type: u8, // 5 = Endpoint
+    pub _length: u8,          // 7
+    pub _descriptor_type: u8, // 5 = Endpoint
     pub endpoint_address: u8,
     pub attributes: u8,
-    pub max_packet_size: u8,
+    pub max_packet_size: u16,
     pub interval: u8,
 }
 
 impl EndpointDescriptor {
-    pub fn iter(&self) -> EndpointDescriptorIterator {
-        EndpointDescriptorIterator::new(self)
+    pub const N: usize = 7;
+
+    pub const fn length(&self) -> u8 {
+        Self::N as u8
     }
 
-    pub fn length(&self) -> u8 {
-        6
+    pub const fn descriptor_type(&self) -> u8 {
+        DescriptorType::Endpoint as u8
+    }
+
+    pub fn iter(&self) -> EndpointDescriptorIterator {
+        EndpointDescriptorIterator::new(self)
     }
 }
 
 pub struct EndpointDescriptorIterator<'a> {
     descriptor: &'a EndpointDescriptor,
-    iter: core::array::IntoIter<u8, 6>,
+    iter: core::array::IntoIter<u8, { EndpointDescriptor::N }>,
 }
 
 impl<'a> EndpointDescriptorIterator<'a> {
     pub fn new(descriptor: &'a EndpointDescriptor) -> Self {
         let iter = [
             descriptor.length(),
-            descriptor.descriptor_type,
+            descriptor.descriptor_type(),
             descriptor.endpoint_address,
             descriptor.attributes,
-            descriptor.max_packet_size,
+            descriptor.max_packet_size.to_le_bytes()[0],
+            descriptor.max_packet_size.to_le_bytes()[1],
             descriptor.interval,
         ]
         .into_iter();
@@ -336,17 +451,23 @@ pub enum LanguageId {
 #[repr(C)]
 pub struct StringDescriptorZero<'a> {
     pub _length: u8,
-    pub descriptor_type: u8, // 3 = String
+    pub _descriptor_type: u8, // 3 = String
     pub language_ids: &'a [LanguageId],
 }
 
 impl<'a> StringDescriptorZero<'a> {
-    pub fn iter(&self) -> StringDescriptorZeroIterator {
-        StringDescriptorZeroIterator::new(self)
-    }
+    pub const N: usize = 2;
 
     pub fn length(&self) -> u8 {
-        2 + (size_of::<LanguageId>() * self.language_ids.len()) as u8
+        (Self::N + (size_of::<LanguageId>() * self.language_ids.len())) as u8
+    }
+
+    pub const fn descriptor_type(&self) -> u8 {
+        DescriptorType::String as u8
+    }
+
+    pub fn iter(&self) -> StringDescriptorZeroIterator {
+        StringDescriptorZeroIterator::new(self)
     }
 }
 
@@ -363,7 +484,7 @@ pub struct StringDescriptorZeroIterator<'a> {
 
 impl<'a> StringDescriptorZeroIterator<'a> {
     pub fn new(descriptor: &'a StringDescriptorZero) -> Self {
-        let header_iter = [descriptor.length(), descriptor.descriptor_type].into_iter();
+        let header_iter = [descriptor.length(), descriptor.descriptor_type()].into_iter();
         Self {
             descriptor,
             state: IteratorState::Header,
@@ -431,15 +552,17 @@ impl<'a> StringDescriptor<'a> {
 }
 
 impl<'a> StringDescriptor<'a> {
+    pub const N: usize = 2;
+
     /// Descriptor length
     pub fn length(&self) -> u8 {
         // TODO USB string descriptors can be a maximum of 126 characters
-        2 + (self.string.encode_utf16().count() * 2) as u8
+        (Self::N + (self.string.encode_utf16().count() * size_of::<u16>())) as u8
     }
 
     /// Descriptor type
-    pub fn descriptor_type(&self) -> DescriptorType {
-        DescriptorType::String
+    pub const fn descriptor_type(&self) -> u8 {
+        DescriptorType::String as u8
     }
 
     /// Returns an iterator to the descriptor

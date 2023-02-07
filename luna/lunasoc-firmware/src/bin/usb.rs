@@ -37,7 +37,7 @@ use hal::smolusb;
 use libgreat::Result;
 use smolusb::control::{Direction, Recipient, Request, RequestType, SetupPacket};
 use smolusb::descriptor::{
-    ConfigurationDescriptor, DescriptorType, DeviceDescriptor, EndpointDescriptor,
+    ConfigurationDescriptor, DescriptorType, DeviceDescriptor, DeviceQualifierDescriptor, EndpointDescriptor,
     InterfaceDescriptor, LanguageId, StringDescriptor, StringDescriptorZero,
 };
 
@@ -185,6 +185,7 @@ fn handle_setup_request(usb0: &UsbInterface0, packet: &SetupPacket) -> Result<()
         Request::SetAddress => handle_set_address(usb0, packet),
         Request::GetDescriptor => handle_get_descriptor(usb0, packet),
         Request::SetConfiguration => handle_set_configuration(usb0, packet),
+        Request::GetConfiguration => handle_get_configuration(usb0, packet),
         _ => {
             warn!("   stall: unhandled request {:?}", request);
             usb0.stall_request();
@@ -227,8 +228,14 @@ fn handle_get_descriptor(usb0: &UsbInterface0, packet: &SetupPacket) -> Result<(
             usb0.ep_in_write(0, USB_DEVICE_DESCRIPTOR.into_iter().take(requested_length));
         }
         (DescriptorType::Configuration, 0) => {
-            usb0.ep_in_write(0, USB_CONFIG_DESCRIPTOR.into_iter().take(requested_length))
+            usb0.ep_in_write(0, USB_CONFIG_DESCRIPTOR_0.iter().take(requested_length))
         }
+        // (DescriptorType::DeviceQualifier, _) => {
+        //     usb0.ep_in_write(0, USB_DEVICE_QUALIFIER_DESCRIPTOR.into_iter().take(requested_length));
+        // }
+        // (DescriptorType::OtherSpeedConfiguration, 0) => {
+        //     usb0.ep_in_write(0, USB_OTHER_SPEED_CONFIG_DESCRIPTOR_0.iter().take(requested_length))
+        // }
         (DescriptorType::String, 0) => {
             usb0.ep_in_write(0, USB_STRING_DESCRIPTOR_0.iter().take(requested_length),
         )},
@@ -237,6 +244,9 @@ fn handle_get_descriptor(usb0: &UsbInterface0, packet: &SetupPacket) -> Result<(
         }
         (DescriptorType::String, 2) => {
             usb0.ep_in_write(0, USB_STRING_DESCRIPTOR_2.iter().take(requested_length))
+        }
+        (DescriptorType::String, 3) => {
+            usb0.ep_in_write(0, USB_STRING_DESCRIPTOR_3.iter().take(requested_length))
         }
         _ => {
             warn!(
@@ -251,8 +261,8 @@ fn handle_get_descriptor(usb0: &UsbInterface0, packet: &SetupPacket) -> Result<(
     usb0.ack_status_stage(packet);
 
     debug!(
-        "  -> handle_get_descriptor({:?}({}), {})",
-        descriptor_type, descriptor_type_bits, descriptor_number
+        "  -> handle_get_descriptor({:?}({}), {}, {})",
+        descriptor_type, descriptor_type_bits, descriptor_number, requested_length
     );
 
     Ok(())
@@ -273,6 +283,18 @@ fn handle_set_configuration(usb0: &UsbInterface0, packet: &SetupPacket) -> Resul
     Ok(())
 }
 
+fn handle_get_configuration(usb0: &UsbInterface0, packet: &SetupPacket) -> Result<()> {
+    debug!("  -> handle_get_configuration()");
+
+    let requested_length = packet.length as usize;
+
+    usb0.ep_in_write(0, [1].into_iter().take(requested_length));
+    usb0.ack_status_stage(packet);
+
+    Ok(())
+}
+
+
 // - usb descriptors ----------------------------------------------------------
 
 // fun product id's in 0x1d50:
@@ -284,8 +306,8 @@ fn handle_set_configuration(usb0: &UsbInterface0, packet: &SetupPacket) -> Resul
 //
 // From: http://www.linux-usb.org/usb.ids
 static USB_DEVICE_DESCRIPTOR: DeviceDescriptor = DeviceDescriptor {
-    length: 18,
-    descriptor_type: DescriptorType::Device as u8,
+    _length: 18,
+    _descriptor_type: DescriptorType::Device as u8,
     descriptor_version: 0x0200,
     device_class: 0x00,
     device_subclass: 0x00,
@@ -296,20 +318,39 @@ static USB_DEVICE_DESCRIPTOR: DeviceDescriptor = DeviceDescriptor {
     device_version_number: 0x1234,
     manufacturer_string_index: 1,
     product_string_index: 2,
-    serial_string_index: 0,
+    serial_string_index: 3,
     num_configurations: 1,
 };
 
-static USB_CONFIG_DESCRIPTOR: [u8; 18] = [
-    0x09, 0x02, 0x12, 0x00, 0x01, 0x01, 0x01, 0x80, 0x32, 0x09, 0x04, 0x00, 0x00, 0x00, 0xfe, 0x00,
-    0x00, 0x02,
-];
+static USB_DEVICE_QUALIFIER_DESCRIPTOR: DeviceQualifierDescriptor = DeviceQualifierDescriptor {
+    _length: 10,
+    _descriptor_type: DescriptorType::Device as u8,
+    descriptor_version: 0x0200,
+    device_class: 0x00,
+    device_subclass: 0x00,
+    device_protocol: 0x00,
+    max_packet_size: 64,
+    num_configurations: 1,
+    reserved: 0,
+};
 
-static _USB_CONFIG_DESCRIPTOR_0: ConfigurationDescriptor = ConfigurationDescriptor {
-    length: 9,
-    descriptor_type: DescriptorType::Configuration as u8,
-    total_length: 18, // config descriptor + interface descriptors + endpoint descriptors
-    num_interfaces: 1,
+static USB_CONFIG_DESCRIPTOR_0: ConfigurationDescriptor = ConfigurationDescriptor {
+    _length: 9,
+    descriptor_type: DescriptorType::Configuration, // TODO
+    _total_length: 24, // config descriptor + interface descriptors + endpoint descriptors
+    _num_interfaces: 1,
+    configuration_value: 1,
+    configuration_string_index: 1,
+    attributes: 0x80, // 0b1000_0000
+    max_power: 50,    // 50 * 2 mA = 100 mA
+    interface_descriptors: &[&USB_INTERFACE_DESCRIPTOR_0],
+};
+
+static USB_OTHER_SPEED_CONFIG_DESCRIPTOR_0: ConfigurationDescriptor = ConfigurationDescriptor {
+    _length: 9,
+    descriptor_type: DescriptorType::OtherSpeedConfiguration, // TODO
+    _total_length: 36, // config descriptor + interface descriptors + endpoint descriptors
+    _num_interfaces: 1,
     configuration_value: 1,
     configuration_string_index: 1,
     attributes: 0x80, // 0b1000_0000
@@ -318,25 +359,35 @@ static _USB_CONFIG_DESCRIPTOR_0: ConfigurationDescriptor = ConfigurationDescript
 };
 
 static USB_INTERFACE_DESCRIPTOR_0: InterfaceDescriptor = InterfaceDescriptor {
-    length: 9,
-    descriptor_type: DescriptorType::Interface as u8,
+    _length: 9,
+    _descriptor_type: DescriptorType::Interface as u8,
     interface_number: 0,
     alternate_setting: 0,
-    num_endpoints: 3,
+    _num_endpoints: 1,
     interface_class: 0xff, // Vendor Specific - https://www.usb.org/defined-class-codes
     interface_subclass: 0x00,
     interface_protocol: 0x00,
     interface_string_index: 2,
     endpoint_descriptors: &[
-        &USB_ENDPOINT_DESCRIPTOR_0,
-        &USB_ENDPOINT_DESCRIPTOR_1,
-        &USB_ENDPOINT_DESCRIPTOR_2,
+        &DELETEME_USB_ENDPOINT_DESCRIPTOR_0,
+        //&USB_ENDPOINT_DESCRIPTOR_0,
+        //&USB_ENDPOINT_DESCRIPTOR_1,
+        //&USB_ENDPOINT_DESCRIPTOR_2,
     ],
 };
 
+static DELETEME_USB_ENDPOINT_DESCRIPTOR_0: EndpointDescriptor = EndpointDescriptor {
+    _length: 7,
+    _descriptor_type: DescriptorType::Endpoint as u8,
+    endpoint_address: 0x82, // IN
+    attributes: 0x02,       // Bulk
+    max_packet_size: 512,
+    interval: 0xff,
+};
+
 static USB_ENDPOINT_DESCRIPTOR_0: EndpointDescriptor = EndpointDescriptor {
-    length: 6,
-    descriptor_type: DescriptorType::Endpoint as u8,
+    _length: 7,
+    _descriptor_type: DescriptorType::Endpoint as u8,
     endpoint_address: 0x82, // IN
     attributes: 0x02,       // Bulk
     max_packet_size: 64,
@@ -344,8 +395,8 @@ static USB_ENDPOINT_DESCRIPTOR_0: EndpointDescriptor = EndpointDescriptor {
 };
 
 static USB_ENDPOINT_DESCRIPTOR_1: EndpointDescriptor = EndpointDescriptor {
-    length: 6,
-    descriptor_type: DescriptorType::Endpoint as u8,
+    _length: 7,
+    _descriptor_type: DescriptorType::Endpoint as u8,
     endpoint_address: 0x02, // OUT
     attributes: 0x02,       // Bulk
     max_packet_size: 64,
@@ -353,8 +404,8 @@ static USB_ENDPOINT_DESCRIPTOR_1: EndpointDescriptor = EndpointDescriptor {
 };
 
 static USB_ENDPOINT_DESCRIPTOR_2: EndpointDescriptor = EndpointDescriptor {
-    length: 6,
-    descriptor_type: DescriptorType::Endpoint as u8,
+    _length: 7,
+    _descriptor_type: DescriptorType::Endpoint as u8,
     endpoint_address: 0x81, // IN
     attributes: 0x03,       // Interrupt
     max_packet_size: 8,
@@ -363,16 +414,17 @@ static USB_ENDPOINT_DESCRIPTOR_2: EndpointDescriptor = EndpointDescriptor {
 
 static USB_STRING_DESCRIPTOR_0: StringDescriptorZero = StringDescriptorZero {
     _length: 10,
-    descriptor_type: DescriptorType::String as u8,
+    _descriptor_type: DescriptorType::String as u8,
     language_ids: &[
         LanguageId::EnglishUnitedStates,
-        LanguageId::EnglishUnitedKingdom,
-        LanguageId::EnglishCanadian,
-        LanguageId::EnglishSouthAfrica,
+        //LanguageId::EnglishUnitedKingdom,
+        //LanguageId::EnglishCanadian,
+        //LanguageId::EnglishSouthAfrica,
     ],
 };
 static USB_STRING_DESCRIPTOR_1: StringDescriptor = StringDescriptor::new("LUNA");
 static USB_STRING_DESCRIPTOR_2: StringDescriptor = StringDescriptor::new("Simple Endpoint Test");
+static USB_STRING_DESCRIPTOR_3: StringDescriptor = StringDescriptor::new("v1.0");
 
 /*
 # Reference enumeration process (quirks merged from Linux, macOS, and Windows):
