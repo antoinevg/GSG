@@ -20,16 +20,16 @@ pub mod interrupt {
         while register::minerva::mim::read() != mask {}
     }
 
-    pub unsafe fn pending(interrupt: Interrupt) -> bool {
+    pub fn reg_mask() -> usize {
+        register::minerva::mim::read()
+    }
+
+    pub fn pending(interrupt: Interrupt) -> bool {
         let pending = register::minerva::mip::read();
         (pending & (1 << interrupt as usize)) != 0
     }
 
-    pub unsafe fn reg_mask() -> usize {
-        register::minerva::mim::read()
-    }
-
-    pub unsafe fn reg_pending() -> usize {
+    pub fn reg_pending() -> usize {
         register::minerva::mip::read()
     }
 }
