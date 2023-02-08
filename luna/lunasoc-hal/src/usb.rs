@@ -124,8 +124,8 @@ impl UsbInterface0 {
     pub fn enable_interrupts(&mut self) {
         // clear all event handlers
         self.clear_pending(Interrupt::USB0);
-        //self.clear_pending(Interrupt::USB0_EP_CONTROL);
-        //self.clear_pending(Interrupt::USB0_EP_IN);
+        self.clear_pending(Interrupt::USB0_EP_CONTROL);
+        self.clear_pending(Interrupt::USB0_EP_IN);
         self.clear_pending(Interrupt::USB0_EP_OUT);
 
         // enable device controller events for bus reset signal
@@ -136,7 +136,9 @@ impl UsbInterface0 {
     }
 
     pub fn is_pending(&self, interrupt: Interrupt) -> bool {
-        match interrupt {
+        // TODO there is some weirdness here where ev_pending is being
+        //      set but the interrupt hasn't actually fired.
+        /*match interrupt {
             Interrupt::USB0 => self.device.ev_pending.read().pending().bit_is_set(),
             Interrupt::USB0_EP_CONTROL => self.ep_control.ev_pending.read().pending().bit_is_set(),
             Interrupt::USB0_EP_IN => self.ep_in.ev_pending.read().pending().bit_is_set(),
@@ -145,7 +147,8 @@ impl UsbInterface0 {
                 warn!("Ignoring invalid interrupt is pending: {:?}", interrupt);
                 false
             }
-        }
+        }*/
+        pac::csr::interrupt::pending(interrupt)
     }
 
     pub fn clear_pending(&mut self, interrupt: Interrupt) {
@@ -330,9 +333,8 @@ impl UsbInterface0 {
         self.ep_control.address.read().address().bits()
     }
 
-    pub fn ep_control_set_address(&self, address: u8) {
-        self.ep_control
-            .address
-            .write(|w| unsafe { w.address().bits(address & 0x7f) });
+    pub fn set_address(&self, address: u8) {
+        self.ep_control.address.write(|w| unsafe { w.address().bits(address & 0x7f) });
+        self.ep_out.address.write(|w| unsafe { w.address().bits(address & 0x7f) });
     }
 }

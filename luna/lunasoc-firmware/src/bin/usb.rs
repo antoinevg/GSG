@@ -33,6 +33,7 @@ use lunasoc_firmware as firmware;
 
 use firmware::{hal, pac};
 use hal::smolusb;
+use pac::csr::interrupt;
 
 use libgreat::Result;
 use smolusb::control::{Direction, Recipient, Request, RequestType, SetupPacket};
@@ -58,26 +59,32 @@ fn MachineExternal() {
     let mut usb0 = unsafe { hal::UsbInterface0::summon() };
 
     // debug
-    let pending = unsafe { pac::csr::interrupt::reg_pending() };
+    let pending = interrupt::reg_pending();
     leds.output
-        .write(|w| unsafe { w.output().bits((1 << pending) as u8) });
+        .write(|w| unsafe { w.output().bits(pending as u8) });
+    //let mask = unsafe { interrupt::reg_mask() };
+    //trace!("MachineExternal - 0b{:032b} 0b{:032b}", mask, pending);
 
     if usb0.is_pending(pac::Interrupt::USB0) {
         usb0.clear_pending(pac::Interrupt::USB0);
         usb0.reset();
+
     } else if usb0.is_pending(pac::Interrupt::USB0_EP_CONTROL) {
         usb0.clear_pending(pac::Interrupt::USB0_EP_CONTROL);
-        //panic!("MachineExternal - usb0.ep_control interrupt");
-        trace!("MachineExternal - usb0.ep_control interrupt");
+        panic!("MachineExternal - usb0.ep_control interrupt");
+
     } else if usb0.is_pending(pac::Interrupt::USB0_EP_IN) {
         usb0.clear_pending(pac::Interrupt::USB0_EP_IN);
-        //panic!("MachineExternal - usb0.ep_in interrupt");
-        trace!("MachineExternal - usb0.ep_in interrupt");
+        panic!("MachineExternal - usb0.ep_in interrupt");
+
     } else if usb0.is_pending(pac::Interrupt::USB0_EP_OUT) {
         usb0.clear_pending(pac::Interrupt::USB0_EP_OUT);
-        //panic!("MachineExternal - usb0.ep_out interrupt");
-        trace!("MachineExternal - usb0.ep_out interrupt");
-    } else {
+
+        let endpoint = usb0.ep_out.data_ep.read().bits();
+
+        trace!("MachineExternal - usb0.ep_out interrupt ep:{}", endpoint);
+
+    }  else {
         error!("MachineExternal - unknown interrupt");
         error!("  pend: {:#035b}", pending);
     }
@@ -108,6 +115,7 @@ fn main() -> ! {
     let speed = usb0.connect();
     info!("Connected: {}", speed);
 
+
     // enable interrupts
     usb0.enable_interrupts();
     unsafe {
@@ -118,9 +126,15 @@ fn main() -> ! {
         riscv::register::mie::set_mext();
 
         // write csr: enable interrupts
-        pac::csr::interrupt::enable(pac::Interrupt::USB0);
-        pac::csr::interrupt::enable(pac::Interrupt::USB0_EP_OUT);
+        interrupt::enable(pac::Interrupt::USB0);
+        interrupt::enable(pac::Interrupt::USB0_EP_OUT);
     }
+
+    // prime endpoints
+    usb0.ep_out.epno.write(|w| unsafe { w.epno().bits(1) });
+    usb0.ep_out.prime.write(|w| w.prime().bit(true));
+    usb0.ep_out.epno.write(|w| unsafe { w.epno().bits(0) });
+    usb0.ep_out.prime.write(|w| w.prime().bit(true));
 
     loop {
         // read setup request and handle it
@@ -229,7 +243,8 @@ fn handle_set_address(usb0: &UsbInterface0, packet: &SetupPacket) -> Result<()> 
     usb0.ack_status_stage(packet);
 
     let address: u8 = (packet.value & 0x7f) as u8;
-    usb0.ep_control_set_address(address);
+    usb0.set_address(address);
+
     debug!("  -> handle_set_address({})", address);
 
     Ok(())
