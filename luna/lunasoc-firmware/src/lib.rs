@@ -18,8 +18,8 @@ pub const SYSTEM_CLOCK_FREQUENCY: u32 = pac::clock::sysclk();
 
 #[derive(Debug)]
 pub enum Message {
-    Timer(u32),
-    UsbReset,
+    TimerEvent(u32),
+    Interrupt(pac::Interrupt),
     UnknownInterrupt(usize),
 }
 

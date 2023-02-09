@@ -4,10 +4,10 @@
 use crate::smolusb::ErrorKind;
 
 use core::iter;
-use core::mem::size_of;
-use core::slice;
 use core::iter::Chain;
 use core::marker::PhantomData;
+use core::mem::size_of;
+use core::slice;
 use heapless::Vec;
 
 // Serialization cases:
@@ -90,7 +90,7 @@ pub struct DeviceDescriptor {
 }
 
 impl DeviceDescriptor {
-    pub const N: usize = 18; //size_of::<DeviceDescriptor>();
+    pub const N: usize = 18;
 
     pub const fn length(&self) -> u8 {
         Self::N as u8
@@ -108,7 +108,29 @@ impl IntoIterator for DeviceDescriptor {
     fn into_iter(self) -> Self::IntoIter {
         const N: usize = DeviceDescriptor::N;
 
-        let iter: core::array::IntoIter<u8, 0> = [].into_iter();
+        [
+            self.length(),
+            self.descriptor_type(),
+            self.descriptor_version.to_le_bytes()[0],
+            self.descriptor_version.to_le_bytes()[1],
+            self.device_class,
+            self.device_subclass,
+            self.device_protocol,
+            self.max_packet_size,
+            self.vendor_id.to_le_bytes()[0],
+            self.vendor_id.to_le_bytes()[1],
+            self.product_id.to_le_bytes()[0],
+            self.product_id.to_le_bytes()[1],
+            self.device_version_number.to_le_bytes()[0],
+            self.device_version_number.to_le_bytes()[1],
+            self.manufacturer_string_index,
+            self.product_string_index,
+            self.serial_string_index,
+            self.num_configurations,
+        ]
+        .into_iter()
+
+        /*let iter: core::array::IntoIter<u8, 0> = [].into_iter();
         let chain: core::iter::Chain<_, core::array::IntoIter<u8, 1>> = iter
             .chain(self.length().to_le_bytes())
             .chain(self.descriptor_type().to_le_bytes())
@@ -129,7 +151,7 @@ impl IntoIterator for DeviceDescriptor {
         let _vec_iter: <heapless::Vec<u8, N> as IntoIterator>::IntoIter = vec.clone().into_iter();
         let buffer: [u8; N] = vec.into_array().expect("unproven");
         let iter: core::array::IntoIter<u8, N> = buffer.into_iter();
-        iter
+        iter*/
     }
 }
 
@@ -193,7 +215,7 @@ impl IntoIterator for DeviceQualifierDescriptor {
 
 /// USB configuration descriptor
 pub struct ConfigurationDescriptor<'a> {
-    pub _length: u8,          // 9
+    pub _length: u8,                     // 9
     pub descriptor_type: DescriptorType, // 2 = Configuration, 3 = OtherSpeedConfiguration TODO
     pub _total_length: u16,
     pub _num_interfaces: u8,
@@ -221,7 +243,9 @@ impl<'a> ConfigurationDescriptor<'a> {
         let map: iter::Map<_, _> = iter.map(|x: &'a &InterfaceDescriptor| {
             x.length() as u16 + (x.num_endpoints() as u16 * EndpointDescriptor::N as u16)
         });
-        let reduce: u16 = map.reduce(|a, x| a + x).expect("interface descriptor length overflow");
+        let reduce: u16 = map
+            .reduce(|a, x| a + x)
+            .expect("interface descriptor length overflow");
         Self::N as u16 + reduce
     }
 

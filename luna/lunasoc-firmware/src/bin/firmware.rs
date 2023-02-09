@@ -8,8 +8,9 @@ use firmware::hal;
 use firmware::pac;
 
 use hal::smolusb::Device;
+use pac::csr::interrupt;
 
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
 
 use panic_halt as _;
 use riscv_rt::entry;
@@ -32,21 +33,25 @@ fn MachineExternal() {
 
     let message = if usb0.is_pending(pac::Interrupt::USB0) {
         usb0.clear_pending(pac::Interrupt::USB0);
-        Message::UsbReset
+        Message::Interrupt(pac::Interrupt::USB0)
     } else if usb0.is_pending(pac::Interrupt::USB0_EP_CONTROL) {
         usb0.clear_pending(pac::Interrupt::USB0_EP_CONTROL);
-        panic!("MachineExternal - usb0.ep_control interrupt");
+        Message::Interrupt(pac::Interrupt::USB0_EP_CONTROL)
+
     } else if usb0.is_pending(pac::Interrupt::USB0_EP_IN) {
         usb0.clear_pending(pac::Interrupt::USB0_EP_IN);
-        panic!("MachineExternal - usb0.ep_in interrupt");
+        Message::Interrupt(pac::Interrupt::USB0_EP_IN)
+
     } else if usb0.is_pending(pac::Interrupt::USB0_EP_OUT) {
         usb0.clear_pending(pac::Interrupt::USB0_EP_OUT);
-        panic!("MachineExternal - usb0.ep_out interrupt");
+        Message::Interrupt(pac::Interrupt::USB0_EP_OUT)
+
     } else if timer.is_pending() {
         timer.clear_pending();
-        Message::Timer(unsafe { COUNTER_IRQ })
+        Message::TimerEvent(unsafe { COUNTER_IRQ })
+
     } else {
-        let pending = unsafe { pac::csr::interrupt::reg_pending() };
+        let pending = interrupt::reg_pending();
         Message::UnknownInterrupt(pending)
     };
 
@@ -100,8 +105,8 @@ fn main() -> ! {
         // set mie register: machine external interrupts enable
         riscv::register::mie::set_mext();
         // write csr: enable interrupts
-        pac::csr::interrupt::enable(pac::Interrupt::TIMER);
-        pac::csr::interrupt::enable(pac::Interrupt::USB0);
+        interrupt::enable(pac::Interrupt::TIMER);
+        interrupt::enable(pac::Interrupt::USB0);
     }
 
     info!("Peripherals initialized, entering main loop.");
@@ -109,9 +114,18 @@ fn main() -> ! {
     loop {
         if let Some(message) = MESSAGE_QUEUE.dequeue() {
             match message {
-                Message::Timer(_tick) => (),
-                Message::UsbReset => {
+                Message::TimerEvent(_tick) => (),
+                Message::Interrupt(pac::Interrupt::USB0) => {
                     usb0.reset();
+                }
+                Message::Interrupt(pac::Interrupt::USB0_EP_CONTROL) => {
+                }
+                Message::Interrupt(pac::Interrupt::USB0_EP_IN) => {
+                }
+                Message::Interrupt(pac::Interrupt::USB0_EP_OUT) => {
+                }
+                Message::Interrupt(interrupt) => {
+                    warn!("Unhandled interrupt: {:?}", interrupt);
                 }
                 Message::UnknownInterrupt(pending) => {
                     error!("Unknown interrupt pending: {:#035b}", pending);

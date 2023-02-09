@@ -92,8 +92,6 @@ impl UsbInterface0 {
     }
 
     pub fn reset(&mut self) -> u8 {
-        trace!("UsbInterface0::reset()");
-
         self.reset_count += 1;
 
         // disable endpoint events
@@ -116,7 +114,7 @@ impl UsbInterface0 {
         // TODO handle speed
         // 0: High, 1: Full, 2: Low, 3:SuperSpeed (incl SuperSpeed+)
         let speed = self.device.speed.read().speed().bits();
-        trace!("Reset: {}", speed);
+        trace!("UsbInterface0::reset() -> {}", speed);
         speed
     }
 
@@ -130,8 +128,8 @@ impl UsbInterface0 {
 
         // enable device controller events for bus reset signal
         self.enable_interrupt(Interrupt::USB0);
-        //self.enable_interrupt(Interrupt::USB0_EP_CONTROL);
-        //self.enable_interrupt(Interrupt::USB0_EP_IN);
+        self.enable_interrupt(Interrupt::USB0_EP_CONTROL);
+        self.enable_interrupt(Interrupt::USB0_EP_IN);
         self.enable_interrupt(Interrupt::USB0_EP_OUT);
     }
 
@@ -228,7 +226,7 @@ impl UsbInterface0 {
 
         if bytes_read > 0 {
             trace!(
-                "  RX {} bytes + {} overflow - {:x?} - {:x}",
+                "  RX {} + {} overflow - {:x?} - {:x}",
                 bytes_read,
                 overflow,
                 buffer,
@@ -260,7 +258,7 @@ impl UsbInterface0 {
 
         if bytes_read > 0 {
             trace!(
-                "  RX {} bytes + {} overflow - {:x?} - {:x}",
+                "  RX {} + {} overflow - {:x?} - {:x}",
                 bytes_read,
                 overflow,
                 buffer,
