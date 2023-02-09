@@ -130,6 +130,9 @@ fn main() -> ! {
                 Message::UnknownInterrupt(pending) => {
                     error!("Unknown interrupt pending: {:#035b}", pending);
                 }
+                _ => {
+                    panic!("Unhandled message: {:?}", message);
+                }
             }
         }
     }

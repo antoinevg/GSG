@@ -63,7 +63,7 @@ class LunaSoCExample(Elaboratable):
         ])
 
         # Create our SoC...
-        self.soc = LunaSoC(clock_frequency, internal_sram_size=32768)
+        self.soc = LunaSoC(clock_frequency, internal_sram_size=65536)
 
         # Add bios and core peripherals
         self.soc.add_bios_and_peripherals(uart_pins=self.uart_pins)

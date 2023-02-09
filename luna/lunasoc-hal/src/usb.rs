@@ -199,23 +199,13 @@ impl UsbInterface0 {
         }
     }
 
-    pub fn ep_control_read_packet(&self, buffer: &mut [u8]) -> Result<()> {
-        // block until setup data is available
-        let mut counter = 0;
-        while !self.ep_control.have.read().have().bit() {
-            counter += 1;
-            if counter > 60_000_000 {
-                return Err(&ErrorKind::Timeout);
-            }
-        }
-
+    pub fn ep_control_read(&self, buffer: &mut [u8]) -> Result<()> {
         // drain fifo
         let mut bytes_read = 0;
         let mut overflow = 0;
         let mut drain = 0;
         while self.ep_control.have.read().have().bit() {
             if bytes_read >= buffer.len() {
-                // drain
                 drain = self.ep_control.data.read().data().bits();
                 overflow += 1;
             } else {
@@ -237,17 +227,13 @@ impl UsbInterface0 {
         Ok(())
     }
 
-    pub fn ep_out_read(&self, endpoint: u8, buffer: &mut [u8]) -> Result<()> {
-        // do we need to prime it after receiving the interrupt?
-        self.ep_out_prime_receive(endpoint); // TODO ???
-
+    pub fn ep_out_read(&self, _endpoint: u8, buffer: &mut [u8]) -> Result<usize> {
         // drain fifo
         let mut bytes_read = 0;
         let mut overflow = 0;
         let mut drain = 0;
         while self.ep_out.have.read().have().bit() {
             if bytes_read >= buffer.len() {
-                // drain
                 drain = self.ep_out.data.read().data().bits();
                 overflow += 1;
             } else {
@@ -255,6 +241,11 @@ impl UsbInterface0 {
                 bytes_read += 1;
             }
         }
+
+        // TODO how do we know if there is more data en-route?
+
+        // re-enable endpoint after consuming all data
+        self.ep_out.enable.write(|w| w.enable().bit(true));
 
         if bytes_read > 0 {
             trace!(
@@ -266,7 +257,7 @@ impl UsbInterface0 {
             );
         }
 
-        Ok(())
+        Ok(bytes_read)
     }
 
     pub fn ep_in_write<I>(&self, endpoint: u8, iter: I)
@@ -294,16 +285,6 @@ impl UsbInterface0 {
         trace!("  TX {} bytes", bytes_written);
     }
 
-    /// Acknowledge the status stage of an incoming control request.
-    pub fn ack_status_stage(&self, packet: &SetupPacket) {
-        match Direction::from(packet.request_type) {
-            // If this is an IN request, read a zero-length packet (ZLP) from the host..
-            Direction::DeviceToHost => self.ep_out_prime_receive(0),
-            // ... otherwise, send a ZLP.
-            Direction::HostToDevice => self.ep_in_write(0, [].into_iter()),
-        }
-    }
-
     /// Prepare endpoint to receive a single OUT packet.
     pub fn ep_out_prime_receive(&self, endpoint: u8) {
         // clear receive buffer
@@ -319,6 +300,16 @@ impl UsbInterface0 {
 
         // enable it
         self.ep_out.enable.write(|w| w.enable().bit(true));
+    }
+
+    /// Acknowledge the status stage of an incoming control request.
+    pub fn ack_status_stage(&self, packet: &SetupPacket) {
+        match Direction::from(packet.request_type) {
+            // If this is an IN request, read a zero-length packet (ZLP) from the host..
+            Direction::DeviceToHost => self.ep_out_prime_receive(0),
+            // ... otherwise, send a ZLP.
+            Direction::HostToDevice => self.ep_in_write(0, [].into_iter()),
+        }
     }
 
     /// Stalls the current control request.
