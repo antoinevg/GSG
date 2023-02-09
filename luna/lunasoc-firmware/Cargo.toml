@@ -6,7 +6,7 @@ license-file = "LICENSE.txt"
 categories = ["embedded", "hardware-support", "no-std"]
 description = "Firmware for the Great Scott Gadgets Luna USB Multitool"
 edition = "2021"
-rust-version = "1.59"
+rust-version = "1.68"
 default-run = "firmware"
 
 [package.metadata.docs.rs]
