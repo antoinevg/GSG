@@ -3,10 +3,11 @@
 # Copyright (c) 2023 Great Scott Gadgets <info@greatscottgadgets.com>
 # SPDX-License-Identifier: BSD-3-Clause
 
-"""Generator for programming dependencies for SoC designs."""
+"""Generate programming support files from SoC designs."""
 
 from .genc   import GenC
 from .gensvd import GenSVD
+from .genrust import GenRust
 
 from lambdasoc.soc.cpu import CPUSoC, BIOSBuilder
 
@@ -17,7 +18,7 @@ class Generate:
         self._soc = soc
 
 
-    # - integration.cbindgen --
+    # - integration.genc --
 
     # TODO clean up parameters
     def c_header(self, macro_name="SOC_RESOURCES", file=None, platform_name="Generic Platform"):
@@ -41,7 +42,7 @@ class Generate:
         GenC(self._soc).generate_ld_script(file=file)
 
 
-    # - integration.svdgen --
+    # - integration.gensvd --
 
     def svd(self, file=None):
         """ Generates a svd file for the given SoC that can be used by external tools such as 'svdrust'.
@@ -51,3 +52,15 @@ class Generate:
         """
 
         GenSVD(self._soc).generate_svd(file=file)
+
+
+    # - integration.genrust --
+
+    def memory_x(self, file=None):
+        """ Generates a svd file for the given SoC that can be used by external tools such as 'svdrust'.
+        Parameters:
+            file       -- Optional. If provided, this will be treated as the file= argument to the print()
+                          function. This can be used to generate file content instead of printing to the terminal.
+        """
+
+        GenRust(self._soc).generate_memory_x(file=file)

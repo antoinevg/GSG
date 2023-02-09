@@ -63,7 +63,7 @@ class LunaSoCExample(Elaboratable):
         ])
 
         # Create our SoC...
-        self.soc = LunaSoC(clock_frequency)
+        self.soc = LunaSoC(clock_frequency, internal_sram_size=32768)
 
         # Add bios and core peripherals
         self.soc.add_bios_and_peripherals(uart_pins=self.uart_pins)
@@ -193,7 +193,7 @@ if __name__ == "__main__":
     with open(os.path.join(path, "soc.ld"), "w") as f:
         generate.ld_script(file=f)
 
-    # generate: svd
+    # generate: svd file
     path = os.path.join(build_dir, "gensvd")
     if not os.path.exists(path):
         os.makedirs(path)
@@ -201,6 +201,15 @@ if __name__ == "__main__":
     logging.info("Generating svd file: {}".format(path))
     with open(os.path.join(path, "lunasoc.svd"), "w") as f:
         generate.svd(file=f)
+
+    # generate: rust memory.x file
+    path = os.path.join(build_dir, "genrust")
+    if not os.path.exists(path):
+        os.makedirs(path)
+
+    logging.info("Generating memory.x file: {}".format(path))
+    with open(os.path.join(path, "memory.x"), "w") as f:
+        generate.memory_x(file=f)
 
     print("Build completed. Use 'make load' to load bitsream to device.")
 

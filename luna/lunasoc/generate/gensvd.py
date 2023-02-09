@@ -19,8 +19,6 @@ from xml.etree.ElementTree import Element, SubElement, Comment, tostring
 from os import path
 import logging
 
-#from ..lunasoc import LunaSoC
-
 class GenSVD:
 
     def __init__(self, soc: CPUSoC):

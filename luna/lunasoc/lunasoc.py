@@ -39,11 +39,11 @@ import logging
 # - CoreSoC -------------------------------------------------------------------
 
 class CoreSoC(CPUSoC, Elaboratable):
-    def __init__(self, clock_frequency=int(60e6), with_debug=False):
+    def __init__(self, clock_frequency=int(60e6), internal_sram_size=int(32768), with_debug=False):
         super().__init__()
 
         # create cpu - TODO maybe do this _after_ we've added our RAM
-        self.internal_sram_size = 32768
+        self.internal_sram_size = internal_sram_size
         self.internal_sram_addr = 0x40000000
         cpu = MinervaCPU(
             with_debug    = with_debug,
