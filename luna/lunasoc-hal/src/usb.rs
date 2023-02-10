@@ -7,7 +7,6 @@ pub use error::ErrorKind;
 
 //use libgreat::smolusb::control::*;
 use crate::smolusb::control::*; // TODO
-use libgreat::Result;
 
 use crate::pac;
 use pac::interrupt::Interrupt;
@@ -134,18 +133,6 @@ impl UsbInterface0 {
     }
 
     pub fn is_pending(&self, interrupt: Interrupt) -> bool {
-        // TODO there is some weirdness here where ev_pending is being
-        //      set but the interrupt hasn't actually fired.
-        /*match interrupt {
-            Interrupt::USB0 => self.device.ev_pending.read().pending().bit_is_set(),
-            Interrupt::USB0_EP_CONTROL => self.ep_control.ev_pending.read().pending().bit_is_set(),
-            Interrupt::USB0_EP_IN => self.ep_in.ev_pending.read().pending().bit_is_set(),
-            Interrupt::USB0_EP_OUT => self.ep_out.ev_pending.read().pending().bit_is_set(),
-            _ => {
-                warn!("Ignoring invalid interrupt is pending: {:?}", interrupt);
-                false
-            }
-        }*/
         pac::csr::interrupt::pending(interrupt)
     }
 
@@ -199,14 +186,13 @@ impl UsbInterface0 {
         }
     }
 
-    pub fn ep_control_read(&self, buffer: &mut [u8]) -> Result<()> {
+    pub fn ep_control_read(&self, buffer: &mut [u8]) {
         // drain fifo
         let mut bytes_read = 0;
         let mut overflow = 0;
-        let mut drain = 0;
         while self.ep_control.have.read().have().bit() {
             if bytes_read >= buffer.len() {
-                drain = self.ep_control.data.read().data().bits();
+                let _drain = self.ep_control.data.read().data().bits();
                 overflow += 1;
             } else {
                 buffer[bytes_read] = self.ep_control.data.read().data().bits();
@@ -215,26 +201,44 @@ impl UsbInterface0 {
         }
 
         if bytes_read > 0 {
-            trace!(
-                "  RX {} + {} overflow - {:x?} - {:x}",
-                bytes_read,
-                overflow,
-                buffer,
-                drain
-            );
+            trace!("  RX {} bytes + {} overflow", bytes_read, overflow,);
         }
-
-        Ok(())
     }
 
-    pub fn ep_out_read(&self, _endpoint: u8, buffer: &mut [u8]) -> Result<usize> {
+    /// Acknowledge the status stage of an incoming control request.
+    pub fn ack_status_stage(&self, packet: &SetupPacket) {
+        match Direction::from(packet.request_type) {
+            // If this is an IN request, read a zero-length packet (ZLP) from the host..
+            Direction::DeviceToHost => self.ep_out_prime_receive(0),
+            // ... otherwise, send a ZLP.
+            Direction::HostToDevice => self.ep_in_write(0, [].into_iter()),
+        }
+    }
+
+    /// Prepare endpoint to receive a single OUT packet.
+    pub fn ep_out_prime_receive(&self, endpoint: u8) {
+        // clear receive buffer
+        self.ep_out.reset.write(|w| w.reset().bit(true));
+
+        // select endpoint
+        self.ep_out
+            .epno
+            .write(|w| unsafe { w.epno().bits(endpoint) });
+
+        // prime endpoint
+        self.ep_out.prime.write(|w| w.prime().bit(true));
+
+        // enable it
+        self.ep_out.enable.write(|w| w.enable().bit(true));
+    }
+
+    pub fn ep_out_read(&self, _endpoint: u8, buffer: &mut [u8]) -> usize {
         // drain fifo
         let mut bytes_read = 0;
         let mut overflow = 0;
-        let mut drain = 0;
         while self.ep_out.have.read().have().bit() {
             if bytes_read >= buffer.len() {
-                drain = self.ep_out.data.read().data().bits();
+                let _drain = self.ep_out.data.read().data().bits();
                 overflow += 1;
             } else {
                 buffer[bytes_read] = self.ep_out.data.read().data().bits();
@@ -242,22 +246,12 @@ impl UsbInterface0 {
             }
         }
 
-        // TODO how do we know if there is more data en-route?
-
         // re-enable endpoint after consuming all data
         self.ep_out.enable.write(|w| w.enable().bit(true));
 
-        if bytes_read > 0 {
-            trace!(
-                "  RX {} + {} overflow - {:x?} - {:x}",
-                bytes_read,
-                overflow,
-                buffer,
-                drain
-            );
-        }
+        trace!("  RX {} bytes + {} overflow", bytes_read, overflow,);
 
-        Ok(bytes_read)
+        bytes_read
     }
 
     pub fn ep_in_write<I>(&self, endpoint: u8, iter: I)
@@ -285,33 +279,6 @@ impl UsbInterface0 {
         trace!("  TX {} bytes", bytes_written);
     }
 
-    /// Prepare endpoint to receive a single OUT packet.
-    pub fn ep_out_prime_receive(&self, endpoint: u8) {
-        // clear receive buffer
-        self.ep_out.reset.write(|w| w.reset().bit(true));
-
-        // select endpoint
-        self.ep_out
-            .epno
-            .write(|w| unsafe { w.epno().bits(endpoint) });
-
-        // prime endpoint
-        self.ep_out.prime.write(|w| w.prime().bit(true));
-
-        // enable it
-        self.ep_out.enable.write(|w| w.enable().bit(true));
-    }
-
-    /// Acknowledge the status stage of an incoming control request.
-    pub fn ack_status_stage(&self, packet: &SetupPacket) {
-        match Direction::from(packet.request_type) {
-            // If this is an IN request, read a zero-length packet (ZLP) from the host..
-            Direction::DeviceToHost => self.ep_out_prime_receive(0),
-            // ... otherwise, send a ZLP.
-            Direction::HostToDevice => self.ep_in_write(0, [].into_iter()),
-        }
-    }
-
     /// Stalls the current control request.
     pub fn stall_request(&self) {
         self.ep_in.stall.write(|w| w.stall().bit(true));
@@ -323,7 +290,11 @@ impl UsbInterface0 {
     }
 
     pub fn set_address(&self, address: u8) {
-        self.ep_control.address.write(|w| unsafe { w.address().bits(address & 0x7f) });
-        self.ep_out.address.write(|w| unsafe { w.address().bits(address & 0x7f) });
+        self.ep_control
+            .address
+            .write(|w| unsafe { w.address().bits(address & 0x7f) });
+        self.ep_out
+            .address
+            .write(|w| unsafe { w.address().bits(address & 0x7f) });
     }
 }

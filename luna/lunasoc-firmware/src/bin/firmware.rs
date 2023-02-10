@@ -37,19 +37,15 @@ fn MachineExternal() {
     } else if usb0.is_pending(pac::Interrupt::USB0_EP_CONTROL) {
         usb0.clear_pending(pac::Interrupt::USB0_EP_CONTROL);
         Message::Interrupt(pac::Interrupt::USB0_EP_CONTROL)
-
     } else if usb0.is_pending(pac::Interrupt::USB0_EP_IN) {
         usb0.clear_pending(pac::Interrupt::USB0_EP_IN);
         Message::Interrupt(pac::Interrupt::USB0_EP_IN)
-
     } else if usb0.is_pending(pac::Interrupt::USB0_EP_OUT) {
         usb0.clear_pending(pac::Interrupt::USB0_EP_OUT);
         Message::Interrupt(pac::Interrupt::USB0_EP_OUT)
-
     } else if timer.is_pending() {
         timer.clear_pending();
         Message::TimerEvent(unsafe { COUNTER_IRQ })
-
     } else {
         let pending = interrupt::reg_pending();
         Message::UnknownInterrupt(pending)
@@ -118,12 +114,9 @@ fn main() -> ! {
                 Message::Interrupt(pac::Interrupt::USB0) => {
                     usb0.reset();
                 }
-                Message::Interrupt(pac::Interrupt::USB0_EP_CONTROL) => {
-                }
-                Message::Interrupt(pac::Interrupt::USB0_EP_IN) => {
-                }
-                Message::Interrupt(pac::Interrupt::USB0_EP_OUT) => {
-                }
+                Message::Interrupt(pac::Interrupt::USB0_EP_CONTROL) => {}
+                Message::Interrupt(pac::Interrupt::USB0_EP_IN) => {}
+                Message::Interrupt(pac::Interrupt::USB0_EP_OUT) => {}
                 Message::Interrupt(interrupt) => {
                     warn!("Unhandled interrupt: {:?}", interrupt);
                 }
