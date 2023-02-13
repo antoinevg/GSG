@@ -29,7 +29,7 @@ fn MachineExternal() {
     static mut COUNTER_IRQ: u32 = 0;
 
     let mut timer = unsafe { hal::Timer::summon() };
-    let mut usb0 = unsafe { hal::UsbInterface0::summon() };
+    let mut usb0 = unsafe { hal::Usb0::summon() };
 
     let message = if usb0.is_pending(pac::Interrupt::USB0) {
         usb0.clear_pending(pac::Interrupt::USB0);
@@ -81,7 +81,7 @@ fn main() -> ! {
     timer.enable();
 
     // initialize usb
-    let mut usb0 = Device::new(hal::UsbInterface0::new(
+    let mut usb0 = Device::new(hal::Usb0::new(
         peripherals.USB0,
         peripherals.USB0_EP_CONTROL,
         peripherals.USB0_EP_IN,

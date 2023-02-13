@@ -7,13 +7,14 @@ pub use error::ErrorKind;
 
 //use libgreat::smolusb::control::*;
 use crate::smolusb::control::*; // TODO
+use crate::smolusb::traits::{ControlRead, EndpointRead, EndpointWrite, EndpointWriteRef, UsbDriverOperations, UsbDriver}; // TODO
 
 use crate::pac;
 use pac::interrupt::Interrupt;
 
 use log::{trace, warn};
 
-pub struct UsbInterface0 {
+pub struct Usb0 {
     pub device: pac::USB0,
     pub ep_control: pac::USB0_EP_CONTROL,
     pub ep_in: pac::USB0_EP_IN,
@@ -21,7 +22,7 @@ pub struct UsbInterface0 {
     pub reset_count: usize,
 }
 
-impl UsbInterface0 {
+impl Usb0 {
     /// Create a new `Usb` from the [`USB`](pac::USB) peripheral.
     pub fn new(
         device: pac::USB0,
@@ -66,7 +67,7 @@ impl UsbInterface0 {
     }
 }
 
-impl UsbInterface0 {
+impl Usb0 {
     /// Set the interface up for new connections
     pub fn connect(&mut self) -> u8 {
         // disconnect device controller
@@ -90,8 +91,8 @@ impl UsbInterface0 {
         self.device.speed.read().speed().bits()
     }
 
-    pub fn reset(&mut self) -> u8 {
-        self.reset_count += 1;
+    pub fn reset(&self) -> u8 {
+        // TODO self.reset_count += 1;
 
         // disable endpoint events
         self.disable_interrupt(Interrupt::USB0_EP_CONTROL);
@@ -117,8 +118,9 @@ impl UsbInterface0 {
         speed
     }
 
+    // TODO &mut self
     // TODO pass event to listen for
-    pub fn enable_interrupts(&mut self) {
+    pub fn enable_interrupts(&self) {
         // clear all event handlers
         self.clear_pending(Interrupt::USB0);
         self.clear_pending(Interrupt::USB0_EP_CONTROL);
@@ -136,7 +138,8 @@ impl UsbInterface0 {
         pac::csr::interrupt::pending(interrupt)
     }
 
-    pub fn clear_pending(&mut self, interrupt: Interrupt) {
+    // TODO &mut self
+    pub fn clear_pending(&self, interrupt: Interrupt) {
         match interrupt {
             Interrupt::USB0 => self
                 .device
@@ -160,7 +163,8 @@ impl UsbInterface0 {
         }
     }
 
-    pub fn enable_interrupt(&mut self, interrupt: Interrupt) {
+    // TODO &mut self
+    pub fn enable_interrupt(&self, interrupt: Interrupt) {
         match interrupt {
             Interrupt::USB0 => self.device.ev_enable.write(|w| w.enable().bit(true)),
             Interrupt::USB0_EP_CONTROL => self.ep_control.ev_enable.write(|w| w.enable().bit(true)),
@@ -172,7 +176,8 @@ impl UsbInterface0 {
         }
     }
 
-    pub fn disable_interrupt(&mut self, interrupt: Interrupt) {
+    // TODO &mut self
+    pub fn disable_interrupt(&self, interrupt: Interrupt) {
         match interrupt {
             Interrupt::USB0 => self.device.ev_enable.write(|w| w.enable().bit(false)),
             Interrupt::USB0_EP_CONTROL => {
@@ -183,35 +188,6 @@ impl UsbInterface0 {
             _ => {
                 warn!("Ignoring invalid interrupt enable: {:?}", interrupt);
             }
-        }
-    }
-
-    pub fn ep_control_read(&self, buffer: &mut [u8]) {
-        // drain fifo
-        let mut bytes_read = 0;
-        let mut overflow = 0;
-        while self.ep_control.have.read().have().bit() {
-            if bytes_read >= buffer.len() {
-                let _drain = self.ep_control.data.read().data().bits();
-                overflow += 1;
-            } else {
-                buffer[bytes_read] = self.ep_control.data.read().data().bits();
-                bytes_read += 1;
-            }
-        }
-
-        if bytes_read > 0 {
-            trace!("  RX {} bytes + {} overflow", bytes_read, overflow,);
-        }
-    }
-
-    /// Acknowledge the status stage of an incoming control request.
-    pub fn ack_status_stage(&self, packet: &SetupPacket) {
-        match Direction::from(packet.request_type) {
-            // If this is an IN request, read a zero-length packet (ZLP) from the host..
-            Direction::DeviceToHost => self.ep_out_prime_receive(0),
-            // ... otherwise, send a ZLP.
-            Direction::HostToDevice => self.ep_in_write(0, [].into_iter()),
         }
     }
 
@@ -232,7 +208,65 @@ impl UsbInterface0 {
         self.ep_out.enable.write(|w| w.enable().bit(true));
     }
 
-    pub fn ep_out_read(&self, _endpoint: u8, buffer: &mut [u8]) -> usize {
+    pub fn ep_control_address(&self) -> u8 {
+        self.ep_control.address.read().address().bits()
+    }
+}
+
+// - trait: UsbDriverOperations -----------------------------------------------
+
+impl UsbDriverOperations for Usb0 {
+    /// Acknowledge the status stage of an incoming control request.
+    fn ack_status_stage(&self, packet: &SetupPacket) {
+        match Direction::from(packet.request_type) {
+            // If this is an IN request, read a zero-length packet (ZLP) from the host..
+            Direction::DeviceToHost => self.ep_out_prime_receive(0),
+            // ... otherwise, send a ZLP.
+            Direction::HostToDevice => self.write(0, [].into_iter()),
+        }
+    }
+
+    fn set_address(&self, address: u8) {
+        self.ep_control
+            .address
+            .write(|w| unsafe { w.address().bits(address & 0x7f) });
+        self.ep_out
+            .address
+            .write(|w| unsafe { w.address().bits(address & 0x7f) });
+    }
+
+    /// Stalls the current control request.
+    fn stall_request(&self) {
+        self.ep_in.stall.write(|w| w.stall().bit(true));
+        self.ep_out.stall.write(|w| w.stall().bit(true));
+    }
+}
+
+// - trait: Read/Write traits -------------------------------------------------
+
+impl ControlRead for Usb0 {
+    fn read_control(&self, buffer: &mut [u8]) -> usize {
+        // drain fifo
+        let mut bytes_read = 0;
+        let mut overflow = 0;
+        while self.ep_control.have.read().have().bit() {
+            if bytes_read >= buffer.len() {
+                let _drain = self.ep_control.data.read().data().bits();
+                overflow += 1;
+            } else {
+                buffer[bytes_read] = self.ep_control.data.read().data().bits();
+                bytes_read += 1;
+            }
+        }
+
+        trace!("  RX {} bytes + {} overflow", bytes_read, overflow,);
+
+        bytes_read
+    }
+}
+
+impl EndpointRead for Usb0 {
+    fn read(&self, _endpoint: u8, buffer: &mut [u8]) -> usize {
         // drain fifo
         let mut bytes_read = 0;
         let mut overflow = 0;
@@ -253,8 +287,10 @@ impl UsbInterface0 {
 
         bytes_read
     }
+}
 
-    pub fn ep_in_write<I>(&self, endpoint: u8, iter: I)
+impl EndpointWrite for Usb0 {
+    fn write<I>(&self, endpoint: u8, iter: I)
     where
         I: Iterator<Item = u8>,
     {
@@ -278,23 +314,34 @@ impl UsbInterface0 {
 
         trace!("  TX {} bytes", bytes_written);
     }
+}
 
-    /// Stalls the current control request.
-    pub fn stall_request(&self) {
-        self.ep_in.stall.write(|w| w.stall().bit(true));
-        self.ep_out.stall.write(|w| w.stall().bit(true));
-    }
+impl EndpointWriteRef for Usb0 {
+    fn write_ref<'a, I>(&self, endpoint: u8, iter: I)
+    where
+        I: Iterator<Item = &'a u8>,
+    {
+        // reset output fifo if needed
+        if self.ep_in.have.read().have().bit() {
+            trace!("  clear tx");
+            self.ep_in.reset.write(|w| w.reset().bit(true));
+        }
 
-    pub fn ep_control_address(&self) -> u8 {
-        self.ep_control.address.read().address().bits()
-    }
+        // write data
+        let mut bytes_written = 0;
+        for &byte in iter {
+            self.ep_in.data.write(|w| unsafe { w.data().bits(byte) });
+            bytes_written += 1;
+        }
 
-    pub fn set_address(&self, address: u8) {
-        self.ep_control
-            .address
-            .write(|w| unsafe { w.address().bits(address & 0x7f) });
-        self.ep_out
-            .address
-            .write(|w| unsafe { w.address().bits(address & 0x7f) });
+        // finally, prime IN endpoint
+        self.ep_in
+            .epno
+            .write(|w| unsafe { w.epno().bits(endpoint & 0xf) });
+
+        trace!("  TX {} bytes", bytes_written);
     }
 }
+
+// mark implementation as complete
+impl UsbDriver for Usb0 {}

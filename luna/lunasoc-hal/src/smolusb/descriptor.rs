@@ -1,14 +1,18 @@
 #![allow(dead_code, unused_imports, unused_variables, unused_mut)] // TODO
 
-///! USB Descriptor types
 use crate::smolusb::ErrorKind;
+use crate::smolusb::traits::AsByteSliceIterator;
+
+use heapless::Vec;
+use zerocopy::{AsBytes, FromBytes};
 
 use core::iter;
 use core::iter::Chain;
 use core::marker::PhantomData;
 use core::mem::size_of;
 use core::slice;
-use heapless::Vec;
+
+///! USB Descriptor types
 
 // Serialization cases:
 //
@@ -72,9 +76,11 @@ impl TryFrom<u8> for DescriptorType {
 // - DeviceDescriptor ---------------------------------------------------------
 
 /// USB device descriptor
-#[repr(C)]
-#[derive(Clone, Copy, Debug)]
+#[repr(C, packed)]
+#[derive(AsBytes, FromBytes)]
 pub struct DeviceDescriptor {
+    pub _length: u8,
+    pub _descriptor_type: u8,
     pub descriptor_version: u16,
     pub device_class: u8,
     pub device_subclass: u8,
@@ -89,71 +95,36 @@ pub struct DeviceDescriptor {
     pub num_configurations: u8,
 }
 
+impl AsByteSliceIterator for DeviceDescriptor {}
+
 impl DeviceDescriptor {
-    pub const N: usize = 18;
-
-    pub const fn length(&self) -> u8 {
-        Self::N as u8
+    pub const fn new() -> Self {
+        Self {
+            _length: 18,
+            _descriptor_type: DescriptorType::Device as u8,
+            descriptor_version: 0,
+            device_class: 0,
+            device_subclass: 0,
+            device_protocol: 0,
+            max_packet_size: 0,
+            vendor_id: 0,
+            product_id: 0,
+            device_version_number: 0,
+            manufacturer_string_index: 0,
+            product_string_index: 0,
+            serial_string_index: 0,
+            num_configurations: 0,
+        }
     }
+}
 
-    pub const fn descriptor_type(&self) -> u8 {
-        DescriptorType::Device as u8
+impl Default for DeviceDescriptor {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
-impl IntoIterator for DeviceDescriptor {
-    type Item = u8;
-    type IntoIter = core::array::IntoIter<u8, { DeviceDescriptor::N }>;
 
-    fn into_iter(self) -> Self::IntoIter {
-        const N: usize = DeviceDescriptor::N;
-
-        [
-            self.length(),
-            self.descriptor_type(),
-            self.descriptor_version.to_le_bytes()[0],
-            self.descriptor_version.to_le_bytes()[1],
-            self.device_class,
-            self.device_subclass,
-            self.device_protocol,
-            self.max_packet_size,
-            self.vendor_id.to_le_bytes()[0],
-            self.vendor_id.to_le_bytes()[1],
-            self.product_id.to_le_bytes()[0],
-            self.product_id.to_le_bytes()[1],
-            self.device_version_number.to_le_bytes()[0],
-            self.device_version_number.to_le_bytes()[1],
-            self.manufacturer_string_index,
-            self.product_string_index,
-            self.serial_string_index,
-            self.num_configurations,
-        ]
-        .into_iter()
-
-        /*let iter: core::array::IntoIter<u8, 0> = [].into_iter();
-        let chain: core::iter::Chain<_, core::array::IntoIter<u8, 1>> = iter
-            .chain(self.length().to_le_bytes())
-            .chain(self.descriptor_type().to_le_bytes())
-            .chain(self.descriptor_version.to_le_bytes())
-            .chain(self.device_class.to_le_bytes())
-            .chain(self.device_subclass.to_le_bytes())
-            .chain(self.device_protocol.to_le_bytes())
-            .chain(self.max_packet_size.to_le_bytes())
-            .chain(self.vendor_id.to_le_bytes())
-            .chain(self.product_id.to_le_bytes())
-            .chain(self.device_version_number.to_le_bytes())
-            .chain(self.manufacturer_string_index.to_le_bytes())
-            .chain(self.product_string_index.to_le_bytes())
-            .chain(self.serial_string_index.to_le_bytes())
-            .chain(self.num_configurations.to_le_bytes());
-
-        let vec: Vec<u8, N> = chain.take(N).collect::<Vec<u8, N>>();
-        let _vec_iter: <heapless::Vec<u8, N> as IntoIterator>::IntoIter = vec.clone().into_iter();
-        let buffer: [u8; N] = vec.into_array().expect("unproven");
-        let iter: core::array::IntoIter<u8, N> = buffer.into_iter();
-        iter*/
-    }
-}
 
 // - DeviceQualifierDescriptor ---------------------------------------------------------
 

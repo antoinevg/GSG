@@ -1,7 +1,10 @@
 //! Simple peripheral-level USB stack
 
+pub mod class;
 pub mod control;
 pub mod descriptor;
+pub mod device;
+pub mod traits;
 pub mod error;
 pub use error::ErrorKind;
 
@@ -34,16 +37,16 @@ impl From<u8> for Speed {
 // - SmolUsb ------------------------------------------------------------------
 
 // TODO replace with Usb peripheral traits
-use crate::UsbInterface0;
+use crate::Usb0;
 
 use crate::pac::Interrupt;
 
 pub struct Device {
-    peripheral: UsbInterface0,
+    peripheral: Usb0,
 }
 
 impl Device {
-    pub fn new(peripheral: UsbInterface0) -> Self {
+    pub fn new(peripheral: Usb0) -> Self {
         Self { peripheral }
     }
 }
