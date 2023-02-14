@@ -1,6 +1,6 @@
 #![allow(dead_code, unused_imports, unused_variables)] // TODO
 
-use crate::smolusb::control::{Request, RequestType, SetupPacket};
+use crate::smolusb::control::{Feature, Recipient, Request, RequestType, SetupPacket};
 use crate::smolusb::descriptor::*;
 //use crate::smolusb::error::{ErrorKind};
 use crate::smolusb::traits::AsByteSliceIterator;
@@ -16,6 +16,39 @@ use log::{debug, error, info, trace, warn};
 ///! TODO probably not all of this should live in the smolusb crate,
 ///! it should rather be split into generic and
 ///! implementation-specific parts
+
+/// USB Speed
+///
+/// Note: These match the gateware peripheral so the mapping isn't particularly meaningful in other contexts.
+#[derive(Debug, PartialEq)]
+#[repr(u8)]
+pub enum Speed {
+    Low = 2,        // 1.5 Mbps
+    Full = 1,       //  12 Mbps
+    High = 0,       // 480 Mbps
+    SuperSpeed = 3, // 5/10 Gbps (includes SuperSpeed+)
+}
+
+impl From<u8> for Speed {
+    fn from(value: u8) -> Self {
+        match value & 0b11 {
+            0 => Speed::High,
+            1 => Speed::Full,
+            2 => Speed::Low,
+            3 => Speed::SuperSpeed,
+            _ => unimplemented!(),
+        }
+    }
+}
+
+/// USB device state
+#[derive(Debug, PartialEq)]
+pub enum DeviceState {
+    Reset,
+    Address,
+    Configured,
+    Suspend,
+}
 
 /// A USB device
 ///
@@ -35,6 +68,9 @@ pub struct UsbDevice<'a, D> {
     string_descriptors: &'a [&'a StringDescriptor<'a>],
     // TODO DeviceQualifierDescriptor
     // TODO OtherSpeedConfiguration
+    pub state: DeviceState,
+    pub reset_count: usize,
+    pub feature_remote_wakeup: bool,
 }
 
 impl<'a, D> UsbDevice<'a, D>
@@ -54,10 +90,36 @@ where
             configuration_descriptor,
             string_descriptor_zero,
             string_descriptors,
+            state: DeviceState::Reset,
+            reset_count: 0,
+            feature_remote_wakeup: false,
         }
     }
+}
 
-    pub fn handle_setup_request(&self, setup_packet: &SetupPacket) -> Result<()> {
+// Device functions
+impl<'a, D> UsbDevice<'a, D>
+where
+    D: ControlRead + EndpointRead + EndpointWrite + EndpointWriteRef + UsbDriverOperations,
+{
+    pub fn connect(&mut self) -> Speed {
+        self.hal_driver.connect().into()
+    }
+
+    pub fn reset(&mut self) -> Speed {
+        let speed = self.hal_driver.reset().into();
+        self.reset_count += 1;
+        self.state = DeviceState::Reset;
+        speed
+    }
+}
+
+// Handle SETUP packet
+impl<'a, D> UsbDevice<'a, D>
+where
+    D: ControlRead + EndpointRead + EndpointWrite + EndpointWriteRef + UsbDriverOperations,
+{
+    pub fn handle_setup_request(&mut self, setup_packet: &SetupPacket) -> Result<()> {
         debug!("# handle_setup_request()",);
 
         // if this isn't a standard request, stall it.
@@ -98,6 +160,7 @@ where
             Request::SetConfiguration => self.handle_set_configuration(setup_packet),
             Request::GetConfiguration => self.handle_get_configuration(setup_packet),
             Request::ClearFeature => self.handle_clear_feature(setup_packet),
+            Request::SetFeature => self.handle_set_feature(setup_packet),
             _ => {
                 warn!("   stall: unhandled request {:?}", request);
                 self.hal_driver.stall_request();
@@ -106,11 +169,12 @@ where
         }
     }
 
-    fn handle_set_address(&self, packet: &SetupPacket) -> Result<()> {
+    fn handle_set_address(&mut self, packet: &SetupPacket) -> Result<()> {
         self.hal_driver.ack_status_stage(packet);
 
         let address: u8 = (packet.value & 0x7f) as u8;
         self.hal_driver.set_address(address);
+        self.state = DeviceState::Address;
 
         debug!("  -> handle_set_address({})", address);
 
@@ -185,7 +249,7 @@ where
         Ok(())
     }
 
-    fn handle_set_configuration(&self, packet: &SetupPacket) -> Result<()> {
+    fn handle_set_configuration(&mut self, packet: &SetupPacket) -> Result<()> {
         self.hal_driver.ack_status_stage(packet);
 
         debug!("  -> handle_set_configuration()");
@@ -196,6 +260,7 @@ where
             self.hal_driver.stall_request();
             return Ok(());
         }
+        self.state = DeviceState::Configured;
 
         Ok(())
     }
@@ -212,14 +277,93 @@ where
         Ok(())
     }
 
-    fn handle_clear_feature(&self, packet: &SetupPacket) -> Result<()> {
+    fn handle_clear_feature(&mut self, packet: &SetupPacket) -> Result<()> {
         debug!("  -> handle_clear_feature()");
 
-        // TODO
+        // parse request
+        let recipient = packet.recipient();
+        let feature_bits = packet.value;
+        let feature = match Feature::try_from(feature_bits) {
+            Ok(feature) => feature,
+            Err(e) => {
+                warn!("   stall: invalid clear feature type: {}", feature_bits);
+                self.hal_driver.stall_request();
+                return Ok(());
+            }
+        };
+
+        match (&recipient, &feature) {
+            (Recipient::Device, Feature::DeviceRemoteWakeup) => {
+                self.feature_remote_wakeup = false;
+            }
+            (Recipient::Endpoint, Feature::EndpointHalt) => {
+                let endpoint = packet.index as u8;
+                self.hal_driver.stall_endpoint(endpoint, false);
+                //debug!("  clear stall: 0x{:x}", endpoint);
+
+                // send a little test data on interrupt endpoint
+                if endpoint == 0x82 {
+                    let endpoint = endpoint - 0x80;
+                    let data: heapless::Vec<u8, 8> =
+                        (0..8).collect::<heapless::Vec<u8, 8>>().try_into().unwrap();
+                    let bytes_written = data.len();
+                    self.hal_driver.write(endpoint, data.into_iter());
+                    info!(
+                        "Sent {} bytes to interrupt endpoint: {}",
+                        bytes_written, endpoint
+                    );
+                }
+
+            }
+            _ => {
+                warn!(
+                    "   stall: unhandled clear feature {:?}, {:?}",
+                    recipient, feature
+                );
+                self.hal_driver.stall_request();
+                return Ok(());
+            }
+        };
 
         Ok(())
     }
 
+    fn handle_set_feature(&mut self, packet: &SetupPacket) -> Result<()> {
+        debug!("  -> handle_set_feature()");
+
+        // parse request
+        let recipient = packet.recipient();
+        let feature_bits = packet.value;
+        let feature = match Feature::try_from(feature_bits) {
+            Ok(feature) => feature,
+            Err(e) => {
+                warn!("   stall: invalid set feature type: {}", feature_bits);
+                self.hal_driver.stall_request();
+                return Ok(());
+            }
+        };
+
+        match (&recipient, &feature) {
+            (Recipient::Device, Feature::DeviceRemoteWakeup) => {
+                self.feature_remote_wakeup = true;
+            }
+            (Recipient::Endpoint, Feature::EndpointHalt) => {
+                let endpoint = packet.index as u8;
+                self.hal_driver.stall_endpoint(endpoint, true);
+                debug!("  set stall: 0x{:x}", endpoint);
+            }
+            _ => {
+                warn!(
+                    "   stall: unhandled set feature {:?}, {:?}",
+                    recipient, feature
+                );
+                self.hal_driver.stall_request();
+                return Ok(());
+            }
+        };
+
+        Ok(())
+    }
 }
 
 // TODO I'm not convinced about any of this

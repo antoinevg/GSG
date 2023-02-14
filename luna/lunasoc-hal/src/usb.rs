@@ -7,7 +7,9 @@ pub use error::ErrorKind;
 
 //use libgreat::smolusb::control::*;
 use crate::smolusb::control::*; // TODO
-use crate::smolusb::traits::{ControlRead, EndpointRead, EndpointWrite, EndpointWriteRef, UsbDriverOperations, UsbDriver}; // TODO
+use crate::smolusb::traits::{
+    ControlRead, EndpointRead, EndpointWrite, EndpointWriteRef, UsbDriver, UsbDriverOperations,
+}; // TODO
 
 use crate::pac;
 use pac::interrupt::Interrupt;
@@ -19,7 +21,6 @@ pub struct Usb0 {
     pub ep_control: pac::USB0_EP_CONTROL,
     pub ep_in: pac::USB0_EP_IN,
     pub ep_out: pac::USB0_EP_OUT,
-    pub reset_count: usize,
 }
 
 impl Usb0 {
@@ -35,7 +36,6 @@ impl Usb0 {
             ep_control,
             ep_in,
             ep_out,
-            reset_count: 0,
         }
     }
 
@@ -62,62 +62,11 @@ impl Usb0 {
             ep_control: pac::Peripherals::steal().USB0_EP_CONTROL,
             ep_in: pac::Peripherals::steal().USB0_EP_IN,
             ep_out: pac::Peripherals::steal().USB0_EP_OUT,
-            reset_count: 0,
         }
     }
 }
 
 impl Usb0 {
-    /// Set the interface up for new connections
-    pub fn connect(&mut self) -> u8 {
-        // disconnect device controller
-        self.device.connect.write(|w| w.connect().bit(false));
-
-        // disable endpoint events
-        self.disable_interrupt(Interrupt::USB0);
-        self.disable_interrupt(Interrupt::USB0_EP_CONTROL);
-        self.disable_interrupt(Interrupt::USB0_EP_IN);
-        self.disable_interrupt(Interrupt::USB0_EP_OUT);
-
-        // reset FIFOs
-        self.ep_control.reset.write(|w| w.reset().bit(true));
-        self.ep_in.reset.write(|w| w.reset().bit(true));
-        self.ep_out.reset.write(|w| w.reset().bit(true));
-
-        // connect device controller
-        self.device.connect.write(|w| w.connect().bit(true));
-
-        // 0: High, 1: Full, 2: Low, 3:SuperSpeed (incl SuperSpeed+)
-        self.device.speed.read().speed().bits()
-    }
-
-    pub fn reset(&self) -> u8 {
-        // TODO self.reset_count += 1;
-
-        // disable endpoint events
-        self.disable_interrupt(Interrupt::USB0_EP_CONTROL);
-        self.disable_interrupt(Interrupt::USB0_EP_IN);
-        self.disable_interrupt(Interrupt::USB0_EP_OUT);
-
-        // reset device address to 0
-        self.ep_control
-            .address
-            .write(|w| unsafe { w.address().bits(0) });
-
-        // reset FIFOs
-        self.ep_control.reset.write(|w| w.reset().bit(true));
-        self.ep_in.reset.write(|w| w.reset().bit(true));
-        self.ep_out.reset.write(|w| w.reset().bit(true));
-
-        self.enable_interrupts();
-
-        // TODO handle speed
-        // 0: High, 1: Full, 2: Low, 3:SuperSpeed (incl SuperSpeed+)
-        let speed = self.device.speed.read().speed().bits();
-        trace!("UsbInterface0::reset() -> {}", speed);
-        speed
-    }
-
     // TODO &mut self
     // TODO pass event to listen for
     pub fn enable_interrupts(&self) {
@@ -216,6 +165,54 @@ impl Usb0 {
 // - trait: UsbDriverOperations -----------------------------------------------
 
 impl UsbDriverOperations for Usb0 {
+    /// Set the interface up for new connections
+    fn connect(&self) -> u8 {
+        // disconnect device controller
+        self.device.connect.write(|w| w.connect().bit(false));
+
+        // disable endpoint events
+        self.disable_interrupt(Interrupt::USB0);
+        self.disable_interrupt(Interrupt::USB0_EP_CONTROL);
+        self.disable_interrupt(Interrupt::USB0_EP_IN);
+        self.disable_interrupt(Interrupt::USB0_EP_OUT);
+
+        // reset FIFOs
+        self.ep_control.reset.write(|w| w.reset().bit(true));
+        self.ep_in.reset.write(|w| w.reset().bit(true));
+        self.ep_out.reset.write(|w| w.reset().bit(true));
+
+        // connect device controller
+        self.device.connect.write(|w| w.connect().bit(true));
+
+        // 0: High, 1: Full, 2: Low, 3:SuperSpeed (incl SuperSpeed+)
+        self.device.speed.read().speed().bits()
+    }
+
+    fn reset(&self) -> u8 {
+        // disable endpoint events
+        self.disable_interrupt(Interrupt::USB0_EP_CONTROL);
+        self.disable_interrupt(Interrupt::USB0_EP_IN);
+        self.disable_interrupt(Interrupt::USB0_EP_OUT);
+
+        // reset device address to 0
+        self.ep_control
+            .address
+            .write(|w| unsafe { w.address().bits(0) });
+
+        // reset FIFOs
+        self.ep_control.reset.write(|w| w.reset().bit(true));
+        self.ep_in.reset.write(|w| w.reset().bit(true));
+        self.ep_out.reset.write(|w| w.reset().bit(true));
+
+        self.enable_interrupts();
+
+        // TODO handle speed
+        // 0: High, 1: Full, 2: Low, 3:SuperSpeed (incl SuperSpeed+)
+        let speed = self.device.speed.read().speed().bits();
+        trace!("UsbInterface0::reset() -> {}", speed);
+        speed
+    }
+
     /// Acknowledge the status stage of an incoming control request.
     fn ack_status_stage(&self, packet: &SetupPacket) {
         match Direction::from(packet.request_type) {
@@ -237,8 +234,35 @@ impl UsbDriverOperations for Usb0 {
 
     /// Stalls the current control request.
     fn stall_request(&self) {
+        self.ep_in.epno.write(|w| unsafe { w.epno().bits(0) });
         self.ep_in.stall.write(|w| w.stall().bit(true));
+        self.ep_out.epno.write(|w| unsafe { w.epno().bits(0) });
         self.ep_out.stall.write(|w| w.stall().bit(true));
+    }
+
+    /// Sets the stall state for the given endpoint address
+    ///
+    /// TODO endpoint_address is a USB address i.e. masked with 0x80
+    /// for direction. It may be more consistent to actually pass
+    /// in the direction and peripheral address separately
+    fn stall_endpoint(&self, endpoint_address: u8, state: bool) {
+        match Direction::from(endpoint_address) {
+            Direction::HostToDevice => {
+                self.ep_out
+                    .epno
+                    .write(|w| unsafe { w.epno().bits(endpoint_address & 0xf) });
+                self.ep_out.stall.write(|w| w.stall().bit(state));
+                trace!("  STALL EP_OUT: {} -> {}", endpoint_address, state);
+            }
+            Direction::DeviceToHost => {
+                let endpoint_address = endpoint_address - 0x80; // TODO - see above
+                self.ep_in
+                    .epno
+                    .write(|w| unsafe { w.epno().bits(endpoint_address & 0xf) });
+                self.ep_in.stall.write(|w| w.stall().bit(state));
+                trace!("  STALL EP_IN: {} -> {}", endpoint_address, state);
+            }
+        }
     }
 }
 

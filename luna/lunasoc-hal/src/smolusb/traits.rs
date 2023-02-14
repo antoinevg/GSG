@@ -28,20 +28,27 @@ pub trait EndpointWriteRef {
         I: Iterator<Item = &'a u8>;
 }
 
-
 // - UsbDriverOperations ------------------------------------------------------
 
 pub trait UsbDriverOperations {
+    /// Connect
+    fn connect(&self) -> u8;
+    /// Reset
+    fn reset(&self) -> u8;
     /// Acknowledge the status stage of an incoming control request.
     fn ack_status_stage(&self, packet: &SetupPacket);
     fn set_address(&self, address: u8);
     /// Stalls the current control request.
     fn stall_request(&self);
+    /// Sets the stall state for the given endpoint address
+    fn stall_endpoint(&self, endpoint: u8, state: bool);
 }
 
 // convenience alias
-pub trait UsbDriver: ControlRead + EndpointRead + EndpointWrite + EndpointWriteRef + UsbDriverOperations {}
-
+pub trait UsbDriver:
+    ControlRead + EndpointRead + EndpointWrite + EndpointWriteRef + UsbDriverOperations
+{
+}
 
 // - AsIterator ---------------------------------------------------------------
 

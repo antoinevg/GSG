@@ -27,12 +27,12 @@ impl TryFrom<[u8; 8]> for SetupPacket {
 }
 
 impl SetupPacket {
-    pub fn recipient(&self) -> Recipient {
-        Recipient::from(self.request_type)
-    }
-
     pub fn request_type(&self) -> RequestType {
         RequestType::from(self.request_type)
+    }
+
+    pub fn recipient(&self) -> Recipient {
+        Recipient::from(self.request_type)
     }
 
     pub fn direction(&self) -> Direction {
@@ -156,10 +156,10 @@ pub enum Feature {
     DeviceRemoteWakeup = 1,
 }
 
-impl TryFrom<u8> for Feature {
+impl TryFrom<u16> for Feature {
     type Error = ErrorKind;
 
-    fn try_from(value: u8) -> core::result::Result<Self, Self::Error> {
+    fn try_from(value: u16) -> core::result::Result<Self, Self::Error> {
         let result = match value {
             0 => Feature::EndpointHalt,
             1 => Feature::DeviceRemoteWakeup,

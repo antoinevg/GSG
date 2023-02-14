@@ -1,7 +1,7 @@
 #![allow(dead_code, unused_imports, unused_variables, unused_mut)] // TODO
 
-use crate::smolusb::ErrorKind;
 use crate::smolusb::traits::AsByteSliceIterator;
+use crate::smolusb::ErrorKind;
 
 use heapless::Vec;
 use zerocopy::{AsBytes, FromBytes};
@@ -123,8 +123,6 @@ impl Default for DeviceDescriptor {
         Self::new()
     }
 }
-
-
 
 // - DeviceQualifierDescriptor ---------------------------------------------------------
 

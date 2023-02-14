@@ -1,6 +1,5 @@
 //! USB device and interface classes
 
-
 pub mod cdc {
     use crate::smolusb::descriptor::*;
 
@@ -17,7 +16,7 @@ pub mod cdc {
         product_string_index: 2,
         serial_string_index: 3,
         num_configurations: 1,
-        .. DeviceDescriptor::new()
+        ..DeviceDescriptor::new()
     };
 
     pub static CONFIGURATION_DESCRIPTOR_0: ConfigurationDescriptor = ConfigurationDescriptor {

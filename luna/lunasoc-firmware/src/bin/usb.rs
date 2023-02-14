@@ -24,7 +24,7 @@ use smolusb::descriptor::{
     ConfigurationDescriptor, DescriptorType, DeviceDescriptor, DeviceQualifierDescriptor,
     EndpointDescriptor, InterfaceDescriptor, LanguageId, StringDescriptor, StringDescriptorZero,
 };
-use smolusb::device::UsbDevice;
+use smolusb::device::{DeviceState, Speed, UsbDevice};
 use smolusb::traits::AsByteSliceIterator;
 use smolusb::traits::{
     ControlRead, EndpointRead, EndpointWrite, EndpointWriteRef, UsbDriverOperations,
@@ -60,8 +60,6 @@ use heapless::mpmc::MpMcQueue as Queue;
 static MESSAGE_QUEUE: Queue<Message, 128> = Queue::new();
 
 // - MachineExternal interrupt handler ----------------------------------------
-
-static mut TX_READY: bool = false;
 
 #[allow(non_snake_case)]
 #[no_mangle]
@@ -108,13 +106,6 @@ fn MachineExternal() {
             usb0.ep_out.enable.write(|w| w.enable().bit(true));
         }
 
-        // TODO
-        if endpoint != 0 && unsafe { TX_READY } == false {
-            unsafe {
-                TX_READY = true;
-            }
-        };
-
         // clear pending IRQ after data is read
         usb0.clear_pending(pac::Interrupt::USB0_EP_OUT);
 
@@ -149,7 +140,7 @@ fn main() -> ! {
         peripherals.USB0_EP_OUT,
     );
     let speed = usb0.connect();
-    info!("Connected USB device: {}", speed);
+    info!("Connected USB device: {:?}", Speed::from(speed));
 
     // enable interrupts
     usb0.enable_interrupts();
@@ -167,7 +158,7 @@ fn main() -> ! {
         interrupt::enable(pac::Interrupt::USB0_EP_OUT);
     }
 
-    let usb0_device = UsbDevice::new(
+    let mut usb0_device = UsbDevice::new(
         &usb0,
         &USB_DEVICE_DESCRIPTOR,
         &USB_CONFIG_DESCRIPTOR_0,
@@ -178,17 +169,7 @@ fn main() -> ! {
 
     loop {
         // send some data occasionally
-        if unsafe { TX_READY } && counter % 300_000 == 0 {
-            // interrupt
-            let endpoint = 2;
-            let data: heapless::Vec<u8, 8> = (0..8)
-                .collect::<heapless::Vec<u8, 8>>()
-                .try_into()
-                .unwrap();
-            let bytes_written = data.len();
-            usb0.write(endpoint, data.into_iter());
-            info!("Sent {} bytes to interrupt endpoint: {}", bytes_written, endpoint);
-
+        if usb0_device.state == DeviceState::Configured && counter % 300_000 == 0 {
             // bulk out
             let endpoint = 1;
             let data: heapless::Vec<u8, 64> = (0..64)
@@ -230,14 +211,14 @@ fn main() -> ! {
 
                 // interrupts
                 Message::Interrupt(pac::Interrupt::USB0) => {
-                    usb0.reset();
+                    usb0_device.reset();
                     trace!("MachineExternal - USB0\n");
                 }
                 Message::Interrupt(pac::Interrupt::USB0_EP_CONTROL) => {
                     // handled in MachineExternal which queues a Message::ReceivedSetupPacket
                 }
                 Message::Interrupt(pac::Interrupt::USB0_EP_IN) => {
-                    // TODO
+                    // TODO - handle transmission complete
                     trace!("MachineExternal - USB0_EP_IN\n");
                 }
                 Message::Interrupt(pac::Interrupt::USB0_EP_OUT) => {
@@ -397,12 +378,7 @@ static USB_ENDPOINT_DESCRIPTOR_82: EndpointDescriptor = EndpointDescriptor {
 static USB_STRING_DESCRIPTOR_0: StringDescriptorZero = StringDescriptorZero {
     _length: 10,
     _descriptor_type: DescriptorType::String as u8,
-    language_ids: &[
-        LanguageId::EnglishUnitedStates,
-        //LanguageId::EnglishUnitedKingdom,
-        //LanguageId::EnglishCanadian,
-        //LanguageId::EnglishSouthAfrica,
-    ],
+    language_ids: &[LanguageId::EnglishUnitedStates],
 };
 static USB_STRING_DESCRIPTOR_1: StringDescriptor = StringDescriptor::new("LUNA");
 static USB_STRING_DESCRIPTOR_2: StringDescriptor = StringDescriptor::new("Simple Endpoint Test");

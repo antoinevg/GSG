@@ -23,6 +23,7 @@ pub enum Message {
     UnknownInterrupt(usize),
 
     // usb events
+    /// Received a SETUP packet on USB_EP_CONTROL
     ReceivedSetupPacket(hal::smolusb::control::SetupPacket),
     /// Received data on USB_EP_OUT
     ///
