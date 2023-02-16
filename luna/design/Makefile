@@ -10,7 +10,7 @@ watch:
 	@echo "Watching for changes ..."
 	./watch.sh
 
-usb:
+watch_usb:
 	d2 --watch=true usb/top.py
 
 # Workflow:

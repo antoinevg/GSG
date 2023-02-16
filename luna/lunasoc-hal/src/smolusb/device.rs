@@ -301,19 +301,21 @@ where
                 self.hal_driver.stall_endpoint(endpoint, false);
                 //debug!("  clear stall: 0x{:x}", endpoint);
 
-                // send a little test data on interrupt endpoint
+                // queue a little test data on interrupt endpoint
                 if endpoint == 0x82 {
                     let endpoint = endpoint - 0x80;
-                    let data: heapless::Vec<u8, 8> =
-                        (0..8).collect::<heapless::Vec<u8, 8>>().try_into().unwrap();
+                    //self.hal_driver.ack(endpoint, packet);
+                    /*const SIZE: usize = 8;
+                    let data: heapless::Vec<u8, SIZE> =
+                        (0..(SIZE as u8)).collect::<heapless::Vec<u8, SIZE>>().try_into().unwrap();
                     let bytes_written = data.len();
                     self.hal_driver.write(endpoint, data.into_iter());
                     info!(
                         "Sent {} bytes to interrupt endpoint: {}",
                         bytes_written, endpoint
-                    );
+                    );*/
+                    //self.hal_driver.write(endpoint, [].into_iter());
                 }
-
             }
             _ => {
                 warn!(

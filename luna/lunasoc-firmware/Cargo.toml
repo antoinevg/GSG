@@ -52,3 +52,7 @@ required-features = ["lunasoc-pac/rt"]
 [[bin]]
 name = "usb"
 required-features = ["lunasoc-pac/rt"]
+
+[[bin]]
+name = "cdc-serial"
+required-features = ["lunasoc-pac/rt"]

@@ -223,6 +223,15 @@ impl UsbDriverOperations for Usb0 {
         }
     }
 
+    fn ack(&self, endpoint: u8, packet: &SetupPacket) {
+        match Direction::from(packet.request_type) {
+            // If this is an IN request, read a zero-length packet (ZLP) from the host..
+            Direction::DeviceToHost => self.ep_out_prime_receive(0),
+            // ... otherwise, send a ZLP.
+            Direction::HostToDevice => self.write(endpoint, [].into_iter()),
+        }
+    }
+
     fn set_address(&self, address: u8) {
         self.ep_control
             .address

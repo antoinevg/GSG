@@ -48,7 +48,7 @@ pub mod cdc {
         ],
     };
 
-    static ENDPOINT_DESCRIPTOR_82: EndpointDescriptor = EndpointDescriptor {
+    pub static ENDPOINT_DESCRIPTOR_82: EndpointDescriptor = EndpointDescriptor {
         _length: 7,
         _descriptor_type: DescriptorType::Endpoint as u8,
         endpoint_address: 0x82, // IN
@@ -57,7 +57,7 @@ pub mod cdc {
         interval: 0,
     };
 
-    static ENDPOINT_DESCRIPTOR_02: EndpointDescriptor = EndpointDescriptor {
+    pub static ENDPOINT_DESCRIPTOR_02: EndpointDescriptor = EndpointDescriptor {
         _length: 7,
         _descriptor_type: DescriptorType::Endpoint as u8,
         endpoint_address: 0x02, // OUT
@@ -66,7 +66,7 @@ pub mod cdc {
         interval: 0,
     };
 
-    static ENDPOINT_DESCRIPTOR_81: EndpointDescriptor = EndpointDescriptor {
+    pub static ENDPOINT_DESCRIPTOR_81: EndpointDescriptor = EndpointDescriptor {
         _length: 7,
         _descriptor_type: DescriptorType::Endpoint as u8,
         endpoint_address: 0x81, // IN
@@ -74,4 +74,21 @@ pub mod cdc {
         max_packet_size: 8,
         interval: 1, // 1ms
     };
+
+    pub static USB_STRING_DESCRIPTOR_0: StringDescriptorZero = StringDescriptorZero {
+        _length: 10,
+        _descriptor_type: DescriptorType::String as u8,
+        language_ids: &[LanguageId::EnglishUnitedStates],
+    };
+
+    pub static USB_STRING_DESCRIPTOR_1: StringDescriptor =
+        StringDescriptor::new("Great Scott Gadgets");
+    pub static USB_STRING_DESCRIPTOR_2: StringDescriptor =
+        StringDescriptor::new("USB Serial Emulation");
+    pub static USB_STRING_DESCRIPTOR_3: StringDescriptor = StringDescriptor::new("v1.0");
+    pub static USB_STRING_DESCRIPTORS: &[&StringDescriptor] = &[
+        &USB_STRING_DESCRIPTOR_1,
+        &USB_STRING_DESCRIPTOR_2,
+        &USB_STRING_DESCRIPTOR_3,
+    ];
 }

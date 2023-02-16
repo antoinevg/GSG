@@ -37,6 +37,7 @@ pub trait UsbDriverOperations {
     fn reset(&self) -> u8;
     /// Acknowledge the status stage of an incoming control request.
     fn ack_status_stage(&self, packet: &SetupPacket);
+    fn ack(&self, endpoint: u8, packet: &SetupPacket);
     fn set_address(&self, address: u8);
     /// Stalls the current control request.
     fn stall_request(&self);
