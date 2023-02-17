@@ -3,6 +3,20 @@
 pub mod cdc {
     use crate::smolusb::descriptor::*;
 
+    pub mod ch34x {
+        #[derive(Debug, PartialEq)]
+        #[repr(u8)]
+        pub enum VendorRequest {
+            WriteType = 0x40,  //  64
+            ReadType = 0xc0,   // 192
+            Read = 0x95,       // 149
+            Write = 0x9a,      // 154
+            SerialInit = 0xa1, // 161
+            ModemOut = 0xa4,   // 164
+            Version = 0x5f,    //  95
+        }
+    }
+
     pub static DEVICE_DESCRIPTOR: DeviceDescriptor = DeviceDescriptor {
         descriptor_version: 0x0200,
         device_class: 0xff,    // Vendor-specific
@@ -53,7 +67,7 @@ pub mod cdc {
         _descriptor_type: DescriptorType::Endpoint as u8,
         endpoint_address: 0x82, // IN
         attributes: 0x02,       // Bulk
-        max_packet_size: 32,
+        max_packet_size: 512,   // technically 32
         interval: 0,
     };
 
@@ -62,7 +76,7 @@ pub mod cdc {
         _descriptor_type: DescriptorType::Endpoint as u8,
         endpoint_address: 0x02, // OUT
         attributes: 0x02,       // Bulk
-        max_packet_size: 32,
+        max_packet_size: 512,   // technically 32
         interval: 0,
     };
 

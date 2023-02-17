@@ -10,6 +10,7 @@ pub struct SetupPacket {
     // 5..6 Type: 0=Standard, 1=Class, 2=Vendor, 3=Reserved
     // 7    Data Phase Transfer Direction: 0=Host to Device, 1=Device to Host
     pub request_type: u8,
+    // values 0..=9 are standard, others are class or vendor
     pub request: u8,
     pub value: u16,
     pub index: u16,
@@ -63,8 +64,7 @@ impl From<u8> for Recipient {
             1 => Recipient::Interface,
             2 => Recipient::Endpoint,
             3 => Recipient::Other,
-            4..=31 => Recipient::Reserved,
-            _ => unimplemented!(),
+            4..=u8::MAX => Recipient::Reserved,
         }
     }
 }
@@ -84,8 +84,7 @@ impl From<u8> for RequestType {
             0 => RequestType::Standard,
             1 => RequestType::Class,
             2 => RequestType::Vendor,
-            3 => RequestType::Reserved,
-            _ => unimplemented!(),
+            3..=u8::MAX => RequestType::Reserved,
         }
     }
 }
@@ -125,6 +124,7 @@ pub enum Request {
     GetInterface = 10,
     SetInterface = 11,
     SynchronizeFrame = 12,
+    ClassOrVendor(u8),
 }
 
 impl TryFrom<u8> for Request {
@@ -143,6 +143,8 @@ impl TryFrom<u8> for Request {
             10 => Request::GetInterface,
             11 => Request::SetInterface,
             12 => Request::SynchronizeFrame,
+            // TODO should we check that request_type is class or vendor?
+            13..=u8::MAX => Request::ClassOrVendor(value),
             _ => return Err(ErrorKind::FailedConversion),
         };
         Ok(result)

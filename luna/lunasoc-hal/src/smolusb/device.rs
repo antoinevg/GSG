@@ -122,17 +122,7 @@ where
     pub fn handle_setup_request(&mut self, setup_packet: &SetupPacket) -> Result<()> {
         debug!("# handle_setup_request()",);
 
-        // if this isn't a standard request, stall it.
-        if setup_packet.request_type() != RequestType::Standard {
-            warn!(
-                "   stall: unsupported request type {:?}",
-                setup_packet.request_type
-            );
-            self.hal_driver.stall_request();
-            return Ok(());
-        }
-
-        // extract the request
+        let request_type = setup_packet.request_type();
         let request = match setup_packet.request() {
             Ok(request) => request,
             Err(e) => {
@@ -146,23 +136,36 @@ where
         };
 
         debug!(
-            "  dispatch: {:?} {:?} {:?} {}, {}",
+            "  SETUP {:?} {:?} {:?} {:?} value:{} index:{} length:{}",
             setup_packet.recipient(),
             setup_packet.direction(),
+            request_type,
             request,
             setup_packet.value,
+            setup_packet.index,
             setup_packet.length
         );
 
-        match request {
-            Request::SetAddress => self.handle_set_address(setup_packet),
-            Request::GetDescriptor => self.handle_get_descriptor(setup_packet),
-            Request::SetConfiguration => self.handle_set_configuration(setup_packet),
-            Request::GetConfiguration => self.handle_get_configuration(setup_packet),
-            Request::ClearFeature => self.handle_clear_feature(setup_packet),
-            Request::SetFeature => self.handle_set_feature(setup_packet),
+        match (&request_type, &request) {
+            (RequestType::Standard, Request::SetAddress) => self.handle_set_address(setup_packet),
+            (RequestType::Standard, Request::GetDescriptor) => {
+                self.handle_get_descriptor(setup_packet)
+            }
+            (RequestType::Standard, Request::SetConfiguration) => {
+                self.handle_set_configuration(setup_packet)
+            }
+            (RequestType::Standard, Request::GetConfiguration) => {
+                self.handle_get_configuration(setup_packet)
+            }
+            (RequestType::Standard, Request::ClearFeature) => {
+                self.handle_clear_feature(setup_packet)
+            }
+            (RequestType::Standard, Request::SetFeature) => self.handle_set_feature(setup_packet),
             _ => {
-                warn!("   stall: unhandled request {:?}", request);
+                warn!(
+                    "   stall: unhandled request {:?} {:?}",
+                    request_type, request
+                );
                 self.hal_driver.stall_request();
                 Ok(())
             }
@@ -208,6 +211,7 @@ where
                 0,
                 self.configuration_descriptor.iter().take(requested_length),
             ),
+            // TODO
             //(DescriptorType::DeviceQualifier, 0) => {
             //    self.hal_driver.ep_in_write(0, self.device_qualifier_descriptor.into_iter().take(requested_length))
             //}
@@ -218,15 +222,19 @@ where
                 .hal_driver
                 .write(0, self.string_descriptor_zero.iter().take(requested_length)),
             (DescriptorType::String, index) => {
-                let index: usize = (index - 1).into();
-                if index > self.string_descriptors.len() {
+                let offset_index: usize = (index - 1).into();
+                if offset_index > self.string_descriptors.len() {
+                    // TODO stall or just return a zlp ?
                     warn!("   stall: unknown string descriptor {}", index);
-                    self.hal_driver.stall_request();
+                    self.hal_driver.write(0, [].into_iter());
+                    //self.hal_driver.stall_request();
                     return Ok(());
                 }
                 self.hal_driver.write(
                     0,
-                    self.string_descriptors[index].iter().take(requested_length),
+                    self.string_descriptors[offset_index]
+                        .iter()
+                        .take(requested_length),
                 )
             }
             _ => {

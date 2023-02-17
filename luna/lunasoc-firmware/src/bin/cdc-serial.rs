@@ -4,6 +4,7 @@
     dead_code,
     unused_imports,
     unreachable_code,
+    unused_assignments,
     unused_mut,
     unused_variables
 )] // TODO
