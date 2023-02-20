@@ -297,8 +297,6 @@ static USB_DEVICE_DESCRIPTOR: DeviceDescriptor = DeviceDescriptor {
 };
 
 static USB_DEVICE_QUALIFIER_DESCRIPTOR: DeviceQualifierDescriptor = DeviceQualifierDescriptor {
-    _length: 10,
-    _descriptor_type: DescriptorType::Device as u8,
     descriptor_version: 0x0200,
     device_class: 0x00,
     device_subclass: 0x00,
@@ -306,6 +304,7 @@ static USB_DEVICE_QUALIFIER_DESCRIPTOR: DeviceQualifierDescriptor = DeviceQualif
     max_packet_size: 64,
     num_configurations: 1,
     reserved: 0,
+    ..DeviceQualifierDescriptor::new()
 };
 
 static USB_CONFIG_DESCRIPTOR_0: ConfigurationDescriptor = ConfigurationDescriptor {
@@ -353,64 +352,56 @@ static USB_INTERFACE_DESCRIPTOR_0: InterfaceDescriptor = InterfaceDescriptor {
 };
 
 static USB_ENDPOINT_DESCRIPTOR_01: EndpointDescriptor = EndpointDescriptor {
-    _length: 7,
-    _descriptor_type: DescriptorType::Endpoint as u8,
     endpoint_address: 0x01, // OUT
     attributes: 0x02,       // Bulk
     max_packet_size: 512,
     interval: 0,
+    ..EndpointDescriptor::new()
 };
 
 static USB_ENDPOINT_DESCRIPTOR_02: EndpointDescriptor = EndpointDescriptor {
-    _length: 7,
-    _descriptor_type: DescriptorType::Endpoint as u8,
     endpoint_address: 0x02, // OUT
     attributes: 0x02,       // Bulk
     max_packet_size: 512,
     interval: 0,
+    ..EndpointDescriptor::new()
 };
 
 static USB_ENDPOINT_DESCRIPTOR_03: EndpointDescriptor = EndpointDescriptor {
-    _length: 7,
-    _descriptor_type: DescriptorType::Endpoint as u8,
     endpoint_address: 0x03, // OUT
     attributes: 0x02,       // Bulk
     max_packet_size: 512,
     interval: 0,
+    ..EndpointDescriptor::new()
 };
 
 static USB_ENDPOINT_DESCRIPTOR_04: EndpointDescriptor = EndpointDescriptor {
-    _length: 7,
-    _descriptor_type: DescriptorType::Endpoint as u8,
     endpoint_address: 0x04, // OUT
     attributes: 0x02,       // Bulk
     max_packet_size: 512,
     interval: 0,
+    ..EndpointDescriptor::new()
 };
 
 static USB_ENDPOINT_DESCRIPTOR_81: EndpointDescriptor = EndpointDescriptor {
-    _length: 7,
-    _descriptor_type: DescriptorType::Endpoint as u8,
     endpoint_address: 0x81, // IN
     attributes: 0x02,       // Bulk
     max_packet_size: 512,
     interval: 0,
+    ..EndpointDescriptor::new()
 };
 
 static USB_ENDPOINT_DESCRIPTOR_82: EndpointDescriptor = EndpointDescriptor {
-    _length: 7,
-    _descriptor_type: DescriptorType::Endpoint as u8,
     endpoint_address: 0x82, // IN
     attributes: 0x03,       // Interrupt
     max_packet_size: 8,
     interval: 1, // x 1ms for low/full speed, 125us for high speed
+    ..EndpointDescriptor::new()
 };
 
-static USB_STRING_DESCRIPTOR_0: StringDescriptorZero = StringDescriptorZero {
-    _length: 10,
-    _descriptor_type: DescriptorType::String as u8,
-    language_ids: &[LanguageId::EnglishUnitedStates],
-};
+static USB_STRING_DESCRIPTOR_0: StringDescriptorZero =
+    StringDescriptorZero::new(&[LanguageId::EnglishUnitedStates]);
+
 static USB_STRING_DESCRIPTOR_1: StringDescriptor = StringDescriptor::new("LUNA");
 static USB_STRING_DESCRIPTOR_2: StringDescriptor = StringDescriptor::new("Simple Endpoint Test");
 static USB_STRING_DESCRIPTOR_3: StringDescriptor = StringDescriptor::new("v1.0");

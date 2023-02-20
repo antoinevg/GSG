@@ -80,43 +80,38 @@ pub mod cdc {
     };
 
     pub static ENDPOINT_DESCRIPTOR_82: EndpointDescriptor = EndpointDescriptor {
-        _length: 7,
-        _descriptor_type: DescriptorType::Endpoint as u8,
         endpoint_address: 0x82, // IN
         attributes: 0x02,       // Bulk
         max_packet_size: 512,   // technically 32
         interval: 0,
+        ..EndpointDescriptor::new()
     };
 
     pub static ENDPOINT_DESCRIPTOR_02: EndpointDescriptor = EndpointDescriptor {
-        _length: 7,
-        _descriptor_type: DescriptorType::Endpoint as u8,
         endpoint_address: 0x02, // OUT
         attributes: 0x02,       // Bulk
         max_packet_size: 512,   // technically 32
         interval: 0,
+        ..EndpointDescriptor::new()
     };
 
     pub static ENDPOINT_DESCRIPTOR_81: EndpointDescriptor = EndpointDescriptor {
-        _length: 7,
-        _descriptor_type: DescriptorType::Endpoint as u8,
         endpoint_address: 0x81, // IN
         attributes: 0x03,       // Interrupt
         max_packet_size: 8,
         interval: 1, // 1ms
+        ..EndpointDescriptor::new()
     };
 
-    pub static USB_STRING_DESCRIPTOR_0: StringDescriptorZero = StringDescriptorZero {
-        _length: 10,
-        _descriptor_type: DescriptorType::String as u8,
-        language_ids: &[LanguageId::EnglishUnitedStates],
-    };
+    pub static USB_STRING_DESCRIPTOR_0: StringDescriptorZero =
+        StringDescriptorZero::new(&[LanguageId::EnglishUnitedStates]);
 
     pub static USB_STRING_DESCRIPTOR_1: StringDescriptor =
         StringDescriptor::new("Great Scott Gadgets");
     pub static USB_STRING_DESCRIPTOR_2: StringDescriptor =
-        StringDescriptor::new("USB Serial Emulation");
-    pub static USB_STRING_DESCRIPTOR_3: StringDescriptor = StringDescriptor::new("v1.0");
+        StringDescriptor::new("CDC-SERIAL Emulation");
+    pub static USB_STRING_DESCRIPTOR_3: StringDescriptor = StringDescriptor::new("100");
+
     pub static USB_STRING_DESCRIPTORS: &[&StringDescriptor] = &[
         &USB_STRING_DESCRIPTOR_1,
         &USB_STRING_DESCRIPTOR_2,

@@ -1,6 +1,6 @@
 #![allow(dead_code, unused_imports, unused_variables, unused_mut)] // TODO
 
-use crate::smolusb::traits::AsByteSliceIterator;
+use crate::smolusb::traits::{AsByteSliceIterator, GetTotalLength, SetTotalLength};
 use crate::smolusb::ErrorKind;
 
 use heapless::Vec;
@@ -76,8 +76,8 @@ impl TryFrom<u8> for DescriptorType {
 // - DeviceDescriptor ---------------------------------------------------------
 
 /// USB device descriptor
-#[repr(C, packed)]
 #[derive(AsBytes, FromBytes)]
+#[repr(C, packed)]
 pub struct DeviceDescriptor {
     pub _length: u8,
     pub _descriptor_type: u8,
@@ -127,8 +127,8 @@ impl Default for DeviceDescriptor {
 // - DeviceQualifierDescriptor ---------------------------------------------------------
 
 /// USB device qualifier descriptor
-#[repr(C)]
-#[derive(Clone, Copy, Debug)]
+#[derive(AsBytes, FromBytes)]
+#[repr(C, packed)]
 pub struct DeviceQualifierDescriptor {
     pub _length: u8,          // 10
     pub _descriptor_type: u8, // 6 = DeviceQualifier
@@ -141,44 +141,31 @@ pub struct DeviceQualifierDescriptor {
     pub reserved: u8,
 }
 
+impl AsByteSliceIterator for DeviceQualifierDescriptor {}
+
 impl DeviceQualifierDescriptor {
-    pub const N: usize = 10; //size_of::<DeviceQualifierDescriptor>();
 
-    pub const fn length(&self) -> u8 {
-        Self::N as u8
+    pub const fn new() -> Self {
+        Self {
+            _length: 10,
+            _descriptor_type: DescriptorType::DeviceQualifier as u8,
+            descriptor_version: 0,
+            device_class: 0,
+            device_subclass: 0,
+            device_protocol: 0,
+            max_packet_size: 0,
+            num_configurations: 0,
+            reserved: 0,
+        }
     }
+}
 
-    pub const fn descriptor_type(&self) -> u8 {
-        DescriptorType::Device as u8
+impl Default for DeviceQualifierDescriptor {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
-impl IntoIterator for DeviceQualifierDescriptor {
-    type Item = u8;
-    type IntoIter = core::array::IntoIter<u8, { size_of::<DeviceQualifierDescriptor>() }>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        const N: usize = DeviceQualifierDescriptor::N;
-
-        let iter: core::array::IntoIter<u8, 0> = [].into_iter();
-        let chain: core::iter::Chain<_, core::array::IntoIter<u8, 1>> = iter
-            .chain(self.length().to_le_bytes())
-            .chain(self.descriptor_type().to_le_bytes())
-            .chain(self.descriptor_version.to_le_bytes())
-            .chain(self.device_class.to_le_bytes())
-            .chain(self.device_subclass.to_le_bytes())
-            .chain(self.device_protocol.to_le_bytes())
-            .chain(self.max_packet_size.to_le_bytes())
-            .chain(self.num_configurations.to_le_bytes())
-            .chain(self.reserved.to_le_bytes());
-
-        let vec: Vec<u8, N> = chain.take(N).collect::<Vec<u8, N>>();
-        let _vec_iter: <heapless::Vec<u8, N> as IntoIterator>::IntoIter = vec.clone().into_iter();
-        let buffer: [u8; N] = vec.into_array().expect("unproven");
-        let iter: core::array::IntoIter<u8, N> = buffer.into_iter();
-        iter
-    }
-}
 
 // - ConfigurationDescriptor --------------------------------------------------
 
@@ -372,6 +359,8 @@ impl<'a> Iterator for InterfaceDescriptorIterator<'a> {
 // - EndpointDescriptor -------------------------------------------------------
 
 /// USB endpoint descriptor
+#[derive(AsBytes, FromBytes)]
+#[repr(C, packed)]
 pub struct EndpointDescriptor {
     pub _length: u8,          // 7
     pub _descriptor_type: u8, // 5 = Endpoint
@@ -381,6 +370,29 @@ pub struct EndpointDescriptor {
     pub interval: u8,
 }
 
+impl AsByteSliceIterator for EndpointDescriptor {}
+
+impl EndpointDescriptor {
+    pub const fn new() -> Self {
+        Self {
+            _length: 7,
+            _descriptor_type: DescriptorType::Endpoint as u8,
+            endpoint_address: 0,
+            attributes: 0,
+            max_packet_size: 0,
+            interval: 0,
+        }
+    }
+}
+
+impl Default for EndpointDescriptor {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/////////////////////////////////
+// lose this
 impl EndpointDescriptor {
     pub const N: usize = 7;
 
@@ -402,6 +414,7 @@ pub struct EndpointDescriptorIterator<'a> {
     iter: core::array::IntoIter<u8, { EndpointDescriptor::N }>,
 }
 
+
 impl<'a> EndpointDescriptorIterator<'a> {
     pub fn new(descriptor: &'a EndpointDescriptor) -> Self {
         let iter = [
@@ -415,20 +428,33 @@ impl<'a> EndpointDescriptorIterator<'a> {
         ]
         .into_iter();
         Self { descriptor, iter }
+
     }
 }
 
 impl<'a> Iterator for EndpointDescriptorIterator<'a> {
     type Item = u8;
+
     fn next(&mut self) -> Option<Self::Item> {
         self.iter.next()
+
     }
 }
+/////////////////////////////////
 
-// - StringDescriptorZero -----------------------------------------------------
+///////////////////////////
+// lose this
+enum IteratorState {
+    Header,
+    Body(usize),
+}
+
+
+
+// - LanguageId ---------------------------------------------------------------
 
 /// Language ID
-#[derive(Clone, Copy, Debug)]
+#[derive(AsBytes, Copy, Clone, Debug)]
 #[repr(u16)]
 pub enum LanguageId {
     EnglishUnitedStates = 0x0409,
@@ -437,86 +463,71 @@ pub enum LanguageId {
     EnglishSouthAfrica = 0x1c09,
 }
 
-/// USB String descriptor for language ids
-#[derive(Clone, Copy, Debug)]
-#[repr(C)]
+impl AsByteSliceIterator for LanguageId {}
+
+
+// - StringDescriptorZero -----------------------------------------------------
+
 pub struct StringDescriptorZero<'a> {
-    pub _length: u8,
-    pub _descriptor_type: u8, // 3 = String
-    pub language_ids: &'a [LanguageId],
+    head: StringDescriptorZeroHead,
+    tail: &'a [LanguageId],
 }
 
 impl<'a> StringDescriptorZero<'a> {
-    pub const N: usize = 2;
-
-    pub fn length(&self) -> u8 {
-        (Self::N + (size_of::<LanguageId>() * self.language_ids.len())) as u8
-    }
-
-    pub const fn descriptor_type(&self) -> u8 {
-        DescriptorType::String as u8
-    }
-
-    pub fn iter(&self) -> StringDescriptorZeroIterator {
-        StringDescriptorZeroIterator::new(self)
-    }
-}
-
-enum IteratorState {
-    Header,
-    Body(usize),
-}
-
-pub struct StringDescriptorZeroIterator<'a> {
-    descriptor: &'a StringDescriptorZero<'a>,
-    state: IteratorState,
-    header_iter: core::array::IntoIter<u8, 2>,
-}
-
-impl<'a> StringDescriptorZeroIterator<'a> {
-    pub fn new(descriptor: &'a StringDescriptorZero) -> Self {
-        let header_iter = [descriptor.length(), descriptor.descriptor_type()].into_iter();
+    pub const fn new(tail: &'a [LanguageId]) -> Self {
+        let head_length = size_of::<StringDescriptorZeroHead>();
+        let tail_length = tail.len() * size_of::<LanguageId>();
         Self {
-            descriptor,
-            state: IteratorState::Header,
-            header_iter,
+            head: StringDescriptorZeroHead {
+                _length: (head_length + tail_length) as u8,
+                _descriptor_type: DescriptorType::String as u8,
+            },
+            tail,
+        }
+    }
+
+    pub fn iter(&'a self) -> CompositeIterator<'a, StringDescriptorZeroHead, LanguageId> {
+        let iter  = CompositeIterator::new(&self.head, self.tail);
+        iter
+    }
+}
+
+
+#[derive(AsBytes, FromBytes, Clone, Copy, Debug)]
+#[repr(C, packed)]
+pub struct StringDescriptorZeroHead {
+    pub _length: u8,
+    pub _descriptor_type: u8, // 3 = String
+}
+
+impl StringDescriptorZeroHead {
+    pub const fn new() -> Self {
+        Self {
+            _length: 0,
+            _descriptor_type: DescriptorType::String as u8,
         }
     }
 }
 
-impl<'a> Iterator for StringDescriptorZeroIterator<'a> {
-    type Item = u8;
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.state {
-            IteratorState::Header => match self.header_iter.next() {
-                Some(byte) => Some(byte),
-                None => {
-                    self.state = IteratorState::Body(0);
-                    self.next()
-                }
-            },
-            IteratorState::Body(index) => {
-                match self
-                    .descriptor
-                    .language_ids
-                    .iter()
-                    .flat_map(|x: &LanguageId| (*x as u16).to_le_bytes().into_iter())
-                    .nth(index)
-                {
-                    Some(byte) => {
-                        self.state = IteratorState::Body(index + 1);
-                        Some(byte)
-                    }
-                    None => {
-                        // reset iterator
-                        self.state = IteratorState::Header;
-                        None
-                    }
-                }
-            }
-        }
+impl AsByteSliceIterator for StringDescriptorZeroHead {}
+
+/*
+impl SetTotalLength for StringDescriptorZeroHead {
+    fn set_total_length(&mut self, total_length: usize) {
+        self._length = total_length as u8;
     }
 }
+
+// pretty much useless if it can't be const
+impl GetTotalLength for StringDescriptorZeroHead {
+    fn total_length(&self, tail_count: usize) -> usize {
+        let head_length = size_of::<StringDescriptorZeroHead>();
+        let tail_length = tail_count * size_of::<LanguageId>();
+        head_length + tail_length
+    }
+}
+*/
+
 
 // - StringDescriptor ---------------------------------------------------------
 
@@ -654,5 +665,71 @@ impl<'a> Iterator for Utf16ByteIterator<'a> {
                 None => None,
             },
         }
+    }
+}
+
+
+// - CompositeIterator --------------------------------------------------------
+
+
+type HeadIterator<'a> = slice::Iter<'a, u8>;
+type TailIterator<'a, T> = iter::FlatMap<
+    slice::Iter<'a, T>,
+    slice::Iter<'a, u8>,
+    &'a dyn Fn(&'a T) -> slice::Iter<'a, u8>,
+>;
+type CompositeChain<'a, T> = iter::Chain<slice::Iter<'a, u8>, TailIterator<'a, T>>;
+
+pub struct CompositeIterator<'a, H, T> {
+    chain: CompositeChain<'a, T>,
+    _marker: PhantomData<H>,
+}
+
+impl<'a, H, T> CompositeIterator<'a, H, T>
+where
+    H: AsByteSliceIterator + SetTotalLength + 'a,
+    T: AsByteSliceIterator + 'a,
+{
+    pub fn new_mut(head: &'a mut H, tail: &'a [T]) -> Self {
+        // this works but it ain't great
+        let head_length = size_of::<H>();
+        let tail_length = tail.len() * size_of::<T>();
+        head.set_total_length(head_length + tail_length);
+
+        let head_iter: HeadIterator<'a> = head.as_iter();
+        let tail_iter: TailIterator<'a, T> =
+            tail.iter().flat_map(&|x: &'a T| x.as_iter());
+        let chain: CompositeChain<'a, T> = head_iter.chain(tail_iter);
+
+        Self {
+            chain,
+            _marker: PhantomData,
+        }
+    }
+}
+
+impl<'a, H, T> CompositeIterator<'a, H, T>
+where
+    H: AsByteSliceIterator + 'a,
+    T: AsByteSliceIterator + 'a,
+{
+
+    pub fn new(head: &'a H, tail: &'a [T]) -> Self {
+        let head_iter: HeadIterator<'a> = head.as_iter();
+        let tail_iter: TailIterator<'a, T> =
+            tail.iter().flat_map(&|x: &'a T| x.as_iter());
+        let chain: CompositeChain<'a, T> = head_iter.chain(tail_iter);
+        Self {
+            chain,
+            _marker: PhantomData,
+        }
+    }
+
+}
+
+impl<'a, H, T> Iterator for CompositeIterator<'a, H, T> {
+    type Item = &'a u8;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.chain.next()
     }
 }

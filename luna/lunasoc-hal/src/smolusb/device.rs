@@ -254,7 +254,7 @@ where
             //}
             (DescriptorType::String, 0) => self
                 .hal_driver
-                .write(0, self.string_descriptor_zero.iter().take(requested_length)),
+                .write_ref(0, self.string_descriptor_zero.iter().take(requested_length)),
             (DescriptorType::String, index) => {
                 let offset_index: usize = (index - 1).into();
 
