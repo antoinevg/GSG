@@ -166,6 +166,10 @@ fn main() -> ! {
     let mut counter: usize = 1;
     let mut start_polling = false;
 
+    // add some handlers for vendor requests
+    usb0_device.cb_vendor_request = Some(handle_vendor_request);
+    usb0_device.cb_string_request = Some(handle_string_request);
+
     loop {
         // send some data occasionally
         if start_polling && usb0_device.state == DeviceState::Configured && counter % 100_000 == 0 {
@@ -233,4 +237,31 @@ fn main() -> ! {
             }
         }
     }
+}
+
+
+// - vendor request handlers --------------------------------------------------
+
+fn handle_vendor_request<'a, D>(device: &UsbDevice<'a, D>, setup_packet: &SetupPacket, request: u8)
+where
+    D: ControlRead + EndpointRead + EndpointWrite + EndpointWriteRef + UsbDriverOperations,
+{
+    let request = cdc::ch34x::VendorRequest::from(request);
+    debug!("  CDC-SERIAL vendor_request: {:?}", request);
+
+    // we can just spoof these
+    device.hal_driver.write(0, [0, 0].into_iter());
+    device.hal_driver.ack_status_stage(setup_packet);
+}
+
+
+fn handle_string_request<'a, D>(device: &UsbDevice<'a, D>, setup_packet: &SetupPacket, index: u8)
+where
+    D: ControlRead + EndpointRead + EndpointWrite + EndpointWriteRef + UsbDriverOperations,
+{
+    debug!("  CDC-SERIAL string_request: {}", index);
+
+    // we can just spoof this too
+    device.hal_driver.write(0, [].into_iter());
+    device.hal_driver.ack_status_stage(setup_packet);
 }

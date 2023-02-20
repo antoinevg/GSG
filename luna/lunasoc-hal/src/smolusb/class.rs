@@ -14,7 +14,24 @@ pub mod cdc {
             SerialInit = 0xa1, // 161
             ModemOut = 0xa4,   // 164
             Version = 0x5f,    //  95
+            Unknown,
         }
+
+        impl From<u8> for VendorRequest {
+            fn from(value: u8) -> Self {
+                match value {
+                    0x40 => VendorRequest::WriteType,
+                    0xc0 => VendorRequest::ReadType,
+                    0x95 => VendorRequest::Read,
+                    0x9a => VendorRequest::Write,
+                    0xa1 => VendorRequest::SerialInit,
+                    0xa4 => VendorRequest::ModemOut,
+                    0x5f => VendorRequest::Version,
+                    _ => VendorRequest::Unknown,
+                }
+            }
+        }
+
     }
 
     pub static DEVICE_DESCRIPTOR: DeviceDescriptor = DeviceDescriptor {

@@ -61,7 +61,7 @@ pub enum DeviceState {
 ///     * a set of string descriptors
 ///
 pub struct UsbDevice<'a, D> {
-    hal_driver: &'a D,
+    pub hal_driver: &'a D,
     device_descriptor: &'a DeviceDescriptor,
     configuration_descriptor: &'a ConfigurationDescriptor<'a>,
     string_descriptor_zero: &'a StringDescriptorZero<'a>,
@@ -71,6 +71,10 @@ pub struct UsbDevice<'a, D> {
     pub state: DeviceState,
     pub reset_count: usize,
     pub feature_remote_wakeup: bool,
+
+    pub cb_class_request: Option<fn(device: &UsbDevice<'a, D>, setup_packet: &SetupPacket, request: u8)>,
+    pub cb_vendor_request: Option<fn(device: &UsbDevice<'a, D>, setup_packet: &SetupPacket, request: u8)>,
+    pub cb_string_request: Option<fn(device: &UsbDevice<'a, D>, setup_packet: &SetupPacket, index: u8)>,
 }
 
 impl<'a, D> UsbDevice<'a, D>
@@ -93,6 +97,10 @@ where
             state: DeviceState::Reset,
             reset_count: 0,
             feature_remote_wakeup: false,
+
+            cb_class_request: None,
+            cb_vendor_request: None,
+            cb_string_request: None,
         }
     }
 }
@@ -160,7 +168,33 @@ where
             (RequestType::Standard, Request::ClearFeature) => {
                 self.handle_clear_feature(setup_packet)
             }
-            (RequestType::Standard, Request::SetFeature) => self.handle_set_feature(setup_packet),
+            (RequestType::Standard, Request::SetFeature) => {
+                self.handle_set_feature(setup_packet)
+            },
+            (RequestType::Class, Request::ClassOrVendor(request)) => {
+                if let Some(cb) = self.cb_class_request {
+                    cb(self, setup_packet, *request);
+                } else {
+                    warn!(
+                        "   stall: unhandled class request {:?} {:?}",
+                        request_type, request
+                    );
+                    self.hal_driver.stall_request();
+                }
+                Ok(())
+            },
+            (RequestType::Vendor, Request::ClassOrVendor(request)) => {
+                if let Some(cb) = self.cb_vendor_request {
+                    cb(self, setup_packet, *request);
+                } else {
+                    warn!(
+                        "   stall: unhandled class request {:?} {:?}",
+                        request_type, request
+                    );
+                    self.hal_driver.stall_request();
+                }
+                Ok(())
+            },
             _ => {
                 warn!(
                     "   stall: unhandled request {:?} {:?}",
@@ -172,10 +206,10 @@ where
         }
     }
 
-    fn handle_set_address(&mut self, packet: &SetupPacket) -> Result<()> {
-        self.hal_driver.ack_status_stage(packet);
+    fn handle_set_address(&mut self, setup_packet: &SetupPacket) -> Result<()> {
+        self.hal_driver.ack_status_stage(setup_packet);
 
-        let address: u8 = (packet.value & 0x7f) as u8;
+        let address: u8 = (setup_packet.value & 0x7f) as u8;
         self.hal_driver.set_address(address);
         self.state = DeviceState::Address;
 
@@ -184,9 +218,9 @@ where
         Ok(())
     }
 
-    fn handle_get_descriptor(&self, packet: &SetupPacket) -> Result<()> {
+    fn handle_get_descriptor(&self, setup_packet: &SetupPacket) -> Result<()> {
         // extract the descriptor type and number from our SETUP request
-        let [descriptor_number, descriptor_type_bits] = packet.value.to_le_bytes();
+        let [descriptor_number, descriptor_type_bits] = setup_packet.value.to_le_bytes();
         let descriptor_type = match DescriptorType::try_from(descriptor_type_bits) {
             Ok(descriptor_type) => descriptor_type,
             Err(e) => {
@@ -201,7 +235,7 @@ where
 
         // if the host is requesting less than the maximum amount of data,
         // only respond with the amount requested
-        let requested_length = packet.length as usize;
+        let requested_length = setup_packet.length as usize;
 
         match (&descriptor_type, descriptor_number) {
             (DescriptorType::Device, 0) => self
@@ -223,13 +257,17 @@ where
                 .write(0, self.string_descriptor_zero.iter().take(requested_length)),
             (DescriptorType::String, index) => {
                 let offset_index: usize = (index - 1).into();
+
                 if offset_index > self.string_descriptors.len() {
-                    // TODO stall or just return a zlp ?
-                    warn!("   stall: unknown string descriptor {}", index);
-                    self.hal_driver.write(0, [].into_iter());
-                    //self.hal_driver.stall_request();
+                    if let Some(cb) = self.cb_string_request {
+                        cb(self, setup_packet, index);
+                    } else {
+                        warn!("   stall: unknown string descriptor {}", index);
+                        self.hal_driver.stall_request();
+                    }
                     return Ok(());
                 }
+
                 self.hal_driver.write(
                     0,
                     self.string_descriptors[offset_index]
@@ -247,7 +285,7 @@ where
             }
         }
 
-        self.hal_driver.ack_status_stage(packet);
+        self.hal_driver.ack_status_stage(setup_packet);
 
         debug!(
             "  -> handle_get_descriptor({:?}({}), {}, {})",
@@ -257,12 +295,12 @@ where
         Ok(())
     }
 
-    fn handle_set_configuration(&mut self, packet: &SetupPacket) -> Result<()> {
-        self.hal_driver.ack_status_stage(packet);
+    fn handle_set_configuration(&mut self, setup_packet: &SetupPacket) -> Result<()> {
+        self.hal_driver.ack_status_stage(setup_packet);
 
         debug!("  -> handle_set_configuration()");
 
-        let configuration = packet.value;
+        let configuration = setup_packet.value;
         if configuration > 1 {
             warn!("   stall: unknown configuration {}", configuration);
             self.hal_driver.stall_request();
@@ -273,24 +311,24 @@ where
         Ok(())
     }
 
-    fn handle_get_configuration(&self, packet: &SetupPacket) -> Result<()> {
+    fn handle_get_configuration(&self, setup_packet: &SetupPacket) -> Result<()> {
         debug!("  -> handle_get_configuration()");
 
-        let requested_length = packet.length as usize;
+        let requested_length = setup_packet.length as usize;
 
         self.hal_driver
             .write(0, [1].into_iter().take(requested_length));
-        self.hal_driver.ack_status_stage(packet);
+        self.hal_driver.ack_status_stage(setup_packet);
 
         Ok(())
     }
 
-    fn handle_clear_feature(&mut self, packet: &SetupPacket) -> Result<()> {
+    fn handle_clear_feature(&mut self, setup_packet: &SetupPacket) -> Result<()> {
         debug!("  -> handle_clear_feature()");
 
         // parse request
-        let recipient = packet.recipient();
-        let feature_bits = packet.value;
+        let recipient = setup_packet.recipient();
+        let feature_bits = setup_packet.value;
         let feature = match Feature::try_from(feature_bits) {
             Ok(feature) => feature,
             Err(e) => {
@@ -305,7 +343,7 @@ where
                 self.feature_remote_wakeup = false;
             }
             (Recipient::Endpoint, Feature::EndpointHalt) => {
-                let endpoint = packet.index as u8;
+                let endpoint = setup_packet.index as u8;
                 self.hal_driver.stall_endpoint(endpoint, false);
                 //debug!("  clear stall: 0x{:x}", endpoint);
 
@@ -338,12 +376,12 @@ where
         Ok(())
     }
 
-    fn handle_set_feature(&mut self, packet: &SetupPacket) -> Result<()> {
+    fn handle_set_feature(&mut self, setup_packet: &SetupPacket) -> Result<()> {
         debug!("  -> handle_set_feature()");
 
         // parse request
-        let recipient = packet.recipient();
-        let feature_bits = packet.value;
+        let recipient = setup_packet.recipient();
+        let feature_bits = setup_packet.value;
         let feature = match Feature::try_from(feature_bits) {
             Ok(feature) => feature,
             Err(e) => {
@@ -358,7 +396,7 @@ where
                 self.feature_remote_wakeup = true;
             }
             (Recipient::Endpoint, Feature::EndpointHalt) => {
-                let endpoint = packet.index as u8;
+                let endpoint = setup_packet.index as u8;
                 self.hal_driver.stall_endpoint(endpoint, true);
                 debug!("  set stall: 0x{:x}", endpoint);
             }
