@@ -51,7 +51,7 @@ pub mod cdc {
 
     pub static CONFIGURATION_DESCRIPTOR_0: ConfigurationDescriptor = ConfigurationDescriptor::new(
         ConfigurationDescriptorHeader {
-            descriptor_type: DescriptorType::Configuration as u8, // TODO
+            descriptor_type: DescriptorType::Configuration as u8,
             configuration_value: 1,
             configuration_string_index: 1,
             attributes: 0x80, // 0b1000_0000 = bus-powered

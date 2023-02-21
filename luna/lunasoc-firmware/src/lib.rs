@@ -23,12 +23,18 @@ pub enum Message {
     UnknownInterrupt(usize),
 
     // usb events
-    /// Received a SETUP packet on USB_EP_CONTROL
-    ReceivedSetupPacket(hal::smolusb::control::SetupPacket),
-    /// Received data on USB_EP_OUT
+    /// Received a SETUP packet on USB0_EP_CONTROL
+    Usb0ReceivedSetupPacket(hal::smolusb::control::SetupPacket),
+    /// Received a SETUP packet on USB1_EP_CONTROL
+    Usb1ReceivedSetupPacket(hal::smolusb::control::SetupPacket),
+    /// Received data on USB0_EP_OUT
     ///
     /// Contents is (endpoint, bytes_read, buffer)
-    ReceivedData(u8, usize, [u8; 64]),
+    Usb0ReceivedData(u8, usize, [u8; 64]),
+    /// Received data on USB1_EP_OUT
+    ///
+    /// Contents is (endpoint, bytes_read, buffer)
+    Usb1ReceivedData(u8, usize, [u8; 64]),
 
     // TODO
     TimerEvent(u32),

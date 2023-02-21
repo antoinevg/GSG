@@ -15,6 +15,7 @@ pub trait EndpointRead {
 }
 
 // These two should be one trait
+// TODO return bytes_written
 
 pub trait EndpointWrite {
     fn write<'a, I>(&self, endpoint: u8, iter: I)

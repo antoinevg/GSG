@@ -80,7 +80,7 @@ fn MachineExternal() {
             }
         };
         usb0.clear_pending(pac::Interrupt::USB0_EP_CONTROL);
-        Message::ReceivedSetupPacket(setup_packet)
+        Message::Usb0ReceivedSetupPacket(setup_packet)
     } else if usb0.is_pending(pac::Interrupt::USB0_EP_IN) {
         usb0.clear_pending(pac::Interrupt::USB0_EP_IN);
         Message::Interrupt(pac::Interrupt::USB0_EP_IN)
@@ -100,7 +100,7 @@ fn MachineExternal() {
         // clear pending IRQ after data is read
         usb0.clear_pending(pac::Interrupt::USB0_EP_OUT);
 
-        Message::ReceivedData(endpoint, bytes_read, buffer)
+        Message::Usb0ReceivedData(endpoint, bytes_read, buffer)
     } else {
         Message::UnknownInterrupt(pending)
     };
@@ -201,7 +201,7 @@ fn main() -> ! {
 
         if let Some(message) = MESSAGE_QUEUE.dequeue() {
             match message {
-                Message::ReceivedSetupPacket(packet) => {
+                Message::Usb0ReceivedSetupPacket(packet) => {
                     start_polling = false;
                     match usb0_device.handle_setup_request(&packet) {
                         Ok(()) => {
@@ -215,7 +215,7 @@ fn main() -> ! {
                     }
                 }
 
-                Message::ReceivedData(endpoint, bytes_read, buffer) => {
+                Message::Usb0ReceivedData(endpoint, bytes_read, buffer) => {
                     if endpoint != 0 {
                         debug!(
                             "Received {} bytes on endpoint: {} - {:?}\n",

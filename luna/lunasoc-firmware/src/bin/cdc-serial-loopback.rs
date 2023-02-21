@@ -1,13 +1,5 @@
 #![feature(error_in_core)]
 #![feature(panic_info_message)]
-#![allow(
-    dead_code,
-    unused_imports,
-    unreachable_code,
-    unused_assignments,
-    unused_mut,
-    unused_variables
-)] // TODO
 #![no_std]
 #![no_main]
 
@@ -21,11 +13,7 @@ use pac::csr::interrupt;
 
 use smolusb::class::cdc;
 use smolusb::control::SetupPacket;
-use smolusb::descriptor::{
-    ConfigurationDescriptor, DescriptorType, DeviceDescriptor, DeviceQualifierDescriptor,
-    EndpointDescriptor, InterfaceDescriptor, LanguageId, StringDescriptor, StringDescriptorZero,
-};
-use smolusb::device::{DeviceState, Speed, UsbDevice};
+use smolusb::device::{Speed, UsbDevice};
 use smolusb::traits::{
     ControlRead, EndpointRead, EndpointWrite, EndpointWriteRef, UsbDriverOperations,
 };
@@ -34,7 +22,6 @@ use log::{debug, error, info, trace, warn};
 
 // - panic handler ------------------------------------------------------------
 
-//use panic_halt as _;
 #[panic_handler]
 #[no_mangle]
 fn panic(panic_info: &core::panic::PanicInfo) -> ! {
@@ -65,18 +52,19 @@ fn MachineExternal() {
     // peripherals
     let peripherals = unsafe { pac::Peripherals::steal() };
     let leds = &peripherals.LEDS;
-    let mut usb0 = unsafe { hal::Usb0::summon() };
+    let usb0 = unsafe { hal::Usb0::summon() };
+    let usb1 = unsafe { hal::Usb1::summon() };
 
     // debug
     let pending = interrupt::reg_pending();
     leds.output
         .write(|w| unsafe { w.output().bits(pending as u8) });
 
+    // - Usb 0 interrupts --
     let message = if usb0.is_pending(pac::Interrupt::USB0) {
         usb0.clear_pending(pac::Interrupt::USB0);
         Message::Interrupt(pac::Interrupt::USB0)
     } else if usb0.is_pending(pac::Interrupt::USB0_EP_CONTROL) {
-        // read packet
         let mut buffer = [0_u8; 8];
         usb0.read_control(&mut buffer);
         let setup_packet = match SetupPacket::try_from(buffer) {
@@ -92,22 +80,37 @@ fn MachineExternal() {
         usb0.clear_pending(pac::Interrupt::USB0_EP_IN);
         Message::Interrupt(pac::Interrupt::USB0_EP_IN)
     } else if usb0.is_pending(pac::Interrupt::USB0_EP_OUT) {
-        // read data from endpoint
         let endpoint = usb0.ep_out.data_ep.read().bits() as u8;
         let mut buffer = [0_u8; 64];
         let bytes_read = usb0.read(endpoint, &mut buffer);
-
-        // TODO this does feel somewhat dodge to put it mildly
-        for ep in (0..=4).rev() {
-            usb0.ep_out.epno.write(|w| unsafe { w.epno().bits(ep) });
-            usb0.ep_out.prime.write(|w| w.prime().bit(true));
-            usb0.ep_out.enable.write(|w| w.enable().bit(true));
-        }
-
-        // clear pending IRQ after data is read
         usb0.clear_pending(pac::Interrupt::USB0_EP_OUT);
-
         Message::Usb0ReceivedData(endpoint, bytes_read, buffer)
+
+    // - Usb 1 interrupts --
+    } else if usb1.is_pending(pac::Interrupt::USB1) {
+        usb1.clear_pending(pac::Interrupt::USB1);
+        Message::Interrupt(pac::Interrupt::USB1)
+    } else if usb1.is_pending(pac::Interrupt::USB1_EP_CONTROL) {
+        let mut buffer = [0_u8; 8];
+        usb1.read_control(&mut buffer);
+        let setup_packet = match SetupPacket::try_from(buffer) {
+            Ok(packet) => packet,
+            Err(e) => {
+                error!("MachineExternal USB1_EP_CONTROL - {:?}", e);
+                return;
+            }
+        };
+        usb1.clear_pending(pac::Interrupt::USB1_EP_CONTROL);
+        Message::Usb1ReceivedSetupPacket(setup_packet)
+    } else if usb1.is_pending(pac::Interrupt::USB1_EP_IN) {
+        usb1.clear_pending(pac::Interrupt::USB1_EP_IN);
+        Message::Interrupt(pac::Interrupt::USB1_EP_IN)
+    } else if usb1.is_pending(pac::Interrupt::USB1_EP_OUT) {
+        let endpoint = usb1.ep_out.data_ep.read().bits() as u8;
+        let mut buffer = [0_u8; 64];
+        let bytes_read = usb1.read(endpoint, &mut buffer);
+        usb1.clear_pending(pac::Interrupt::USB1_EP_OUT);
+        Message::Usb1ReceivedData(endpoint, bytes_read, buffer)
     } else {
         Message::UnknownInterrupt(pending)
     };
@@ -130,18 +133,29 @@ fn main() -> ! {
     firmware::log::init(serial);
     info!("logging initialized");
 
-    // usb
-    let mut usb0 = hal::Usb0::new(
+    // usb0
+    let usb0 = hal::Usb0::new(
         peripherals.USB0,
         peripherals.USB0_EP_CONTROL,
         peripherals.USB0_EP_IN,
         peripherals.USB0_EP_OUT,
     );
     let speed = usb0.connect();
-    info!("Connected USB device: {:?}", Speed::from(speed));
+    info!("Connected USB0 device: {:?}", Speed::from(speed));
+
+    // usb1
+    let usb1 = hal::Usb1::new(
+        peripherals.USB1,
+        peripherals.USB1_EP_CONTROL,
+        peripherals.USB1_EP_IN,
+        peripherals.USB1_EP_OUT,
+    );
+    let speed = usb1.connect();
+    info!("Connected USB1 device: {:?}", Speed::from(speed));
 
     // enable interrupts
     usb0.enable_interrupts();
+    usb1.enable_interrupts();
     unsafe {
         // set mstatus register: interrupt enable
         riscv::interrupt::enable();
@@ -154,8 +168,13 @@ fn main() -> ! {
         interrupt::enable(pac::Interrupt::USB0_EP_CONTROL);
         interrupt::enable(pac::Interrupt::USB0_EP_IN);
         interrupt::enable(pac::Interrupt::USB0_EP_OUT);
+        interrupt::enable(pac::Interrupt::USB1);
+        interrupt::enable(pac::Interrupt::USB1_EP_CONTROL);
+        interrupt::enable(pac::Interrupt::USB1_EP_IN);
+        interrupt::enable(pac::Interrupt::USB1_EP_OUT);
     }
 
+    // usb0_device
     let mut usb0_device = UsbDevice::new(
         &usb0,
         &cdc::DEVICE_DESCRIPTOR,
@@ -163,76 +182,74 @@ fn main() -> ! {
         &cdc::USB_STRING_DESCRIPTOR_0,
         &cdc::USB_STRING_DESCRIPTORS,
     );
-    let mut counter: usize = 1;
-    let mut start_polling = false;
-
-    // add some handlers for vendor requests
     usb0_device.cb_vendor_request = Some(handle_vendor_request);
     usb0_device.cb_string_request = Some(handle_string_request);
 
-    loop {
-        // send some data occasionally
-        if start_polling && usb0_device.state == DeviceState::Configured && counter % 100_000 == 0 {
-            // bulk out
-            let endpoint = 2;
-            let text = firmware::log::format!("Counter: {}\r\n", counter);
-            let data: &[u8] = text.as_bytes();
-            let bytes_written = data.len();
-            usb0.write_ref(endpoint, data.into_iter());
-            info!("Sent {} bytes to endpoint: {}", bytes_written, endpoint);
-        }
-        counter += 1;
+    // usb1_device
+    let mut usb1_device = UsbDevice::new(
+        &usb1,
+        &cdc::DEVICE_DESCRIPTOR,
+        &cdc::CONFIGURATION_DESCRIPTOR_0,
+        &cdc::USB_STRING_DESCRIPTOR_0,
+        &cdc::USB_STRING_DESCRIPTORS,
+    );
+    usb1_device.cb_vendor_request = Some(handle_vendor_request);
+    usb1_device.cb_string_request = Some(handle_string_request);
 
+    loop {
         if let Some(message) = MESSAGE_QUEUE.dequeue() {
             match message {
+                // usb0 message handlers
                 Message::Usb0ReceivedSetupPacket(packet) => {
-                    start_polling = false;
                     match usb0_device.handle_setup_request(&packet) {
-                        Ok(()) => {
-                            debug!("OK");
-                            debug!("");
-                        }
-                        Err(e) => {
-                            error!("  handle_setup_request: {:?}: {:?}", e, packet);
-                            loop {}
-                        }
+                        Ok(()) => debug!("OK\n"),
+                        Err(e) => panic!("  handle_setup_request: {:?}: {:?}", e, packet),
                     }
                 }
-
                 Message::Usb0ReceivedData(endpoint, bytes_read, buffer) => {
                     if endpoint != 0 {
                         debug!(
                             "Received {} bytes on endpoint: {} - {:?}\n",
                             bytes_read, endpoint, buffer
                         );
-                        start_polling = true;
+                        usb1.write_ref(endpoint, buffer.iter().take(bytes_read).into_iter());
+                        info!("Sent {} bytes to endpoint: {}", bytes_read, endpoint);
                     }
                 }
 
-                // interrupts
+                // usb1 message handlers
+                Message::Usb1ReceivedSetupPacket(packet) => {
+                    match usb1_device.handle_setup_request(&packet) {
+                        Ok(()) => debug!("OK\n"),
+                        Err(e) => panic!("  handle_setup_request: {:?}: {:?}", e, packet),
+                    }
+                }
+                Message::Usb1ReceivedData(endpoint, bytes_read, buffer) => {
+                    if endpoint != 0 {
+                        debug!(
+                            "Received {} bytes on endpoint: {} - {:?}\n",
+                            bytes_read, endpoint, buffer
+                        );
+                        usb0.write_ref(endpoint, buffer.iter().take(bytes_read).into_iter());
+                        info!("Sent {} bytes to endpoint: {}", bytes_read, endpoint);
+                    }
+                }
+
+                // usb0 interrupts
                 Message::Interrupt(pac::Interrupt::USB0) => {
                     usb0_device.reset();
                     trace!("MachineExternal - USB0\n");
                 }
-                Message::Interrupt(pac::Interrupt::USB0_EP_CONTROL) => {
-                    // handled in MachineExternal which queues a Message::ReceivedSetupPacket
-                }
-                Message::Interrupt(pac::Interrupt::USB0_EP_IN) => {
-                    // TODO - handle transmission complete
-                    trace!("MachineExternal - USB0_EP_IN\n");
-                }
-                Message::Interrupt(pac::Interrupt::USB0_EP_OUT) => {
-                    // handled in MachineExternal which queues a Message::ReceivedData
+
+                // usb1 interrupts
+                Message::Interrupt(pac::Interrupt::USB1) => {
+                    usb1_device.reset();
+                    trace!("MachineExternal - USB1\n");
                 }
 
-                Message::Interrupt(interrupt) => {
-                    warn!("Unhandled interrupt: {:?}\n", interrupt);
-                }
-                Message::UnknownInterrupt(pending) => {
-                    error!("Unknown interrupt pending: {:#035b}\n", pending);
-                }
+                // unhandled
                 _ => {
-                    panic!("Unhandled message: {:?}\n", message);
+                    warn!("Unhandled message: {:?}\n", message);
                 }
             }
         }
