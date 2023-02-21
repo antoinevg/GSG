@@ -8,6 +8,5 @@ use riscv_rt::entry;
 
 #[entry]
 fn main() -> ! {
-    loop {
-    }
+    loop {}
 }

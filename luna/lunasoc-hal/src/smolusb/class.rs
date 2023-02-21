@@ -31,7 +31,6 @@ pub mod cdc {
                 }
             }
         }
-
     }
 
     pub static DEVICE_DESCRIPTOR: DeviceDescriptor = DeviceDescriptor {
@@ -50,58 +49,50 @@ pub mod cdc {
         ..DeviceDescriptor::new()
     };
 
-    pub static CONFIGURATION_DESCRIPTOR_0: ConfigurationDescriptor = ConfigurationDescriptor {
-        _length: 0,
-        descriptor_type: DescriptorType::Configuration, // TODO
-        _total_length: 0,
-        _num_interfaces: 0,
-        configuration_value: 1,
-        configuration_string_index: 1,
-        attributes: 0x80, // 0b1000_0000 = bus-powered
-        max_power: 50,    // 50 * 2 mA = 100 mA
-        interface_descriptors: &[&INTERFACE_DESCRIPTOR_0],
-    };
-
-    pub static INTERFACE_DESCRIPTOR_0: InterfaceDescriptor = InterfaceDescriptor {
-        _length: 0,
-        _descriptor_type: DescriptorType::Interface as u8,
-        interface_number: 0,
-        alternate_setting: 0,
-        _num_endpoints: 0,
-        interface_class: 0xff,    // Vendor-specific
-        interface_subclass: 0x01, // Vendor-specific
-        interface_protocol: 0x02, // CDC
-        interface_string_index: 2,
-        endpoint_descriptors: &[
-            &ENDPOINT_DESCRIPTOR_82,
-            &ENDPOINT_DESCRIPTOR_02,
-            &ENDPOINT_DESCRIPTOR_81,
-        ],
-    };
-
-    pub static ENDPOINT_DESCRIPTOR_82: EndpointDescriptor = EndpointDescriptor {
-        endpoint_address: 0x82, // IN
-        attributes: 0x02,       // Bulk
-        max_packet_size: 512,   // technically 32
-        interval: 0,
-        ..EndpointDescriptor::new()
-    };
-
-    pub static ENDPOINT_DESCRIPTOR_02: EndpointDescriptor = EndpointDescriptor {
-        endpoint_address: 0x02, // OUT
-        attributes: 0x02,       // Bulk
-        max_packet_size: 512,   // technically 32
-        interval: 0,
-        ..EndpointDescriptor::new()
-    };
-
-    pub static ENDPOINT_DESCRIPTOR_81: EndpointDescriptor = EndpointDescriptor {
-        endpoint_address: 0x81, // IN
-        attributes: 0x03,       // Interrupt
-        max_packet_size: 8,
-        interval: 1, // 1ms
-        ..EndpointDescriptor::new()
-    };
+    pub static CONFIGURATION_DESCRIPTOR_0: ConfigurationDescriptor = ConfigurationDescriptor::new(
+        ConfigurationDescriptorHeader {
+            descriptor_type: DescriptorType::Configuration as u8, // TODO
+            configuration_value: 1,
+            configuration_string_index: 1,
+            attributes: 0x80, // 0b1000_0000 = bus-powered
+            max_power: 50,    // 50 * 2 mA = 100 mA
+            ..ConfigurationDescriptorHeader::new()
+        },
+        &[InterfaceDescriptor::new(
+            InterfaceDescriptorHeader {
+                interface_number: 0,
+                alternate_setting: 0,
+                interface_class: 0xff,    // Vendor-specific
+                interface_subclass: 0x01, // Vendor-specific
+                interface_protocol: 0x02, // CDC
+                interface_string_index: 2,
+                ..InterfaceDescriptorHeader::new()
+            },
+            &[
+                EndpointDescriptor {
+                    endpoint_address: 0x82, // IN
+                    attributes: 0x02,       // Bulk
+                    max_packet_size: 512,   // technically 32
+                    interval: 0,
+                    ..EndpointDescriptor::new()
+                },
+                EndpointDescriptor {
+                    endpoint_address: 0x02, // OUT
+                    attributes: 0x02,       // Bulk
+                    max_packet_size: 512,   // technically 32
+                    interval: 0,
+                    ..EndpointDescriptor::new()
+                },
+                EndpointDescriptor {
+                    endpoint_address: 0x81, // IN
+                    attributes: 0x03,       // Interrupt
+                    max_packet_size: 8,
+                    interval: 1, // 1ms
+                    ..EndpointDescriptor::new()
+                },
+            ],
+        )],
+    );
 
     pub static USB_STRING_DESCRIPTOR_0: StringDescriptorZero =
         StringDescriptorZero::new(&[LanguageId::EnglishUnitedStates]);

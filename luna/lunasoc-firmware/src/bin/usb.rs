@@ -19,10 +19,7 @@ use hal::smolusb;
 use pac::csr::interrupt;
 
 use smolusb::control::SetupPacket;
-use smolusb::descriptor::{
-    ConfigurationDescriptor, DescriptorType, DeviceDescriptor, DeviceQualifierDescriptor,
-    EndpointDescriptor, InterfaceDescriptor, LanguageId, StringDescriptor, StringDescriptorZero,
-};
+use smolusb::descriptor::*;
 use smolusb::device::{DeviceState, Speed, UsbDevice};
 use smolusb::traits::{ControlRead, EndpointRead, EndpointWrite, UsbDriverOperations};
 
@@ -307,97 +304,73 @@ static USB_DEVICE_QUALIFIER_DESCRIPTOR: DeviceQualifierDescriptor = DeviceQualif
     ..DeviceQualifierDescriptor::new()
 };
 
-static USB_CONFIG_DESCRIPTOR_0: ConfigurationDescriptor = ConfigurationDescriptor {
-    _length: 9,
-    descriptor_type: DescriptorType::Configuration, // TODO
-    _total_length: 24, // config descriptor + interface descriptors + endpoint descriptors
-    _num_interfaces: 1,
-    configuration_value: 1,
-    configuration_string_index: 1,
-    attributes: 0x80, // 0b1000_0000
-    max_power: 50,    // 50 * 2 mA = 100 mA
-    interface_descriptors: &[&USB_INTERFACE_DESCRIPTOR_0],
-};
+static USB_CONFIG_DESCRIPTOR_0: ConfigurationDescriptor = ConfigurationDescriptor::new(
+    ConfigurationDescriptorHeader {
+        configuration_value: 1,
+        configuration_string_index: 1,
+        attributes: 0x80, // 0b1000_0000
+        max_power: 50,    // 50 * 2 mA = 100 mA
+        ..ConfigurationDescriptorHeader::new()
+    },
+    &[InterfaceDescriptor::new(
+        InterfaceDescriptorHeader {
+            interface_number: 0,
+            alternate_setting: 0,
+            interface_class: 0xff, // Vendor Specific - https://www.usb.org/defined-class-codes
+            interface_subclass: 0x00,
+            interface_protocol: 0x00, // 0x02 is CDC
+            interface_string_index: 2,
+            ..InterfaceDescriptorHeader::new()
+        },
+        &[
+            EndpointDescriptor {
+                endpoint_address: 0x01, // OUT
+                attributes: 0x02,       // Bulk
+                max_packet_size: 512,
+                interval: 0,
+                ..EndpointDescriptor::new()
+            },
+            EndpointDescriptor {
+                endpoint_address: 0x02, // OUT
+                attributes: 0x02,       // Bulk
+                max_packet_size: 512,
+                interval: 0,
+                ..EndpointDescriptor::new()
+            },
+            EndpointDescriptor {
+                endpoint_address: 0x04, // OUT
+                attributes: 0x02,       // Bulk
+                max_packet_size: 512,
+                interval: 0,
+                ..EndpointDescriptor::new()
+            },
+            EndpointDescriptor {
+                endpoint_address: 0x81, // IN
+                attributes: 0x02,       // Bulk
+                max_packet_size: 512,
+                interval: 0,
+                ..EndpointDescriptor::new()
+            },
+            EndpointDescriptor {
+                endpoint_address: 0x82, // IN
+                attributes: 0x03,       // Interrupt
+                max_packet_size: 8,
+                interval: 1, // x 1ms for low/full speed, 125us for high speed
+                ..EndpointDescriptor::new()
+            },
+        ],
+    )],
+);
 
-static USB_OTHER_SPEED_CONFIG_DESCRIPTOR_0: ConfigurationDescriptor = ConfigurationDescriptor {
-    _length: 9,
-    descriptor_type: DescriptorType::OtherSpeedConfiguration, // TODO
-    _total_length: 36, // config descriptor + interface descriptors + endpoint descriptors
-    _num_interfaces: 1,
-    configuration_value: 1,
-    configuration_string_index: 1,
-    attributes: 0x80, // 0b1000_0000
-    max_power: 50,    // 50 * 2 mA = 100 mA
-    interface_descriptors: &[&USB_INTERFACE_DESCRIPTOR_0],
-};
-
-static USB_INTERFACE_DESCRIPTOR_0: InterfaceDescriptor = InterfaceDescriptor {
-    _length: 9,
-    _descriptor_type: DescriptorType::Interface as u8,
-    interface_number: 0,
-    alternate_setting: 0,
-    _num_endpoints: 1,
-    interface_class: 0xff, // Vendor Specific - https://www.usb.org/defined-class-codes
-    interface_subclass: 0x00,
-    interface_protocol: 0x00, // 0x02 is CDC
-    interface_string_index: 2,
-    endpoint_descriptors: &[
-        &USB_ENDPOINT_DESCRIPTOR_01,
-        &USB_ENDPOINT_DESCRIPTOR_02,
-        &USB_ENDPOINT_DESCRIPTOR_03,
-        &USB_ENDPOINT_DESCRIPTOR_04,
-        &USB_ENDPOINT_DESCRIPTOR_81,
-        &USB_ENDPOINT_DESCRIPTOR_82,
-    ],
-};
-
-static USB_ENDPOINT_DESCRIPTOR_01: EndpointDescriptor = EndpointDescriptor {
-    endpoint_address: 0x01, // OUT
-    attributes: 0x02,       // Bulk
-    max_packet_size: 512,
-    interval: 0,
-    ..EndpointDescriptor::new()
-};
-
-static USB_ENDPOINT_DESCRIPTOR_02: EndpointDescriptor = EndpointDescriptor {
-    endpoint_address: 0x02, // OUT
-    attributes: 0x02,       // Bulk
-    max_packet_size: 512,
-    interval: 0,
-    ..EndpointDescriptor::new()
-};
-
-static USB_ENDPOINT_DESCRIPTOR_03: EndpointDescriptor = EndpointDescriptor {
-    endpoint_address: 0x03, // OUT
-    attributes: 0x02,       // Bulk
-    max_packet_size: 512,
-    interval: 0,
-    ..EndpointDescriptor::new()
-};
-
-static USB_ENDPOINT_DESCRIPTOR_04: EndpointDescriptor = EndpointDescriptor {
-    endpoint_address: 0x04, // OUT
-    attributes: 0x02,       // Bulk
-    max_packet_size: 512,
-    interval: 0,
-    ..EndpointDescriptor::new()
-};
-
-static USB_ENDPOINT_DESCRIPTOR_81: EndpointDescriptor = EndpointDescriptor {
-    endpoint_address: 0x81, // IN
-    attributes: 0x02,       // Bulk
-    max_packet_size: 512,
-    interval: 0,
-    ..EndpointDescriptor::new()
-};
-
-static USB_ENDPOINT_DESCRIPTOR_82: EndpointDescriptor = EndpointDescriptor {
-    endpoint_address: 0x82, // IN
-    attributes: 0x03,       // Interrupt
-    max_packet_size: 8,
-    interval: 1, // x 1ms for low/full speed, 125us for high speed
-    ..EndpointDescriptor::new()
-};
+static USB_OTHER_SPEED_CONFIG_DESCRIPTOR_0: ConfigurationDescriptorHeader =
+    ConfigurationDescriptorHeader {
+        descriptor_type: DescriptorType::OtherSpeedConfiguration as u8,
+        configuration_value: 1,
+        configuration_string_index: 1,
+        attributes: 0x80,                       // 0b1000_0000
+        max_power: 50,                          // 50 * 2 mA = 100 mA
+        ..ConfigurationDescriptorHeader::new() //interface_descriptors: &[&USB_INTERFACE_DESCRIPTOR_0],
+    };
 
 static USB_STRING_DESCRIPTOR_0: StringDescriptorZero =
     StringDescriptorZero::new(&[LanguageId::EnglishUnitedStates]);

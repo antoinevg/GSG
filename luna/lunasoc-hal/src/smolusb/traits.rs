@@ -69,14 +69,3 @@ trait AsIterator<'a> {
     type AsIter: Iterator<Item = Self::Item>;
     fn as_iter(&'a self) -> Self::AsIter;
 }
-
-// - TotalLength --------------------------------------------------------------
-
-// pretty much useless if it can't be const
-pub trait GetTotalLength {
-    fn total_length(&self, tail_count: usize) -> usize;
-}
-
-pub trait SetTotalLength {
-    fn set_total_length(&mut self, total_length: usize);
-}

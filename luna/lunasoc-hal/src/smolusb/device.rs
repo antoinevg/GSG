@@ -63,7 +63,8 @@ pub enum DeviceState {
 pub struct UsbDevice<'a, D> {
     pub hal_driver: &'a D,
     device_descriptor: &'a DeviceDescriptor,
-    configuration_descriptor: &'a ConfigurationDescriptor<'a>,
+    //configuration_descriptor: &'a ConfigurationDescriptor<'a>,
+    configuration_descriptor: ConfigurationDescriptor<'a>,
     string_descriptor_zero: &'a StringDescriptorZero<'a>,
     string_descriptors: &'a [&'a StringDescriptor<'a>],
     // TODO DeviceQualifierDescriptor
@@ -72,9 +73,12 @@ pub struct UsbDevice<'a, D> {
     pub reset_count: usize,
     pub feature_remote_wakeup: bool,
 
-    pub cb_class_request: Option<fn(device: &UsbDevice<'a, D>, setup_packet: &SetupPacket, request: u8)>,
-    pub cb_vendor_request: Option<fn(device: &UsbDevice<'a, D>, setup_packet: &SetupPacket, request: u8)>,
-    pub cb_string_request: Option<fn(device: &UsbDevice<'a, D>, setup_packet: &SetupPacket, index: u8)>,
+    pub cb_class_request:
+        Option<fn(device: &UsbDevice<'a, D>, setup_packet: &SetupPacket, request: u8)>,
+    pub cb_vendor_request:
+        Option<fn(device: &UsbDevice<'a, D>, setup_packet: &SetupPacket, request: u8)>,
+    pub cb_string_request:
+        Option<fn(device: &UsbDevice<'a, D>, setup_packet: &SetupPacket, index: u8)>,
 }
 
 impl<'a, D> UsbDevice<'a, D>
@@ -88,6 +92,15 @@ where
         string_descriptor_zero: &'a StringDescriptorZero<'a>,
         string_descriptors: &'a [&'a StringDescriptor<'a>],
     ) -> Self {
+        // Calculate and update descriptor length fields
+        // TODO this ain't great but it will do for now
+        let mut configuration_descriptor = configuration_descriptor.clone();
+        let total_length = configuration_descriptor.set_total_length();
+        debug!(
+            "  ConfigurationDescriptor total length: {} bytes",
+            total_length
+        );
+
         Self {
             hal_driver,
             device_descriptor,
@@ -168,9 +181,7 @@ where
             (RequestType::Standard, Request::ClearFeature) => {
                 self.handle_clear_feature(setup_packet)
             }
-            (RequestType::Standard, Request::SetFeature) => {
-                self.handle_set_feature(setup_packet)
-            },
+            (RequestType::Standard, Request::SetFeature) => self.handle_set_feature(setup_packet),
             (RequestType::Class, Request::ClassOrVendor(request)) => {
                 if let Some(cb) = self.cb_class_request {
                     cb(self, setup_packet, *request);
@@ -182,7 +193,7 @@ where
                     self.hal_driver.stall_request();
                 }
                 Ok(())
-            },
+            }
             (RequestType::Vendor, Request::ClassOrVendor(request)) => {
                 if let Some(cb) = self.cb_vendor_request {
                     cb(self, setup_packet, *request);
@@ -194,7 +205,7 @@ where
                     self.hal_driver.stall_request();
                 }
                 Ok(())
-            },
+            }
             _ => {
                 warn!(
                     "   stall: unhandled request {:?} {:?}",
@@ -241,7 +252,7 @@ where
             (DescriptorType::Device, 0) => self
                 .hal_driver
                 .write_ref(0, self.device_descriptor.as_iter().take(requested_length)),
-            (DescriptorType::Configuration, 0) => self.hal_driver.write(
+            (DescriptorType::Configuration, 0) => self.hal_driver.write_ref(
                 0,
                 self.configuration_descriptor.iter().take(requested_length),
             ),

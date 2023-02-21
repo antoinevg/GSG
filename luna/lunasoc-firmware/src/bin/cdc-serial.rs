@@ -239,7 +239,6 @@ fn main() -> ! {
     }
 }
 
-
 // - vendor request handlers --------------------------------------------------
 
 fn handle_vendor_request<'a, D>(device: &UsbDevice<'a, D>, setup_packet: &SetupPacket, request: u8)
@@ -253,7 +252,6 @@ where
     device.hal_driver.write(0, [0, 0].into_iter());
     device.hal_driver.ack_status_stage(setup_packet);
 }
-
 
 fn handle_string_request<'a, D>(device: &UsbDevice<'a, D>, setup_packet: &SetupPacket, index: u8)
 where
