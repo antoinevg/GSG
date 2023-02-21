@@ -3,7 +3,7 @@
 mod error;
 pub use error::ErrorKind;
 
-// - UsbInterface0 ------------------------------------------------------------
+// - Usb0 ---------------------------------------------------------------------
 
 //use libgreat::smolusb::control::*;
 use crate::smolusb::control::*; // TODO
@@ -17,7 +17,7 @@ use pac::interrupt::Interrupt;
 use log::{trace, warn};
 
 pub struct Usb0 {
-    pub device: pac::USB0,
+    pub controller: pac::USB0,
     pub ep_control: pac::USB0_EP_CONTROL,
     pub ep_in: pac::USB0_EP_IN,
     pub ep_out: pac::USB0_EP_OUT,
@@ -26,13 +26,13 @@ pub struct Usb0 {
 impl Usb0 {
     /// Create a new `Usb` from the [`USB`](pac::USB) peripheral.
     pub fn new(
-        device: pac::USB0,
+        controller: pac::USB0,
         ep_control: pac::USB0_EP_CONTROL,
         ep_in: pac::USB0_EP_IN,
         ep_out: pac::USB0_EP_OUT,
     ) -> Self {
         Self {
-            device,
+            controller,
             ep_control,
             ep_in,
             ep_out,
@@ -48,7 +48,7 @@ impl Usb0 {
         pac::USB0_EP_IN,
         pac::USB0_EP_OUT,
     ) {
-        (self.device, self.ep_control, self.ep_in, self.ep_out)
+        (self.controller, self.ep_control, self.ep_in, self.ep_out)
     }
 
     /// Obtain a static `Usb` instance for use in e.g. interrupt handlers
@@ -58,7 +58,7 @@ impl Usb0 {
     /// 'Tis thine responsibility, that which thou doth summon.
     pub unsafe fn summon() -> Self {
         Self {
-            device: pac::Peripherals::steal().USB0,
+            controller: pac::Peripherals::steal().USB0,
             ep_control: pac::Peripherals::steal().USB0_EP_CONTROL,
             ep_in: pac::Peripherals::steal().USB0_EP_IN,
             ep_out: pac::Peripherals::steal().USB0_EP_OUT,
@@ -91,7 +91,7 @@ impl Usb0 {
     pub fn clear_pending(&self, interrupt: Interrupt) {
         match interrupt {
             Interrupt::USB0 => self
-                .device
+                .controller
                 .ev_pending
                 .modify(|r, w| w.pending().bit(r.pending().bit())),
             Interrupt::USB0_EP_CONTROL => self
@@ -115,7 +115,7 @@ impl Usb0 {
     // TODO &mut self
     pub fn enable_interrupt(&self, interrupt: Interrupt) {
         match interrupt {
-            Interrupt::USB0 => self.device.ev_enable.write(|w| w.enable().bit(true)),
+            Interrupt::USB0 => self.controller.ev_enable.write(|w| w.enable().bit(true)),
             Interrupt::USB0_EP_CONTROL => self.ep_control.ev_enable.write(|w| w.enable().bit(true)),
             Interrupt::USB0_EP_IN => self.ep_in.ev_enable.write(|w| w.enable().bit(true)),
             Interrupt::USB0_EP_OUT => self.ep_out.ev_enable.write(|w| w.enable().bit(true)),
@@ -128,7 +128,7 @@ impl Usb0 {
     // TODO &mut self
     pub fn disable_interrupt(&self, interrupt: Interrupt) {
         match interrupt {
-            Interrupt::USB0 => self.device.ev_enable.write(|w| w.enable().bit(false)),
+            Interrupt::USB0 => self.controller.ev_enable.write(|w| w.enable().bit(false)),
             Interrupt::USB0_EP_CONTROL => {
                 self.ep_control.ev_enable.write(|w| w.enable().bit(false))
             }
@@ -168,7 +168,7 @@ impl UsbDriverOperations for Usb0 {
     /// Set the interface up for new connections
     fn connect(&self) -> u8 {
         // disconnect device controller
-        self.device.connect.write(|w| w.connect().bit(false));
+        self.controller.connect.write(|w| w.connect().bit(false));
 
         // disable endpoint events
         self.disable_interrupt(Interrupt::USB0);
@@ -182,10 +182,10 @@ impl UsbDriverOperations for Usb0 {
         self.ep_out.reset.write(|w| w.reset().bit(true));
 
         // connect device controller
-        self.device.connect.write(|w| w.connect().bit(true));
+        self.controller.connect.write(|w| w.connect().bit(true));
 
         // 0: High, 1: Full, 2: Low, 3:SuperSpeed (incl SuperSpeed+)
-        self.device.speed.read().speed().bits()
+        self.controller.speed.read().speed().bits()
     }
 
     fn reset(&self) -> u8 {
@@ -208,7 +208,7 @@ impl UsbDriverOperations for Usb0 {
 
         // TODO handle speed
         // 0: High, 1: Full, 2: Low, 3:SuperSpeed (incl SuperSpeed+)
-        let speed = self.device.speed.read().speed().bits();
+        let speed = self.controller.speed.read().speed().bits();
         trace!("UsbInterface0::reset() -> {}", speed);
         speed
     }

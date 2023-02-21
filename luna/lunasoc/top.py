@@ -71,19 +71,33 @@ class LunaSoCExample(Elaboratable):
         # ... add some bulk RAM ...
         # TODO soc.add_ram(0x4000, name="bulkram")
 
-        # ... a core USB controller ...
+        # ... the core USB controllers and eptri peripherals ...
         self.usb0 = USBDeviceController()
-        self.soc.add_peripheral(self.usb0, addr=0x80002000)
-
-        # ... our eptri peripherals.
         self.usb0_ep_control = SetupFIFOInterface()
-        self.soc.add_peripheral(self.usb0_ep_control, as_submodule=False)
-
         self.usb0_ep_in = InFIFOInterface()
-        self.soc.add_peripheral(self.usb0_ep_in, as_submodule=False)
-
         self.usb0_ep_out = OutFIFOInterface()
+        self.soc.add_peripheral(self.usb0, addr=0x80002000)
+        self.soc.add_peripheral(self.usb0_ep_control, as_submodule=False)
+        self.soc.add_peripheral(self.usb0_ep_in, as_submodule=False)
         self.soc.add_peripheral(self.usb0_ep_out, as_submodule=False)
+
+        self.usb1 = USBDeviceController()
+        self.usb1_ep_control = SetupFIFOInterface()
+        self.usb1_ep_in = InFIFOInterface()
+        self.usb1_ep_out = OutFIFOInterface()
+        self.soc.add_peripheral(self.usb1, addr=0x80003000)
+        self.soc.add_peripheral(self.usb1_ep_control, as_submodule=False)
+        self.soc.add_peripheral(self.usb1_ep_in, as_submodule=False)
+        self.soc.add_peripheral(self.usb1_ep_out, as_submodule=False)
+
+        # self.usb2 = USBDeviceController()
+        # self.usb2_ep_control = SetupFIFOInterface()
+        # self.usb2_ep_in = InFIFOInterface()
+        # self.usb2_ep_out = OutFIFOInterface()
+        # self.soc.add_peripheral(self.usb2, addr=0x80004000)
+        # self.soc.add_peripheral(self.usb2_ep_control, as_submodule=False)
+        # self.soc.add_peripheral(self.usb2_ep_in, as_submodule=False)
+        # self.soc.add_peripheral(self.usb2_ep_out, as_submodule=False)
 
         # ... and our LED peripheral, for simple output.
         self.leds = LedPeripheral()
@@ -106,18 +120,30 @@ class LunaSoCExample(Elaboratable):
         if hasattr(uart_io.tx, 'oe'):
             m.d.comb += uart_io.tx.oe.eq(~self.soc.uart._phy.tx.rdy),
 
-        # create our USB device
-        ulpi = platform.request(platform.default_usb_connection)
-        usb_device = USBDevice(bus=ulpi)
-        m.submodules.usb_device = usb_device
+        # create our USB devices, connect device controllers and add eptri endpoint handlers
+        ulpi0 = platform.request(platform.default_usb_connection) # target_phy
+        usb0_device = USBDevice(bus=ulpi0)
+        usb0_device.add_endpoint(self.usb0_ep_control)
+        usb0_device.add_endpoint(self.usb0_ep_in)
+        usb0_device.add_endpoint(self.usb0_ep_out)
+        m.d.comb += self.usb0.attach(usb0_device)
+        m.submodules.usb0_device = usb0_device
 
-        # connect up our device controller
-        m.d.comb += self.usb0.attach(usb_device)
+        ulpi1 = platform.request("host_phy")
+        usb1_device = USBDevice(bus=ulpi1)
+        usb1_device.add_endpoint(self.usb1_ep_control)
+        usb1_device.add_endpoint(self.usb1_ep_in)
+        usb1_device.add_endpoint(self.usb1_ep_out)
+        m.d.comb += self.usb1.attach(usb1_device)
+        m.submodules.usb1_device = usb1_device
 
-        # add our eptri endpoint handlers
-        usb_device.add_endpoint(self.usb0_ep_control)
-        usb_device.add_endpoint(self.usb0_ep_in)
-        usb_device.add_endpoint(self.usb0_ep_out)
+        # ulpi2 = platform.request("sideband_phy")
+        # usb2_device = USBDevice(bus=ulpi2)
+        # usb2_device.add_endpoint(self.usb2_ep_control)
+        # usb2_device.add_endpoint(self.usb2_ep_in)
+        # usb2_device.add_endpoint(self.usb2_ep_out)
+        # m.d.comb += self.usb2.attach(usb2_device)
+        # m.submodules.usb2_device = usb2_device
 
         return m
 
