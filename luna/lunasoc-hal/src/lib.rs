@@ -13,7 +13,7 @@ pub mod usb;
 // export peripherals
 pub use serial::Serial;
 pub use timer::Timer;
-pub use usb::Usb0;
+pub use usb::{Usb0, Usb1};
 
 // re-export dependencies
 pub use libgreat::Result;
