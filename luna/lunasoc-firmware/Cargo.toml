@@ -10,9 +10,9 @@ rust-version = "1.68"
 default-run = "firmware"
 
 [package.metadata.docs.rs]
-default-target = "riscv32im-unknown-none-elf"
+default-target = "riscv32i-unknown-none-elf"
 targets = [
-    "riscv32im-unknown-none-elf",
+    "riscv32i-unknown-none-elf",
 ]
 
 # - features ------------------------------------------------------------------

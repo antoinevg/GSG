@@ -50,7 +50,6 @@ class LedPeripheral(Peripheral, Elaboratable):
 
         return m
 
-
 # - LunaSoCExample ------------------------------------------------------------
 
 class LunaSoCExample(Elaboratable):
@@ -90,14 +89,14 @@ class LunaSoCExample(Elaboratable):
         self.soc.add_peripheral(self.usb1_ep_in, as_submodule=False)
         self.soc.add_peripheral(self.usb1_ep_out, as_submodule=False)
 
-        # self.usb2 = USBDeviceController()
-        # self.usb2_ep_control = SetupFIFOInterface()
-        # self.usb2_ep_in = InFIFOInterface()
-        # self.usb2_ep_out = OutFIFOInterface()
-        # self.soc.add_peripheral(self.usb2, addr=0x80004000)
-        # self.soc.add_peripheral(self.usb2_ep_control, as_submodule=False)
-        # self.soc.add_peripheral(self.usb2_ep_in, as_submodule=False)
-        # self.soc.add_peripheral(self.usb2_ep_out, as_submodule=False)
+        self.usb2 = USBDeviceController()
+        self.usb2_ep_control = SetupFIFOInterface()
+        self.usb2_ep_in = InFIFOInterface()
+        self.usb2_ep_out = OutFIFOInterface()
+        self.soc.add_peripheral(self.usb2, addr=0x80004000)
+        self.soc.add_peripheral(self.usb2_ep_control, as_submodule=False)
+        self.soc.add_peripheral(self.usb2_ep_in, as_submodule=False)
+        self.soc.add_peripheral(self.usb2_ep_out, as_submodule=False)
 
         # ... and our LED peripheral, for simple output.
         self.leds = LedPeripheral()
@@ -137,13 +136,13 @@ class LunaSoCExample(Elaboratable):
         m.d.comb += self.usb1.attach(usb1_device)
         m.submodules.usb1_device = usb1_device
 
-        # ulpi2 = platform.request("sideband_phy")
-        # usb2_device = USBDevice(bus=ulpi2)
-        # usb2_device.add_endpoint(self.usb2_ep_control)
-        # usb2_device.add_endpoint(self.usb2_ep_in)
-        # usb2_device.add_endpoint(self.usb2_ep_out)
-        # m.d.comb += self.usb2.attach(usb2_device)
-        # m.submodules.usb2_device = usb2_device
+        ulpi2 = platform.request("sideband_phy")
+        usb2_device = USBDevice(bus=ulpi2)
+        usb2_device.add_endpoint(self.usb2_ep_control)
+        usb2_device.add_endpoint(self.usb2_ep_in)
+        usb2_device.add_endpoint(self.usb2_ep_out)
+        m.d.comb += self.usb2.attach(usb2_device)
+        m.submodules.usb2_device = usb2_device
 
         return m
 
@@ -159,7 +158,7 @@ if __name__ == "__main__":
     from generate import Generate
 
     # Disable UnusedElaborable warnings
-    from amaranth._unused   import MustUse
+    from amaranth._unused import MustUse
     MustUse._MustUse__silence = True
 
     build_dir = os.path.join("build")
@@ -199,7 +198,10 @@ if __name__ == "__main__":
 
     # build soc
     logging.info("Building soc")
-    products = platform.build(design, do_program=False, build_dir=build_dir)
+    overrides = {
+        "debug_verilog": True,
+    }
+    products = platform.build(design, do_program=False, build_dir=build_dir, **overrides)
 
     # log resources
     from lunasoc import Introspect

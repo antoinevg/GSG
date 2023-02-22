@@ -59,7 +59,7 @@ class CoreSoC(CPUSoC, Elaboratable):
             dcache_nways  = 1,
             dcache_base   = self.internal_sram_addr,
             dcache_limit  = self.internal_sram_addr + self.internal_sram_size,
-            with_muldiv   = True,
+            with_muldiv   = False,
             reset_address = 0x00000000,
         )
 

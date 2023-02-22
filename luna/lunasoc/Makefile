@@ -9,7 +9,7 @@ AR=riscv64-unknown-elf-ar
 CC=riscv64-unknown-elf-gcc
 OBJCOPY=riscv64-unknown-elf-objcopy
 
-CFLAGS	= -march=rv32im -mabi=ilp32 -g -Os -I./build/genc/
+CFLAGS	= -march=rv32i -mabi=ilp32 -g -Os -I./build/genc/
 LDFLAGS = -Tsoc.ld -Triscv_application.ld  -nostdlib -L./build/genc/ -L./examples/
 
 LUNASOC_PAC := ../lunasoc-pac
