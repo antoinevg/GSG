@@ -18,6 +18,10 @@ extern "C" {
     fn USB1_EP_CONTROL();
     fn USB1_EP_IN();
     fn USB1_EP_OUT();
+    fn USB2();
+    fn USB2_EP_CONTROL();
+    fn USB2_EP_IN();
+    fn USB2_EP_OUT();
 }
 #[doc(hidden)]
 pub union Vector {
@@ -27,7 +31,7 @@ pub union Vector {
 #[cfg(feature = "rt")]
 #[doc(hidden)]
 #[no_mangle]
-pub static __EXTERNAL_INTERRUPTS: [Vector; 10] = [
+pub static __EXTERNAL_INTERRUPTS: [Vector; 14] = [
     Vector { _handler: TIMER },
     Vector { _handler: UART },
     Vector { _handler: USB0 },
@@ -49,6 +53,16 @@ pub static __EXTERNAL_INTERRUPTS: [Vector; 10] = [
     },
     Vector {
         _handler: USB1_EP_OUT,
+    },
+    Vector { _handler: USB2 },
+    Vector {
+        _handler: USB2_EP_CONTROL,
+    },
+    Vector {
+        _handler: USB2_EP_IN,
+    },
+    Vector {
+        _handler: USB2_EP_OUT,
     },
 ];
 #[doc(hidden)]
@@ -334,6 +348,118 @@ impl core::fmt::Debug for USB1_EP_OUT {
 }
 #[doc = "USB1_EP_OUT"]
 pub mod usb1_ep_out;
+#[doc = "USB2"]
+pub struct USB2 {
+    _marker: PhantomData<*const ()>,
+}
+unsafe impl Send for USB2 {}
+impl USB2 {
+    #[doc = r"Pointer to the register block"]
+    pub const PTR: *const usb2::RegisterBlock = 0x8000_4000 as *const _;
+    #[doc = r"Return the pointer to the register block"]
+    #[inline(always)]
+    pub const fn ptr() -> *const usb2::RegisterBlock {
+        Self::PTR
+    }
+}
+impl Deref for USB2 {
+    type Target = usb2::RegisterBlock;
+    #[inline(always)]
+    fn deref(&self) -> &Self::Target {
+        unsafe { &*Self::PTR }
+    }
+}
+impl core::fmt::Debug for USB2 {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        f.debug_struct("USB2").finish()
+    }
+}
+#[doc = "USB2"]
+pub mod usb2;
+#[doc = "USB2_EP_CONTROL"]
+pub struct USB2_EP_CONTROL {
+    _marker: PhantomData<*const ()>,
+}
+unsafe impl Send for USB2_EP_CONTROL {}
+impl USB2_EP_CONTROL {
+    #[doc = r"Pointer to the register block"]
+    pub const PTR: *const usb2_ep_control::RegisterBlock = 0x8000_4040 as *const _;
+    #[doc = r"Return the pointer to the register block"]
+    #[inline(always)]
+    pub const fn ptr() -> *const usb2_ep_control::RegisterBlock {
+        Self::PTR
+    }
+}
+impl Deref for USB2_EP_CONTROL {
+    type Target = usb2_ep_control::RegisterBlock;
+    #[inline(always)]
+    fn deref(&self) -> &Self::Target {
+        unsafe { &*Self::PTR }
+    }
+}
+impl core::fmt::Debug for USB2_EP_CONTROL {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        f.debug_struct("USB2_EP_CONTROL").finish()
+    }
+}
+#[doc = "USB2_EP_CONTROL"]
+pub mod usb2_ep_control;
+#[doc = "USB2_EP_IN"]
+pub struct USB2_EP_IN {
+    _marker: PhantomData<*const ()>,
+}
+unsafe impl Send for USB2_EP_IN {}
+impl USB2_EP_IN {
+    #[doc = r"Pointer to the register block"]
+    pub const PTR: *const usb2_ep_in::RegisterBlock = 0x8000_4080 as *const _;
+    #[doc = r"Return the pointer to the register block"]
+    #[inline(always)]
+    pub const fn ptr() -> *const usb2_ep_in::RegisterBlock {
+        Self::PTR
+    }
+}
+impl Deref for USB2_EP_IN {
+    type Target = usb2_ep_in::RegisterBlock;
+    #[inline(always)]
+    fn deref(&self) -> &Self::Target {
+        unsafe { &*Self::PTR }
+    }
+}
+impl core::fmt::Debug for USB2_EP_IN {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        f.debug_struct("USB2_EP_IN").finish()
+    }
+}
+#[doc = "USB2_EP_IN"]
+pub mod usb2_ep_in;
+#[doc = "USB2_EP_OUT"]
+pub struct USB2_EP_OUT {
+    _marker: PhantomData<*const ()>,
+}
+unsafe impl Send for USB2_EP_OUT {}
+impl USB2_EP_OUT {
+    #[doc = r"Pointer to the register block"]
+    pub const PTR: *const usb2_ep_out::RegisterBlock = 0x8000_4100 as *const _;
+    #[doc = r"Return the pointer to the register block"]
+    #[inline(always)]
+    pub const fn ptr() -> *const usb2_ep_out::RegisterBlock {
+        Self::PTR
+    }
+}
+impl Deref for USB2_EP_OUT {
+    type Target = usb2_ep_out::RegisterBlock;
+    #[inline(always)]
+    fn deref(&self) -> &Self::Target {
+        unsafe { &*Self::PTR }
+    }
+}
+impl core::fmt::Debug for USB2_EP_OUT {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        f.debug_struct("USB2_EP_OUT").finish()
+    }
+}
+#[doc = "USB2_EP_OUT"]
+pub mod usb2_ep_out;
 #[doc = "LEDS"]
 pub struct LEDS {
     _marker: PhantomData<*const ()>,
@@ -341,7 +467,7 @@ pub struct LEDS {
 unsafe impl Send for LEDS {}
 impl LEDS {
     #[doc = r"Pointer to the register block"]
-    pub const PTR: *const leds::RegisterBlock = 0x8000_3180 as *const _;
+    pub const PTR: *const leds::RegisterBlock = 0x8000_4180 as *const _;
     #[doc = r"Return the pointer to the register block"]
     #[inline(always)]
     pub const fn ptr() -> *const leds::RegisterBlock {
@@ -387,6 +513,14 @@ pub struct Peripherals {
     pub USB1_EP_IN: USB1_EP_IN,
     #[doc = "USB1_EP_OUT"]
     pub USB1_EP_OUT: USB1_EP_OUT,
+    #[doc = "USB2"]
+    pub USB2: USB2,
+    #[doc = "USB2_EP_CONTROL"]
+    pub USB2_EP_CONTROL: USB2_EP_CONTROL,
+    #[doc = "USB2_EP_IN"]
+    pub USB2_EP_IN: USB2_EP_IN,
+    #[doc = "USB2_EP_OUT"]
+    pub USB2_EP_OUT: USB2_EP_OUT,
     #[doc = "LEDS"]
     pub LEDS: LEDS,
 }
@@ -439,6 +573,18 @@ impl Peripherals {
                 _marker: PhantomData,
             },
             USB1_EP_OUT: USB1_EP_OUT {
+                _marker: PhantomData,
+            },
+            USB2: USB2 {
+                _marker: PhantomData,
+            },
+            USB2_EP_CONTROL: USB2_EP_CONTROL {
+                _marker: PhantomData,
+            },
+            USB2_EP_IN: USB2_EP_IN {
+                _marker: PhantomData,
+            },
+            USB2_EP_OUT: USB2_EP_OUT {
                 _marker: PhantomData,
             },
             LEDS: LEDS {

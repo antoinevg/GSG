@@ -13,9 +13,9 @@ rust-version = "1.68"
 include = ["src/**/*", "README.md", "device.x", "build.rs"]
 
 [package.metadata.docs.rs]
-default-target = "riscv32im-unknown-none-elf"
+default-target = "riscv32i-unknown-none-elf"
 targets = [
-    "riscv32im-unknown-none-elf",
+    "riscv32i-unknown-none-elf",
 ]
 
 
