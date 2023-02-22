@@ -425,4 +425,5 @@ macro_rules! impl_usb {
 impl_usb! {
     Usb0: USB0, USB0_EP_CONTROL, USB0_EP_IN, USB0_EP_OUT,
     Usb1: USB1, USB1_EP_CONTROL, USB1_EP_IN, USB1_EP_OUT,
+    Usb2: USB2, USB2_EP_CONTROL, USB2_EP_IN, USB2_EP_OUT,
 }

@@ -200,6 +200,7 @@ if __name__ == "__main__":
     logging.info("Building soc")
     overrides = {
         "debug_verilog": True,
+        "verbose": False,
     }
     products = platform.build(design, do_program=False, build_dir=build_dir, **overrides)
 

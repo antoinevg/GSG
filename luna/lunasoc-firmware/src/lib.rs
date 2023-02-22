@@ -27,6 +27,8 @@ pub enum Message {
     Usb0ReceivedSetupPacket(hal::smolusb::control::SetupPacket),
     /// Received a SETUP packet on USB1_EP_CONTROL
     Usb1ReceivedSetupPacket(hal::smolusb::control::SetupPacket),
+    /// Received a SETUP packet on USB2_EP_CONTROL
+    Usb2ReceivedSetupPacket(hal::smolusb::control::SetupPacket),
     /// Received data on USB0_EP_OUT
     ///
     /// Contents is (endpoint, bytes_read, buffer)
@@ -35,6 +37,10 @@ pub enum Message {
     ///
     /// Contents is (endpoint, bytes_read, buffer)
     Usb1ReceivedData(u8, usize, [u8; 64]),
+    /// Received data on USB2_EP_OUT
+    ///
+    /// Contents is (endpoint, bytes_read, buffer)
+    Usb2ReceivedData(u8, usize, [u8; 64]),
 
     // TODO
     TimerEvent(u32),

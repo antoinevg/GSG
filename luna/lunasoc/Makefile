@@ -17,9 +17,11 @@ LUNASOC_PAC := ../lunasoc-pac
 # - gateware ------------------------------------------------------------------
 
 top:
+	@#PATH=$(PATH):$(YOSYS_BIN) AR=$(AR) AMARANTH_verbose=1 python top.py
 	PATH=$(PATH):$(YOSYS_BIN) AR=$(AR) python top.py
 
 load:
+	@#apollo configure build/top.bit
 	python configure_ecp5.py build/top.bit
 
 load2:
