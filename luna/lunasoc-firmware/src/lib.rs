@@ -1,9 +1,11 @@
 #![feature(error_in_core)]
+#![feature(panic_info_message)]
 #![no_std]
 
 // - modules ------------------------------------------------------------------
 
 pub mod log;
+pub mod panic_log;
 
 // - aliases ------------------------------------------------------------------
 
@@ -19,28 +21,28 @@ pub const SYSTEM_CLOCK_FREQUENCY: u32 = pac::clock::sysclk();
 #[derive(Debug)]
 pub enum Message {
     // interrupts
-    Interrupt(pac::Interrupt),
-    UnknownInterrupt(usize),
+    HandleInterrupt(pac::Interrupt),
+    HandleUnknownInterrupt(usize),
 
     // usb events
     /// Received a SETUP packet on USB0_EP_CONTROL
-    Usb0ReceivedSetupPacket(hal::smolusb::control::SetupPacket),
+    Usb0ReceiveSetupPacket(hal::smolusb::control::SetupPacket),
     /// Received a SETUP packet on USB1_EP_CONTROL
-    Usb1ReceivedSetupPacket(hal::smolusb::control::SetupPacket),
+    Usb1ReceiveSetupPacket(hal::smolusb::control::SetupPacket),
     /// Received a SETUP packet on USB2_EP_CONTROL
-    Usb2ReceivedSetupPacket(hal::smolusb::control::SetupPacket),
+    Usb2ReceiveSetupPacket(hal::smolusb::control::SetupPacket),
     /// Received data on USB0_EP_OUT
     ///
     /// Contents is (endpoint, bytes_read, buffer)
-    Usb0ReceivedData(u8, usize, [u8; 64]),
+    Usb0ReceiveData(u8, usize, [u8; 64]),
     /// Received data on USB1_EP_OUT
     ///
     /// Contents is (endpoint, bytes_read, buffer)
-    Usb1ReceivedData(u8, usize, [u8; 64]),
+    Usb1ReceiveData(u8, usize, [u8; 64]),
     /// Received data on USB2_EP_OUT
     ///
     /// Contents is (endpoint, bytes_read, buffer)
-    Usb2ReceivedData(u8, usize, [u8; 64]),
+    Usb2ReceiveData(u8, usize, [u8; 64]),
 
     // TODO
     TimerEvent(u32),
@@ -73,7 +75,7 @@ impl core::fmt::Display for ErrorKind {
 
 // trait: libgreat::error::Error
 impl libgreat::error::Error for ErrorKind {
-    type Error = ErrorKind; // TODO can we just say `Self`?
+    type Error = Self;
     fn kind(&self) -> Self::Error {
         *self
     }

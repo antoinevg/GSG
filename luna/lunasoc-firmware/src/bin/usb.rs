@@ -25,25 +25,6 @@ use smolusb::traits::{ControlRead, EndpointRead, EndpointWrite, UsbDriverOperati
 
 use log::{debug, error, info, trace, warn};
 
-// - panic handler ------------------------------------------------------------
-
-//use panic_halt as _;
-#[panic_handler]
-#[no_mangle]
-fn panic(panic_info: &core::panic::PanicInfo) -> ! {
-    if let Some(message) = panic_info.message() {
-        error!("Panic: {}", message);
-    } else {
-        error!("Panic: Unknown");
-    }
-
-    if let Some(location) = panic_info.location() {
-        error!("'{}' : {}", location.file(), location.line(),);
-    }
-
-    loop {}
-}
-
 // - global static state ------------------------------------------------------
 
 use firmware::Message;
@@ -67,7 +48,7 @@ fn MachineExternal() {
 
     let message = if usb0.is_pending(pac::Interrupt::USB0) {
         usb0.clear_pending(pac::Interrupt::USB0);
-        Message::Interrupt(pac::Interrupt::USB0)
+        Message::HandleInterrupt(pac::Interrupt::USB0)
     } else if usb0.is_pending(pac::Interrupt::USB0_EP_CONTROL) {
         // read packet
         let mut buffer = [0_u8; 8];
@@ -80,10 +61,10 @@ fn MachineExternal() {
             }
         };
         usb0.clear_pending(pac::Interrupt::USB0_EP_CONTROL);
-        Message::Usb0ReceivedSetupPacket(setup_packet)
+        Message::Usb0ReceiveSetupPacket(setup_packet)
     } else if usb0.is_pending(pac::Interrupt::USB0_EP_IN) {
         usb0.clear_pending(pac::Interrupt::USB0_EP_IN);
-        Message::Interrupt(pac::Interrupt::USB0_EP_IN)
+        Message::HandleInterrupt(pac::Interrupt::USB0_EP_IN)
     } else if usb0.is_pending(pac::Interrupt::USB0_EP_OUT) {
         // read data from endpoint
         let endpoint = usb0.ep_out.data_ep.read().bits() as u8;
@@ -100,9 +81,9 @@ fn MachineExternal() {
         // clear pending IRQ after data is read
         usb0.clear_pending(pac::Interrupt::USB0_EP_OUT);
 
-        Message::Usb0ReceivedData(endpoint, bytes_read, buffer)
+        Message::Usb0ReceiveData(endpoint, bytes_read, buffer)
     } else {
-        Message::UnknownInterrupt(pending)
+        Message::HandleUnknownInterrupt(pending)
     };
 
     MESSAGE_QUEUE
@@ -201,7 +182,7 @@ fn main() -> ! {
 
         if let Some(message) = MESSAGE_QUEUE.dequeue() {
             match message {
-                Message::Usb0ReceivedSetupPacket(packet) => {
+                Message::Usb0ReceiveSetupPacket(packet) => {
                     start_polling = false;
                     match usb0_device.handle_setup_request(&packet) {
                         Ok(()) => {
@@ -215,7 +196,7 @@ fn main() -> ! {
                     }
                 }
 
-                Message::Usb0ReceivedData(endpoint, bytes_read, buffer) => {
+                Message::Usb0ReceiveData(endpoint, bytes_read, buffer) => {
                     if endpoint != 0 {
                         debug!(
                             "Received {} bytes on endpoint: {} - {:?}\n",
@@ -238,25 +219,25 @@ fn main() -> ! {
                 }
 
                 // interrupts
-                Message::Interrupt(pac::Interrupt::USB0) => {
+                Message::HandleInterrupt(pac::Interrupt::USB0) => {
                     usb0_device.reset();
                     trace!("MachineExternal - USB0\n");
                 }
-                Message::Interrupt(pac::Interrupt::USB0_EP_CONTROL) => {
+                Message::HandleInterrupt(pac::Interrupt::USB0_EP_CONTROL) => {
                     // handled in MachineExternal which queues a Message::ReceivedSetupPacket
                 }
-                Message::Interrupt(pac::Interrupt::USB0_EP_IN) => {
+                Message::HandleInterrupt(pac::Interrupt::USB0_EP_IN) => {
                     // TODO - handle transmission complete
                     trace!("MachineExternal - USB0_EP_IN\n");
                 }
-                Message::Interrupt(pac::Interrupt::USB0_EP_OUT) => {
+                Message::HandleInterrupt(pac::Interrupt::USB0_EP_OUT) => {
                     // handled in MachineExternal which queues a Message::ReceivedData
                 }
 
-                Message::Interrupt(interrupt) => {
+                Message::HandleInterrupt(interrupt) => {
                     warn!("Unhandled interrupt: {:?}\n", interrupt);
                 }
-                Message::UnknownInterrupt(pending) => {
+                Message::HandleUnknownInterrupt(pending) => {
                     error!("Unknown interrupt pending: {:#035b}\n", pending);
                 }
                 _ => {

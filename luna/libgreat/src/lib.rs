@@ -1,7 +1,8 @@
 #![feature(error_in_core)]
+#![feature(panic_info_message)]
 #![cfg_attr(not(test), no_std)]
 
 pub mod error;
-//pub mod smolusb;
-
 pub use error::Result;
+
+//pub mod smolusb;

@@ -3,14 +3,12 @@
 #![no_std]
 #![no_main]
 
-use riscv_rt::entry;
-
+use firmware::{hal, pac};
 use lunasoc_firmware as firmware;
 
-use firmware::{hal, pac};
-use hal::smolusb;
 use pac::csr::interrupt;
 
+use hal::smolusb;
 use smolusb::class::cdc;
 use smolusb::control::SetupPacket;
 use smolusb::device::{Speed, UsbDevice};
@@ -20,23 +18,7 @@ use smolusb::traits::{
 
 use log::{debug, error, info, trace, warn};
 
-// - panic handler ------------------------------------------------------------
-
-#[panic_handler]
-#[no_mangle]
-fn panic(panic_info: &core::panic::PanicInfo) -> ! {
-    if let Some(message) = panic_info.message() {
-        error!("Panic: {}", message);
-    } else {
-        error!("Panic: Unknown");
-    }
-
-    if let Some(location) = panic_info.location() {
-        error!("'{}' : {}", location.file(), location.line(),);
-    }
-
-    loop {}
-}
+use riscv_rt::entry;
 
 // - global static state ------------------------------------------------------
 
@@ -64,7 +46,7 @@ fn MachineExternal() {
     // - Usb0 interrupts --
     let message = if usb0.is_pending(pac::Interrupt::USB0) {
         usb0.clear_pending(pac::Interrupt::USB0);
-        Message::Interrupt(pac::Interrupt::USB0)
+        Message::HandleInterrupt(pac::Interrupt::USB0)
     } else if usb0.is_pending(pac::Interrupt::USB0_EP_CONTROL) {
         let mut buffer = [0_u8; 8];
         usb0.read_control(&mut buffer);
@@ -76,21 +58,21 @@ fn MachineExternal() {
             }
         };
         usb0.clear_pending(pac::Interrupt::USB0_EP_CONTROL);
-        Message::Usb0ReceivedSetupPacket(setup_packet)
+        Message::Usb0ReceiveSetupPacket(setup_packet)
     } else if usb0.is_pending(pac::Interrupt::USB0_EP_IN) {
         usb0.clear_pending(pac::Interrupt::USB0_EP_IN);
-        Message::Interrupt(pac::Interrupt::USB0_EP_IN)
+        Message::HandleInterrupt(pac::Interrupt::USB0_EP_IN)
     } else if usb0.is_pending(pac::Interrupt::USB0_EP_OUT) {
         let endpoint = usb0.ep_out.data_ep.read().bits() as u8;
         let mut buffer = [0_u8; 64];
         let bytes_read = usb0.read(endpoint, &mut buffer);
         usb0.clear_pending(pac::Interrupt::USB0_EP_OUT);
-        Message::Usb0ReceivedData(endpoint, bytes_read, buffer)
+        Message::Usb0ReceiveData(endpoint, bytes_read, buffer)
 
     // - Usb1 interrupts --
     } else if usb1.is_pending(pac::Interrupt::USB1) {
         usb1.clear_pending(pac::Interrupt::USB1);
-        Message::Interrupt(pac::Interrupt::USB1)
+        Message::HandleInterrupt(pac::Interrupt::USB1)
     } else if usb1.is_pending(pac::Interrupt::USB1_EP_CONTROL) {
         let mut buffer = [0_u8; 8];
         usb1.read_control(&mut buffer);
@@ -102,21 +84,21 @@ fn MachineExternal() {
             }
         };
         usb1.clear_pending(pac::Interrupt::USB1_EP_CONTROL);
-        Message::Usb1ReceivedSetupPacket(setup_packet)
+        Message::Usb1ReceiveSetupPacket(setup_packet)
     } else if usb1.is_pending(pac::Interrupt::USB1_EP_IN) {
         usb1.clear_pending(pac::Interrupt::USB1_EP_IN);
-        Message::Interrupt(pac::Interrupt::USB1_EP_IN)
+        Message::HandleInterrupt(pac::Interrupt::USB1_EP_IN)
     } else if usb1.is_pending(pac::Interrupt::USB1_EP_OUT) {
         let endpoint = usb1.ep_out.data_ep.read().bits() as u8;
         let mut buffer = [0_u8; 64];
         let bytes_read = usb1.read(endpoint, &mut buffer);
         usb1.clear_pending(pac::Interrupt::USB1_EP_OUT);
-        Message::Usb1ReceivedData(endpoint, bytes_read, buffer)
+        Message::Usb1ReceiveData(endpoint, bytes_read, buffer)
 
     // - Usb2 interrupts --
     } else if usb2.is_pending(pac::Interrupt::USB2) {
         usb2.clear_pending(pac::Interrupt::USB2);
-        Message::Interrupt(pac::Interrupt::USB2)
+        Message::HandleInterrupt(pac::Interrupt::USB2)
     } else if usb2.is_pending(pac::Interrupt::USB2_EP_CONTROL) {
         let mut buffer = [0_u8; 8];
         usb2.read_control(&mut buffer);
@@ -128,20 +110,20 @@ fn MachineExternal() {
             }
         };
         usb2.clear_pending(pac::Interrupt::USB2_EP_CONTROL);
-        Message::Usb2ReceivedSetupPacket(setup_packet)
+        Message::Usb2ReceiveSetupPacket(setup_packet)
     } else if usb2.is_pending(pac::Interrupt::USB2_EP_IN) {
         usb2.clear_pending(pac::Interrupt::USB2_EP_IN);
-        Message::Interrupt(pac::Interrupt::USB2_EP_IN)
+        Message::HandleInterrupt(pac::Interrupt::USB2_EP_IN)
     } else if usb2.is_pending(pac::Interrupt::USB2_EP_OUT) {
         let endpoint = usb2.ep_out.data_ep.read().bits() as u8;
         let mut buffer = [0_u8; 64];
         let bytes_read = usb2.read(endpoint, &mut buffer);
         usb2.clear_pending(pac::Interrupt::USB2_EP_OUT);
-        Message::Usb2ReceivedData(endpoint, bytes_read, buffer)
+        Message::Usb2ReceiveData(endpoint, bytes_read, buffer)
 
     // - Unknown Interrupt --
     } else {
-        Message::UnknownInterrupt(pending)
+        Message::HandleUnknownInterrupt(pending)
     };
 
     MESSAGE_QUEUE
@@ -255,16 +237,16 @@ fn main() -> ! {
         if let Some(message) = MESSAGE_QUEUE.dequeue() {
             match message {
                 // usb0 message handlers
-                Message::Usb0ReceivedSetupPacket(packet) => {
+                Message::Usb0ReceiveSetupPacket(packet) => {
                     match usb0_device.handle_setup_request(&packet) {
                         Ok(()) => debug!("OK\n"),
                         Err(e) => panic!("  handle_setup_request: {:?}: {:?}", e, packet),
                     }
                 }
-                Message::Usb0ReceivedData(endpoint, bytes_read, buffer) => {
+                Message::Usb0ReceiveData(endpoint, bytes_read, buffer) => {
                     if endpoint != 0 {
                         debug!(
-                            "Received {} bytes on endpoint: {} - {:?}\n",
+                            "Received {} bytes on usb0 endpoint: {} - {:?}\n",
                             bytes_read, endpoint, buffer
                         );
                         usb1.write_ref(endpoint, buffer.iter().take(bytes_read).into_iter());
@@ -275,16 +257,16 @@ fn main() -> ! {
                 }
 
                 // usb1 message handlers
-                Message::Usb1ReceivedSetupPacket(packet) => {
+                Message::Usb1ReceiveSetupPacket(packet) => {
                     match usb1_device.handle_setup_request(&packet) {
                         Ok(()) => debug!("OK\n"),
                         Err(e) => panic!("  handle_setup_request: {:?}: {:?}", e, packet),
                     }
                 }
-                Message::Usb1ReceivedData(endpoint, bytes_read, buffer) => {
+                Message::Usb1ReceiveData(endpoint, bytes_read, buffer) => {
                     if endpoint != 0 {
                         debug!(
-                            "Received {} bytes on endpoint: {} - {:?}\n",
+                            "Received {} bytes on usb1 endpoint: {} - {:?}\n",
                             bytes_read, endpoint, buffer
                         );
                         usb0.write_ref(endpoint, buffer.iter().take(bytes_read).into_iter());
@@ -295,16 +277,16 @@ fn main() -> ! {
                 }
 
                 // usb2 message handlers
-                Message::Usb2ReceivedSetupPacket(packet) => {
+                Message::Usb2ReceiveSetupPacket(packet) => {
                     match usb2_device.handle_setup_request(&packet) {
                         Ok(()) => debug!("OK\n"),
                         Err(e) => panic!("  handle_setup_request: {:?}: {:?}", e, packet),
                     }
                 }
-                Message::Usb2ReceivedData(endpoint, bytes_read, buffer) => {
+                Message::Usb2ReceiveData(endpoint, bytes_read, buffer) => {
                     if endpoint != 0 {
                         debug!(
-                            "Received {} bytes on endpoint: {} - {:?}\n",
+                            "Received {} bytes on usb2 endpoint: {} - {:?}\n",
                             bytes_read, endpoint, buffer
                         );
                         usb0.write_ref(endpoint, buffer.iter().take(bytes_read).into_iter());
@@ -315,19 +297,19 @@ fn main() -> ! {
                 }
 
                 // usb0 interrupts
-                Message::Interrupt(pac::Interrupt::USB0) => {
+                Message::HandleInterrupt(pac::Interrupt::USB0) => {
                     usb0_device.reset();
                     trace!("MachineExternal - USB0\n");
                 }
 
                 // usb1 interrupts
-                Message::Interrupt(pac::Interrupt::USB1) => {
+                Message::HandleInterrupt(pac::Interrupt::USB1) => {
                     usb1_device.reset();
                     trace!("MachineExternal - USB1\n");
                 }
 
                 // usb2 interrupts
-                Message::Interrupt(pac::Interrupt::USB2) => {
+                Message::HandleInterrupt(pac::Interrupt::USB2) => {
                     usb2_device.reset();
                     trace!("MachineExternal - USB2\n");
                 }
