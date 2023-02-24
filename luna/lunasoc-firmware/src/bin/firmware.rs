@@ -8,7 +8,7 @@ use pac::csr::interrupt;
 
 use hal::smolusb;
 use smolusb::class::cynthion;
-use smolusb::control::SetupPacket;
+use smolusb::control::{Direction, SetupPacket};
 use smolusb::device::{Speed, UsbDevice};
 use smolusb::traits::{
     ControlRead, EndpointRead, EndpointWrite, EndpointWriteRef, UsbDriverOperations,
@@ -170,19 +170,54 @@ where
     D: ControlRead + EndpointRead + EndpointWrite + EndpointWriteRef + UsbDriverOperations,
 {
     let request = cynthion::vendor::VendorRequest::from(request);
-    debug!("  CYNTHION vendor_request: {:?}", request);
-/*
-    let mut buffer = [0_u8; 64];
-    let bytes_read = device.hal_driver.read(0, &mut buffer);
-    debug!("  read 0: {:?}", buffer);
+    debug!("  CYNTHION vendor_request: {:?} length:{} value:{} index:{}",
+           request, setup_packet.length, setup_packet.value, setup_packet.index);
 
-    let mut buffer = [0_u8; 64];
-    let bytes_read = device.hal_driver.read(1, &mut buffer);
+    // ?
+    let class = setup_packet.value;
+    let verb =  setup_packet.index;
+    let length = setup_packet.length as usize;
+
+    match class {
+        0x0000 => {  // core
+            match verb {
+                0x00 => { // read_board_id
+                    if setup_packet.direction() == Direction::HostToDevice {
+                        debug!("  ack: {}", length);
+                        device.hal_driver.ack_status_stage(setup_packet);
+                    } else if setup_packet.direction() == Direction::DeviceToHost {
+                        let board_id = 0x0000_u32.to_le_bytes();
+                        debug!("  sending board id: {:?}", board_id);
+                        device.hal_driver.write(0, board_id.into_iter().take(length));
+                        device.hal_driver.ack_status_stage(setup_packet);
+                    } else {
+                        debug!("  SHRUG");
+                        device.hal_driver.ack_status_stage(setup_packet);
+                    }
+                }
+                _ => {
+                    error!("  unknown verb: {} for class: {}", verb, class);
+                }
+            }
+        }
+        0xdead => {  // cancel ?
+        }
+        _ => {
+            error!("  unknown class: {}", class);
+        }
+    }
+
+    //let mut buffer = [0_u8; 64];
+    //let _bytes_read = device.hal_driver.read(0, &mut buffer);
+    //debug!("  read 0: {:?}", buffer);
+
+/*    let mut buffer = [0_u8; 64];
+    let _bytes_read = device.hal_driver.read(1, &mut buffer);
     debug!("  read 1: {:?}", buffer);
 */
     // we can just spoof these for now
     //device.hal_driver.write(0, [].into_iter());
-    device.hal_driver.ack_status_stage(setup_packet);
+
 }
 
 fn handle_string_request<'a, D>(device: &UsbDevice<'a, D>, setup_packet: &SetupPacket, index: u8)

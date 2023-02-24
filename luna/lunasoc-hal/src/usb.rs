@@ -325,14 +325,14 @@ macro_rules! impl_usb {
                         }
                     }
 
-                    trace!("  RX {} bytes + {} overflow", bytes_read, overflow,);
+                    trace!("  RX CONTROL {} bytes + {} overflow: {:?}", bytes_read, overflow, &buffer[0..bytes_read]);
 
                     bytes_read
                 }
             }
 
             impl EndpointRead for $USBX {
-                fn read(&self, _endpoint: u8, buffer: &mut [u8]) -> usize {
+                fn read(&self, endpoint: u8, buffer: &mut [u8]) -> usize {
                     // drain fifo
                     let mut bytes_read = 0;
                     let mut overflow = 0;
@@ -349,7 +349,7 @@ macro_rules! impl_usb {
                     // re-enable endpoint after consuming all data
                     self.ep_out.enable.write(|w| w.enable().bit(true));
 
-                    trace!("  RX {} bytes + {} overflow", bytes_read, overflow,);
+                    trace!("  RX OUT{} {} bytes + {} overflow: {:?}", endpoint, bytes_read, overflow, &buffer[0..bytes_read]);
 
                     // TODO prime endpoints - this is dodgy af
                     for ep in (0..=4).rev() {
