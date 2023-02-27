@@ -22,13 +22,6 @@ pub mod vendor {
             }
         }
     }
-
-    // - move these to libgreat
-    pub struct LibgreatCommandPrelude {
-        class_number: u32,
-        verb: u32,
-    }
-
 }
 
 // TODO DeviceQualifierDescriptor

@@ -14,6 +14,9 @@ use smolusb::traits::{
     ControlRead, EndpointRead, EndpointWrite, EndpointWriteRef, UsbDriverOperations,
 };
 
+use libgreat::gcp;
+use zerocopy::FromBytes;
+
 use log::{debug, error, info, trace, warn};
 
 use riscv_rt::entry;
@@ -107,7 +110,6 @@ fn main() -> ! {
         &cynthion::USB_STRING_DESCRIPTORS,
     );
     usb1_device.cb_vendor_request = Some(handle_vendor_request);
-    usb1_device.cb_string_request = Some(handle_string_request);
 
     // interrupts
     usb1.enable_interrupts();
@@ -136,11 +138,37 @@ fn main() -> ! {
                     }
                 }
                 Message::Usb1ReceiveData(endpoint, bytes_read, buffer) => {
-                    if endpoint != 0 {
+                    // TODO state == VendorRequest::UsbCommandRequest
+
+                    if bytes_read == 0 {
+                        // ignore
+
+                    } else if bytes_read >= 8 {
                         debug!(
-                            "Received {} bytes on usb1 endpoint: {} - {:?}\n",
-                            bytes_read, endpoint, buffer
+                            "Received {} bytes on usb1 endpoint: {} - {:?}",
+                            bytes_read, endpoint, &buffer[0..bytes_read]
                         );
+
+                        // read prelude
+                        let data = &buffer[0..8];
+                        if let Some(prelude) = gcp::CommandPrelude::read_from(data) {
+                            info!(
+                                "  COMMAND PRELUDE: {:?} => {:?}.{:?}\n",
+                                prelude,
+                                gcp::Class::from(prelude.class),
+                                gcp::Core::from(prelude.verb),
+                            );
+                        } else {
+                            // actually infallible
+                            error!("  failed to read prelude: {:?}\n", data);
+                        }
+
+                    } else {
+                        debug!(
+                            "Received {} bytes on usb1 endpoint: {} - {:?}",
+                            bytes_read, endpoint, &buffer[0..bytes_read]
+                        );
+                        error!("  short read: {} bytes\n", bytes_read);
                     }
                 }
 
@@ -174,59 +202,31 @@ where
            request, setup_packet.length, setup_packet.value, setup_packet.index);
 
     // ?
-    let class = setup_packet.value;
-    let verb =  setup_packet.index;
+    let command = setup_packet.value;
     let length = setup_packet.length as usize;
 
-    match class {
-        0x0000 => {  // core
-            match verb {
-                0x00 => { // read_board_id
-                    if setup_packet.direction() == Direction::HostToDevice {
-                        debug!("  ack: {}", length);
-                        device.hal_driver.ack_status_stage(setup_packet);
-                    } else if setup_packet.direction() == Direction::DeviceToHost {
-                        let board_id = 0x0000_u32.to_le_bytes();
-                        debug!("  sending board id: {:?}", board_id);
-                        device.hal_driver.write(0, board_id.into_iter().take(length));
-                        device.hal_driver.ack_status_stage(setup_packet);
-                    } else {
-                        debug!("  SHRUG");
-                        device.hal_driver.ack_status_stage(setup_packet);
-                    }
-                }
-                _ => {
-                    error!("  unknown verb: {} for class: {}", verb, class);
-                }
+    match command {
+        0x0000 => {  // command
+            if setup_packet.direction() == Direction::HostToDevice {
+                debug!("  ack: {}", length);
+                device.hal_driver.ack_status_stage(setup_packet);
+
+            } else if setup_packet.direction() == Direction::DeviceToHost {
+                let board_id = 0x0000_u32.to_le_bytes();
+                debug!("  sending board id: {:?}", board_id);
+                device.hal_driver.write(0, board_id.into_iter().take(length));
+                device.hal_driver.ack_status_stage(setup_packet);
+
+            } else {
+                debug!("  SHRUG");
+                device.hal_driver.ack_status_stage(setup_packet);
             }
         }
         0xdead => {  // cancel ?
         }
         _ => {
-            error!("  unknown class: {}", class);
+            error!("  stall: unknown vendor command: {}", command);
+            device.hal_driver.stall_request();
         }
     }
-
-    //let mut buffer = [0_u8; 64];
-    //let _bytes_read = device.hal_driver.read(0, &mut buffer);
-    //debug!("  read 0: {:?}", buffer);
-
-/*    let mut buffer = [0_u8; 64];
-    let _bytes_read = device.hal_driver.read(1, &mut buffer);
-    debug!("  read 1: {:?}", buffer);
-*/
-    // we can just spoof these for now
-    //device.hal_driver.write(0, [].into_iter());
-
-}
-
-fn handle_string_request<'a, D>(device: &UsbDevice<'a, D>, setup_packet: &SetupPacket, index: u8)
-where
-    D: ControlRead + EndpointRead + EndpointWrite + EndpointWriteRef + UsbDriverOperations,
-{
-    debug!("  CYNTHION string_request: {}", index);
-
-    // we can just spoof this too for now
-    device.hal_driver.write(0, [].into_iter());
-    device.hal_driver.ack_status_stage(setup_packet);
 }
