@@ -76,7 +76,7 @@ pub struct UsbDevice<'a, D> {
     pub cb_class_request:
         Option<fn(device: &UsbDevice<'a, D>, setup_packet: &SetupPacket, request: u8)>,
     pub cb_vendor_request:
-        Option<fn(device: &UsbDevice<'a, D>, setup_packet: &SetupPacket, request: u8)>,
+        Option<fn(device: &UsbDevice<'a, D>, setup_packet: &SetupPacket, request: u8) -> bool>,
     pub cb_string_request:
         Option<fn(device: &UsbDevice<'a, D>, setup_packet: &SetupPacket, index: u8)>,
 }
@@ -140,21 +140,12 @@ impl<'a, D> UsbDevice<'a, D>
 where
     D: ControlRead + EndpointRead + EndpointWrite + EndpointWriteRef + UsbDriverOperations,
 {
+    // TODO consider a `state: &dyn Any` variable for callbacks
     pub fn handle_setup_request(&mut self, setup_packet: &SetupPacket) -> Result<()> {
         debug!("# handle_setup_request()",);
 
         let request_type = setup_packet.request_type();
-        let request = match setup_packet.request() {
-            Ok(request) => request,
-            Err(e) => {
-                warn!(
-                    "   stall: unsupported request {}: {:?}",
-                    setup_packet.request, e
-                );
-                self.hal_driver.stall_request();
-                return Ok(());
-            }
-        };
+        let request = setup_packet.request();
 
         debug!(
             "  SETUP {:?} {:?} {:?} {:?} value:{} index:{} length:{}",
@@ -168,20 +159,24 @@ where
         );
 
         match (&request_type, &request) {
-            (RequestType::Standard, Request::SetAddress) => self.handle_set_address(setup_packet),
+            (RequestType::Standard, Request::SetAddress) => {
+                self.handle_set_address(setup_packet)?;
+            }
             (RequestType::Standard, Request::GetDescriptor) => {
-                self.handle_get_descriptor(setup_packet)
+                self.handle_get_descriptor(setup_packet)?;
             }
             (RequestType::Standard, Request::SetConfiguration) => {
-                self.handle_set_configuration(setup_packet)
+                self.handle_set_configuration(setup_packet)?;
             }
             (RequestType::Standard, Request::GetConfiguration) => {
-                self.handle_get_configuration(setup_packet)
+                self.handle_get_configuration(setup_packet)?;
             }
             (RequestType::Standard, Request::ClearFeature) => {
-                self.handle_clear_feature(setup_packet)
+                self.handle_clear_feature(setup_packet)?;
             }
-            (RequestType::Standard, Request::SetFeature) => self.handle_set_feature(setup_packet),
+            (RequestType::Standard, Request::SetFeature) => {
+                self.handle_set_feature(setup_packet)?;
+            }
             (RequestType::Class, Request::ClassOrVendor(request)) => {
                 if let Some(cb) = self.cb_class_request {
                     cb(self, setup_packet, *request);
@@ -192,7 +187,6 @@ where
                     );
                     self.hal_driver.stall_request();
                 }
-                Ok(())
             }
             (RequestType::Vendor, Request::ClassOrVendor(request)) => {
                 if let Some(cb) = self.cb_vendor_request {
@@ -204,7 +198,6 @@ where
                     );
                     self.hal_driver.stall_request();
                 }
-                Ok(())
             }
             _ => {
                 warn!(
@@ -212,9 +205,10 @@ where
                     request_type, request
                 );
                 self.hal_driver.stall_request();
-                Ok(())
             }
         }
+
+        Ok(())
     }
 
     fn handle_set_address(&mut self, setup_packet: &SetupPacket) -> Result<()> {

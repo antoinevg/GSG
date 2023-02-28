@@ -1,15 +1,13 @@
-#![allow(unused_imports)]
+#![allow(dead_code, unused_imports, unused_variables)] // TODO
 
-use zerocopy::{AsBytes, BigEndian, LittleEndian, FromBytes, Unaligned, U32};
+use zerocopy::{AsBytes, BigEndian, FromBytes, LittleEndian, Unaligned, U32};
 
 ///! Great Communications Protocol
+pub mod class;
+pub mod class_core;
 
-mod class;
-pub use class::*;
-
-// setup_packet.value
-pub const LIBGREAT_REQUEST_VALUE: u32        = 0x0000;
-pub const LIBGREAT_REQUEST_CANCEL_VALUE: u32 = 0xDEAD;
+pub use class::Class;
+pub use class_core::Core;
 
 /// CommandPrelude
 #[repr(C)]
@@ -18,7 +16,6 @@ pub struct CommandPrelude {
     pub class: U32<LittleEndian>,
     pub verb: U32<LittleEndian>,
 }
-
 
 #[cfg(test)]
 mod tests {
@@ -30,10 +27,7 @@ mod tests {
 
     #[test]
     fn test_from_bytes() {
-        let bytes: [u8; 8] = [
-            0x01, 0x00, 0x00, 0x00,
-            0x02, 0x00, 0x00, 0x00,
-        ];
+        let bytes: [u8; 8] = [0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00];
         let prelude: CommandPrelude = CommandPrelude::read_from(&bytes[..]).expect("failed");
         println!("test_from_bytes: {:?}", prelude);
 
@@ -61,15 +55,57 @@ mod tests {
         let core_reserved: Core = Core::from(0x20);
         println!(
             "test_enums: {:?}, {:?}, {:?}, {:?}",
-            class_core,
-            class_reserved,
-            core_read_version_string,
-            core_reserved,
+            class_core, class_reserved, core_read_version_string, core_reserved,
         );
 
         assert_eq!(class_core, Class::core);
         assert_eq!(class_reserved, Class::reserved(1));
         assert_eq!(core_read_version_string, Core::read_version_string);
         assert_eq!(core_reserved, Core::reserved(0x20));
+    }
+
+    // -
+
+    use core::any::Any;
+
+    #[derive(Debug, Clone, Copy)]
+    struct State {
+        value: u32,
+    }
+
+    struct Device {}
+
+    impl Device {
+        fn new() -> Self {
+            Self {}
+        }
+
+        fn handle_setup<'a>(&self, some_state: &'a mut dyn Any) -> Option<&'a mut dyn Any> {
+            if let Some(state) = some_state.downcast_mut::<State>() {
+                println!("handle_setup() state: {:?}", state);
+                state.value = 42;
+                return Some(some_state);
+            }
+            Some(some_state)
+        }
+    }
+
+    #[test]
+    fn test_any() {
+        let device = Device::new();
+        let mut my_state = State { value: 23 };
+        println!("my_state: {:?}", my_state);
+
+        let any_state: Option<&mut dyn Any> = device.handle_setup(&mut my_state);
+        let any_state = any_state.unwrap();
+        println!("any_state: {:?}", any_state);
+
+        if let Some(my_state) = any_state.downcast_mut::<State>() {
+            println!("&mut my_state: {:?}", my_state);
+        }
+
+        println!("my_state: {:?}", my_state);
+
+        assert_eq!(true, true);
     }
 }

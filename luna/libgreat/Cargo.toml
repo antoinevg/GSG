@@ -5,3 +5,7 @@ edition = "2021"
 
 [dependencies]
 zerocopy = { version = "=0.7.0-alpha.2", default-features = false }
+
+# https://github.com/rust-lang/log/issues/526
+log = "=0.4.17"
+#log = { path = "../toolchain/log.git" }

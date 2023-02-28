@@ -8,7 +8,8 @@ use pac::csr::interrupt;
 
 use hal::smolusb;
 use smolusb::class::cynthion;
-use smolusb::control::{Direction, SetupPacket};
+use smolusb::class::cynthion::vendor::{VendorRequest, VendorRequestValue};
+use smolusb::control::{Direction, RequestType, SetupPacket};
 use smolusb::device::{Speed, UsbDevice};
 use smolusb::traits::{
     ControlRead, EndpointRead, EndpointWrite, EndpointWriteRef, UsbDriverOperations,
@@ -109,7 +110,7 @@ fn main() -> ! {
         &cynthion::USB_STRING_DESCRIPTOR_0,
         &cynthion::USB_STRING_DESCRIPTORS,
     );
-    usb1_device.cb_vendor_request = Some(handle_vendor_request);
+    //usb1_device.cb_vendor_request = Some(handle_vendor_request);
 
     // interrupts
     usb1.enable_interrupts();
@@ -127,46 +128,86 @@ fn main() -> ! {
         interrupt::enable(pac::Interrupt::USB1_EP_OUT);
     }
 
+    static GCP_CLASS_DISPATCH: gcp::class::Dispatch = gcp::class::Dispatch::new();
+
+    let mut response: Option<&[u8]> = None;
+
     loop {
-        while let Some(message) = MESSAGE_QUEUE.dequeue() {
+        if let Some(message) = MESSAGE_QUEUE.dequeue() {
             match message {
                 // usb1 message handlers
                 Message::Usb1ReceiveSetupPacket(packet) => {
-                    match usb1_device.handle_setup_request(&packet) {
-                        Ok(()) => debug!("OK\n"),
-                        Err(e) => panic!("  handle_setup_request: {:?}: {:?}", e, packet),
+                    let request_type = packet.request_type();
+                    let vendor_request = VendorRequest::from(packet.request);
+
+                    match (&request_type, &vendor_request) {
+                        // TODO add a Any parametr to handle_setup_packet, or just catch vendor requests here?
+                        (RequestType::Vendor, VendorRequest::UsbCommandRequest) => {
+                            if handle_vendor_request(&usb1_device, &packet, packet.request) {
+                                // do we have a response ready? should we wait if we don't?
+                                if let Some(response) = response {
+                                    // send it
+                                    debug!("  sending gcp response: {:?}", response);
+                                    usb1_device.hal_driver.write_ref(
+                                        0,
+                                        response.into_iter().take(packet.length as usize),
+                                    );
+                                    usb1_device.hal_driver.ack_status_stage(&packet);
+                                } else {
+                                    // TODO something has gone wrong
+                                    error!(
+                                        "  stall: gcp response requested but no response queued"
+                                    );
+                                    usb1_device.hal_driver.stall_request();
+                                }
+                            }
+                        }
+                        _ => match usb1_device.handle_setup_request(&packet) {
+                            Ok(()) => debug!("OK\n"),
+                            Err(e) => panic!("  handle_setup_request: {:?}: {:?}", e, packet),
+                        },
                     }
                 }
                 Message::Usb1ReceiveData(endpoint, bytes_read, buffer) => {
-                    // TODO state == VendorRequest::UsbCommandRequest
+                    // TODO endpoint == 0 && state == Command::Send
 
                     if bytes_read == 0 {
                         // ignore
-
                     } else if bytes_read >= 8 {
                         debug!(
                             "Received {} bytes on usb1 endpoint: {} - {:?}",
-                            bytes_read, endpoint, &buffer[0..bytes_read]
+                            bytes_read,
+                            endpoint,
+                            &buffer[0..bytes_read]
                         );
 
-                        // read prelude
+                        // read & dispatch command prelude
                         let data = &buffer[0..8];
                         if let Some(prelude) = gcp::CommandPrelude::read_from(data) {
                             info!(
-                                "  COMMAND PRELUDE: {:?} => {:?}.{:?}\n",
+                                "  COMMAND PRELUDE: {:?} => {:?}.{:?}",
                                 prelude,
                                 gcp::Class::from(prelude.class),
                                 gcp::Core::from(prelude.verb),
                             );
+                            // TODO we really need a better way to get this to the vendor request
+                            let data = GCP_CLASS_DISPATCH.handle(prelude);
+                            //debug!("  sending gcp response: {:?}", response);
+                            //usb1_device.hal_driver.write_ref(0, data.into_iter());
+                            //usb1_device.hal_driver.write_ref(0, [].into_iter());
+                            //usb1_device.hal_driver.ack_status_stage(&packet);
+                            response = Some(data);
+                            info!("\n");
                         } else {
                             // actually infallible
                             error!("  failed to read prelude: {:?}\n", data);
                         }
-
                     } else {
                         debug!(
                             "Received {} bytes on usb1 endpoint: {} - {:?}",
-                            bytes_read, endpoint, &buffer[0..bytes_read]
+                            bytes_read,
+                            endpoint,
+                            &buffer[0..bytes_read]
                         );
                         error!("  short read: {} bytes\n", bytes_read);
                     }
@@ -193,40 +234,52 @@ fn main() -> ! {
 
 // - vendor request handlers --------------------------------------------------
 
-fn handle_vendor_request<'a, D>(device: &UsbDevice<'a, D>, setup_packet: &SetupPacket, request: u8)
+fn handle_vendor_request<'a, D>(
+    device: &UsbDevice<'a, D>,
+    setup_packet: &SetupPacket,
+    request: u8,
+) -> bool
 where
     D: ControlRead + EndpointRead + EndpointWrite + EndpointWriteRef + UsbDriverOperations,
 {
-    let request = cynthion::vendor::VendorRequest::from(request);
-    debug!("  CYNTHION vendor_request: {:?} length:{} value:{} index:{}",
-           request, setup_packet.length, setup_packet.value, setup_packet.index);
-
-    // ?
-    let command = setup_packet.value;
+    let direction = setup_packet.direction();
+    let request = VendorRequest::from(request); // aka setup_packet.request
+    let request_value = VendorRequestValue::from(setup_packet.value);
     let length = setup_packet.length as usize;
 
-    match command {
-        0x0000 => {  // command
-            if setup_packet.direction() == Direction::HostToDevice {
-                debug!("  ack: {}", length);
-                device.hal_driver.ack_status_stage(setup_packet);
+    debug!(
+        "  CYNTHION vendor_request: {:?} dir:{:?} value:{:?} length:{} index:{}",
+        request, direction, request_value, length, setup_packet.index
+    );
 
-            } else if setup_packet.direction() == Direction::DeviceToHost {
-                let board_id = 0x0000_u32.to_le_bytes();
-                debug!("  sending board id: {:?}", board_id);
-                device.hal_driver.write(0, board_id.into_iter().take(length));
-                device.hal_driver.ack_status_stage(setup_packet);
-
-            } else {
-                debug!("  SHRUG");
-                device.hal_driver.ack_status_stage(setup_packet);
-            }
+    match (&direction, &request, &request_value) {
+        // host is starting a new command sequence
+        (Direction::HostToDevice, VendorRequest::UsbCommandRequest, VendorRequestValue::Start) => {
+            device.hal_driver.ack_status_stage(setup_packet);
+            debug!("  TODO state = Command::Begin");
+            debug!("  ack: {}", length);
         }
-        0xdead => {  // cancel ?
+
+        // host is ready to receive a response
+        (Direction::DeviceToHost, VendorRequest::UsbCommandRequest, VendorRequestValue::Start) => {
+            debug!("  TODO state = Command::Send");
+            return true;
+        }
+
+        // host would like to abort the current command sequence
+        (Direction::HostToDevice, VendorRequest::UsbCommandRequest, VendorRequestValue::Cancel) => {
+            // TODO cancel
+            debug!("  TODO state = Command::Cancel");
+            debug!("  TODO cancel cynthion vendor request sequence");
         }
         _ => {
-            error!("  stall: unknown vendor command: {}", command);
+            error!(
+                "  stall: unknown vendor request and/or value: {:?} {:?} {:?}",
+                direction, request, request_value
+            );
             device.hal_driver.stall_request();
         }
     }
+
+    false
 }

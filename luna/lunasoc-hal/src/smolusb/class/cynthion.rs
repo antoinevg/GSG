@@ -3,22 +3,40 @@
 use crate::smolusb::descriptor::*;
 
 pub mod vendor {
-    #[derive(Debug, PartialEq)]
     #[repr(u8)]
+    #[derive(Debug, PartialEq)]
     pub enum VendorRequest {
         // libgreat/firmware/platform/lpc43xx/include/drivers/usb/comms_backend.h
         //   11:  #define LIBGREAT_USB_COMMAND_REQUEST 0x65
         // libgreat/host/pygreat/comms_backends/usb.py
         //   30:  LIBGREAT_REQUEST_NUMBER = 0x65
         UsbCommandRequest = 0x65, // 101
-        Unknown,
+        Unknown(u8),
     }
 
     impl From<u8> for VendorRequest {
         fn from(value: u8) -> Self {
             match value {
                 0x65 => VendorRequest::UsbCommandRequest,
-                _ => VendorRequest::Unknown,
+                _ => VendorRequest::Unknown(value),
+            }
+        }
+    }
+
+    #[repr(u16)]
+    #[derive(Debug, PartialEq)]
+    pub enum VendorRequestValue {
+        Start = 0x0000,
+        Cancel = 0xdead,
+        Unknown(u16),
+    }
+
+    impl From<u16> for VendorRequestValue {
+        fn from(value: u16) -> Self {
+            match value {
+                0x0000 => VendorRequestValue::Start,
+                0xdead => VendorRequestValue::Cancel,
+                _ => VendorRequestValue::Unknown(value),
             }
         }
     }

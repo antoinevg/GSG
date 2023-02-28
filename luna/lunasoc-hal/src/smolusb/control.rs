@@ -40,8 +40,8 @@ impl SetupPacket {
         Direction::from(self.request_type)
     }
 
-    pub fn request(&self) -> core::result::Result<Request, ErrorKind> {
-        Request::try_from(self.request)
+    pub fn request(&self) -> Request {
+        Request::from(self.request)
     }
 }
 
@@ -125,16 +125,17 @@ pub enum Request {
     SetInterface = 11,
     SynchronizeFrame = 12,
     ClassOrVendor(u8),
+    Reserved(u8),
 }
 
-impl TryFrom<u8> for Request {
-    type Error = ErrorKind;
-
-    fn try_from(value: u8) -> core::result::Result<Self, Self::Error> {
-        let result = match value {
+impl From<u8> for Request {
+    fn from(value: u8) -> Self {
+        match value {
             0 => Request::GetStatus,
             1 => Request::ClearFeature,
+            2 => Request::Reserved(2),
             3 => Request::SetFeature,
+            4 => Request::Reserved(4),
             5 => Request::SetAddress,
             6 => Request::GetDescriptor,
             7 => Request::SetDescriptor,
@@ -143,11 +144,8 @@ impl TryFrom<u8> for Request {
             10 => Request::GetInterface,
             11 => Request::SetInterface,
             12 => Request::SynchronizeFrame,
-            // TODO should we check that request_type is class or vendor?
             13..=u8::MAX => Request::ClassOrVendor(value),
-            _ => return Err(ErrorKind::FailedConversion),
-        };
-        Ok(result)
+        }
     }
 }
 
