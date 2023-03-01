@@ -48,6 +48,29 @@ fn MachineExternal() {
     }
 }
 
+// - program state ------------------------------------------------------------
+
+#[derive(Debug)]
+struct State {
+    counter: u32,
+    interrupts: u32,
+    secondary: u32,
+    while_max: u32,
+    while_last: u32,
+}
+
+impl State {
+    const fn new() -> Self {
+        Self {
+            counter: 1,
+            interrupts: 0,
+            secondary: 0,
+            while_max: 0,
+            while_last: 0,
+        }
+    }
+}
+
 // - main entry point ---------------------------------------------------------
 
 #[entry]
@@ -60,6 +83,7 @@ fn entry() -> ! {
     let serial = hal::Serial::new(peripherals.UART);
     cynthion::log::init(serial);
     info!("logging initialized");
+    unsafe { riscv::asm::delay(pac::clock::sysclk()) };
 
     // configure and enable timer
     let one_second = pac::clock::sysclk();
@@ -75,10 +99,10 @@ fn entry() -> ! {
         pac::csr::interrupt::enable(pac::Interrupt::TIMER)
     }
 
+    // main loop
     let mut state = State::new();
-
     loop {
-        state = match main_loop(state) {
+        state = match main_loop(state, leds) {
             Ok(state) => state,
             Err(e) => {
                 leds.output.write(|w| unsafe { w.output().bits(0xff) });
@@ -88,10 +112,10 @@ fn entry() -> ! {
     }
 }
 
-fn main_loop(mut state: State) -> cynthion::Result<State> {
-    let peripherals = unsafe { pac::Peripherals::steal() };
-    let leds = &peripherals.LEDS;
+// - main loop ----------------------------------------------------------------
 
+#[inline(always)]
+fn main_loop(mut state: State, leds: &pac::LEDS) -> cynthion::Result<State> {
     leds.output.write(|w| unsafe { w.output().bits(1 << 0) });
 
     let mut while_counter = 0;
@@ -102,7 +126,7 @@ fn main_loop(mut state: State) -> cynthion::Result<State> {
                 leds.output.write(|w| unsafe { w.output().bits(1 << 1) });
             }
             Message::TimerEvent(_value) => {
-                //info!("Bogey: {} => while:{} max:{}", _value, while_counter, state.while_max);
+                state.secondary += 1;
             }
             _ => {}
         }
@@ -111,6 +135,7 @@ fn main_loop(mut state: State) -> cynthion::Result<State> {
             state.while_max = while_counter;
         }
     }
+    state.while_last = while_counter;
 
     leds.output.write(|w| unsafe { w.output().bits(1 << 2) });
 
@@ -125,21 +150,4 @@ fn main_loop(mut state: State) -> cynthion::Result<State> {
     state.counter += 1;
 
     Ok(state)
-}
-
-#[derive(Debug)]
-struct State {
-    counter: u32,
-    interrupts: u32,
-    while_max: u32,
-}
-
-impl State {
-    const fn new() -> Self {
-        Self {
-            counter: 1,
-            interrupts: 0,
-            while_max: 0,
-        }
-    }
 }
