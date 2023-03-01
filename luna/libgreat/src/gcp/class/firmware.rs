@@ -20,7 +20,7 @@ pub enum Firmware {
     write_page = 0x3,
     /// Returns the contents of the flash page at the given address.
     /// .in_signature = "<I", .out_signature = "<*X", .in_param_names = "address", .out_param_names = "data",
-    read_page  = 0x4,
+    read_page = 0x4,
 
     /// Unsupported verb
     unsupported(u32),

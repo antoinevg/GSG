@@ -6,9 +6,7 @@ use zerocopy::{AsBytes, BigEndian, FromBytes, LittleEndian, Unaligned, U32};
 #[derive(Debug, PartialEq)]
 #[allow(non_camel_case_types)]
 pub enum Greatdancer {
-
     // - connection / disconnection --
-
     /// Sets up the target port to connect to a host.
     /// Enables the target port's USB pull-ups.
     /// .in_signature = "<HH", .out_signature = "", .in_param_names = "ep0_max_packet_size, quirk_flags",
@@ -22,7 +20,6 @@ pub enum Greatdancer {
     bus_reset = 0x2,
 
     // - enumeration / setup --
-
     /// Sets the address of the target device.
     /// If deferred is set, this action won't complete until setup phase ends
     /// .in_signature = "<BB", .out_signature = "", .in_param_names = "address, deferred",
@@ -33,7 +30,6 @@ pub enum Greatdancer {
     set_up_endpoints = 0x4,
 
     // - status & control --
-
     /// Reads one of the device's USB status registers.
     /// .in_signature = "<B", .out_signature = "<I", .in_param_names = "register_type", .out_param_names = "register_value"
     get_status = 0x5,
@@ -45,7 +41,6 @@ pub enum Greatdancer {
     stall_endpoint = 0x7,
 
     // - data transfers --
-
     /// Sends the provided data on the given IN endpoint.
     /// .in_signature = "<B*X", .out_signature = "", .in_param_names = "endpoint_number, data_to_send"
     send_on_endpoint = 0x8,

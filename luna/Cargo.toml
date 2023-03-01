@@ -1,7 +1,7 @@
 [workspace]
 members = [
+    "cynthion",
     "libgreat",
-    "lunasoc-firmware",
     "lunasoc-hal",
     "lunasoc-pac",
 ]

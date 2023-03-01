@@ -3,10 +3,10 @@
 #![no_std]
 #![no_main]
 
-use firmware::{hal, pac};
-use lunasoc_firmware as firmware;
-
+use cynthion::pac;
 use pac::csr::interrupt;
+
+use cynthion::hal;
 
 use hal::smolusb;
 use smolusb::class::cdc;
@@ -22,7 +22,7 @@ use riscv_rt::entry;
 
 // - global static state ------------------------------------------------------
 
-use firmware::Message;
+use cynthion::Message;
 use heapless::mpmc::MpMcQueue as Queue;
 static MESSAGE_QUEUE: Queue<Message, 128> = Queue::new();
 
@@ -141,7 +141,7 @@ fn main() -> ! {
 
     // initialize logging
     let serial = hal::Serial::new(peripherals.UART);
-    firmware::log::init(serial);
+    cynthion::log::init(serial);
     info!("logging initialized");
 
     // usb0

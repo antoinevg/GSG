@@ -3,12 +3,10 @@
 
 use riscv_rt::entry;
 
-use firmware::hal;
-use firmware::pac;
-use lunasoc_firmware as firmware;
+use cynthion::pac;
 
+use cynthion::hal;
 use hal::Serial;
-
 use hal::hal::delay::DelayUs;
 use hal::Timer;
 
@@ -20,10 +18,10 @@ fn main() -> ! {
 
     // initialize logging
     let serial = Serial::new(peripherals.UART);
-    firmware::log::init(serial);
+    cynthion::log::init(serial);
 
     let leds = &peripherals.LEDS;
-    let mut timer = Timer::new(peripherals.TIMER, firmware::SYSTEM_CLOCK_FREQUENCY);
+    let mut timer = Timer::new(peripherals.TIMER, cynthion::SYSTEM_CLOCK_FREQUENCY);
 
     info!("Peripherals initialized, entering main loop.");
 

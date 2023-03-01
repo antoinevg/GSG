@@ -76,7 +76,7 @@ pub struct UsbDevice<'a, D> {
     pub cb_class_request:
         Option<fn(device: &UsbDevice<'a, D>, setup_packet: &SetupPacket, request: u8)>,
     pub cb_vendor_request:
-        Option<fn(device: &UsbDevice<'a, D>, setup_packet: &SetupPacket, request: u8) -> bool>,
+        Option<fn(device: &UsbDevice<'a, D>, setup_packet: &SetupPacket, request: u8)>,
     pub cb_string_request:
         Option<fn(device: &UsbDevice<'a, D>, setup_packet: &SetupPacket, index: u8)>,
 }

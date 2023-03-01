@@ -50,9 +50,9 @@ class LedPeripheral(Peripheral, Elaboratable):
 
         return m
 
-# - LunaSoCExample ------------------------------------------------------------
+# - CynthionSoC ---------------------------------------------------------------
 
-class LunaSoCExample(Elaboratable):
+class CynthionSoC(Elaboratable):
     def __init__(self, clock_frequency=int(50e6)):
 
         # Create a stand-in for our UART.
@@ -176,10 +176,10 @@ if __name__ == "__main__":
     # TODO ideally we should be able to get clk_freq from platform
     if isinstance(platform, LUNAPlatformRev0D4):
         logging.info("Building for Luna r04")
-        design = LunaSoCExample(clock_frequency=int(60e6))
+        design = CynthionSoC(clock_frequency=int(60e6))
     elif isinstance(platform, ULX3S_85F_Platform):
         logging.info("Building for ULX3s")
-        design = LunaSoCExample(clock_frequency=int(48e6))
+        design = CynthionSoC(clock_frequency=int(48e6))
     else:
         logging.error("Unsupported platform: {}".format(platform))
         sys.exit()

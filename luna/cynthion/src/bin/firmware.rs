@@ -1,13 +1,13 @@
 #![no_std]
 #![no_main]
 
-use firmware::{hal, pac};
-use lunasoc_firmware as firmware;
-
+use cynthion::pac;
 use pac::csr::interrupt;
 
+use cynthion::hal;
+
 use hal::smolusb;
-use smolusb::class::cynthion;
+use smolusb::class;
 use smolusb::class::cynthion::vendor::{VendorRequest, VendorRequestValue};
 use smolusb::control::{Direction, RequestType, SetupPacket};
 use smolusb::device::{Speed, UsbDevice};
@@ -24,7 +24,7 @@ use riscv_rt::entry;
 
 // - global static state ------------------------------------------------------
 
-use firmware::Message;
+use cynthion::Message;
 use heapless::mpmc::MpMcQueue as Queue;
 static MESSAGE_QUEUE: Queue<Message, 128> = Queue::new();
 
@@ -89,7 +89,7 @@ fn main() -> ! {
 
     // initialize logging
     let serial = hal::Serial::new(peripherals.UART);
-    firmware::log::init(serial);
+    cynthion::log::init(serial);
     info!("logging initialized");
 
     // usb1 - "host_phy"
@@ -105,10 +105,10 @@ fn main() -> ! {
     // usb1_device
     let mut usb1_device = UsbDevice::new(
         &usb1,
-        &cynthion::DEVICE_DESCRIPTOR,
-        &cynthion::CONFIGURATION_DESCRIPTOR_0,
-        &cynthion::USB_STRING_DESCRIPTOR_0,
-        &cynthion::USB_STRING_DESCRIPTORS,
+        &class::cynthion::DEVICE_DESCRIPTOR,
+        &class::cynthion::CONFIGURATION_DESCRIPTOR_0,
+        &class::cynthion::USB_STRING_DESCRIPTOR_0,
+        &class::cynthion::USB_STRING_DESCRIPTORS,
     );
     //usb1_device.cb_vendor_request = Some(handle_vendor_request);
 

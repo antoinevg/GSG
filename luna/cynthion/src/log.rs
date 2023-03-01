@@ -82,8 +82,8 @@ pub mod format_nostd {
         ($($arg:tt)*) => {
             {
                 use core::fmt::Write;
-                use lunasoc_firmware::log::format_nostd::BufferWriter;
-                use lunasoc_firmware::log::format_nostd::SIZE;
+                use cynthion::log::format_nostd::BufferWriter;
+                use cynthion::log::format_nostd::SIZE;
                 let mut buffer = [0u8; SIZE];
                 let mut writer = BufferWriter::new(buffer);
                 write!(&mut writer, $($arg)*).unwrap();

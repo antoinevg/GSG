@@ -1,5 +1,4 @@
 #![allow(dead_code, unused_imports)]
-
 #![no_std]
 #![no_main]
 
@@ -16,10 +15,10 @@
 ///!
 ///! Which unfortunately has some performance implications ...
 
-use firmware::{hal, pac};
-use lunasoc_firmware as firmware;
-
+use cynthion::pac;
 use pac::csr::interrupt;
+
+use cynthion::hal;
 
 use log::{debug, error, info, trace, warn};
 
@@ -27,7 +26,7 @@ use riscv_rt::entry;
 
 // - global static state ------------------------------------------------------
 
-use firmware::Message;
+use cynthion::Message;
 use heapless::mpmc::MpMcQueue as Queue;
 static MESSAGE_QUEUE: Queue<Message, 128> = Queue::new();
 
@@ -44,11 +43,9 @@ fn MachineExternal() {
         MESSAGE_QUEUE
             .enqueue(Message::TimerEvent(0))
             .expect("MachineExternal - message queue overflow");
-
     } else {
         error!("MachineExternal - unknown interrupt");
     }
-
 }
 
 // - main entry point ---------------------------------------------------------
@@ -61,7 +58,7 @@ fn entry() -> ! {
 
     // initialize logging
     let serial = hal::Serial::new(peripherals.UART);
-    firmware::log::init(serial);
+    cynthion::log::init(serial);
     info!("logging initialized");
 
     // configure and enable timer
@@ -91,9 +88,7 @@ fn entry() -> ! {
     }
 }
 
-
-fn main_loop(mut state: State) -> firmware::Result<State>
-{
+fn main_loop(mut state: State) -> cynthion::Result<State> {
     let peripherals = unsafe { pac::Peripherals::steal() };
     let leds = &peripherals.LEDS;
 
@@ -109,8 +104,7 @@ fn main_loop(mut state: State) -> firmware::Result<State>
             Message::TimerEvent(_value) => {
                 //info!("Bogey: {} => while:{} max:{}", _value, while_counter, state.while_max);
             }
-            _ => {
-            }
+            _ => {}
         }
         while_counter += 1;
         if while_counter > state.while_max {
@@ -120,18 +114,18 @@ fn main_loop(mut state: State) -> firmware::Result<State>
 
     leds.output.write(|w| unsafe { w.output().bits(1 << 2) });
 
-
     if state.counter % 50_000 == 0 {
         leds.output.write(|w| unsafe { w.output().bits(1 << 3) });
         info!("main_loop() => {:?}", state);
-        MESSAGE_QUEUE.enqueue(Message::TimerEvent(state.counter)).expect("main_loop() message queue overflow");
+        MESSAGE_QUEUE
+            .enqueue(Message::TimerEvent(state.counter))
+            .expect("main_loop() message queue overflow");
     }
 
     state.counter += 1;
 
     Ok(state)
 }
-
 
 #[derive(Debug)]
 struct State {

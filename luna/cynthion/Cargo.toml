@@ -1,10 +1,10 @@
 [package]
-name = "lunasoc-firmware"
+name = "cynthion"
 version = "0.1.0"
 authors = ["Antoine van Gelder <antoine@greatscottgadgets.com>"]
 license-file = "LICENSE.txt"
 categories = ["embedded", "hardware-support", "no-std"]
-description = "Firmware for the Great Scott Gadgets Luna USB Multitool"
+description = "Support library and firmware for the Great Scott Gadgets Cynthion USB Multitool"
 edition = "2021"
 rust-version = "1.68"
 default-run = "firmware"

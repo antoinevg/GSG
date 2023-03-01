@@ -7,7 +7,6 @@ use zerocopy::{AsBytes, BigEndian, FromBytes, LittleEndian, Unaligned, U32};
 #[allow(non_camel_case_types)]
 pub enum Core {
     // - board information --
-
     ///
     ///
     read_board_id = 0x0,
@@ -22,7 +21,6 @@ pub enum Core {
     read_serial_number = 0x3,
 
     // - api introspection --
-
     ///
     ///
     get_available_classes = 0x4,

@@ -1,5 +1,4 @@
 ///! Great Communications Protocol Class Registry
-
 pub mod class_core;
 pub mod firmware;
 pub mod gpio;
@@ -17,17 +16,16 @@ use super::CommandPrelude;
 use log::error;
 use zerocopy::{AsBytes, BigEndian, FromBytes, LittleEndian, Unaligned, U32};
 
-
 /// Class
 #[repr(u32)]
 #[derive(Debug, PartialEq)]
 #[allow(non_camel_case_types)]
 pub enum Class {
-    core        = 0x0000,
-    firmware    = 0x0001,
-    gpio        = 0x0103,
+    core = 0x0000,
+    firmware = 0x0001,
+    gpio = 0x0103,
     greatdancer = 0x0104,
-    moondancer  = 0x0120,
+    moondancer = 0x0120,
     unsupported(u32),
 }
 
