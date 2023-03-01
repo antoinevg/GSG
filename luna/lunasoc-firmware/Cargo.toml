@@ -44,6 +44,10 @@ log = "=0.4.17"
 # - binaries ------------------------------------------------------------------
 
 [[bin]]
+name = "benchmark"
+required-features = ["lunasoc-pac/rt"]
+
+[[bin]]
 name = "cdc-serial-loopback"
 required-features = ["lunasoc-pac/rt"]
 
@@ -53,10 +57,6 @@ required-features = ["lunasoc-pac/rt"]
 
 [[bin]]
 name = "hello"
-required-features = ["lunasoc-pac/rt"]
-
-[[bin]]
-name = "mutex"
 required-features = ["lunasoc-pac/rt"]
 
 [[bin]]
