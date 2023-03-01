@@ -33,7 +33,7 @@ riscv = { version = "=0.10.1", features = ["critical-section-single-hart"] }
 riscv-rt = { version = "=0.11.0" }
 
 #atomic-polyfill = "=1.0.1"
-heapless = { version = "=0.7.16" } # TODO 0.8.0 is en-route
+heapless = { version = "=0.7.16", default-features = false, features = ["mpmc_large"] } # TODO 0.8.0 is en-route
 zerocopy = { version = "=0.7.0-alpha.2", default-features = false }
 
 # https://github.com/rust-lang/log/issues/526
@@ -44,6 +44,10 @@ log = "=0.4.17"
 # - binaries ------------------------------------------------------------------
 
 [[bin]]
+name = "cdc-serial-loopback"
+required-features = ["lunasoc-pac/rt"]
+
+[[bin]]
 name = "firmware"
 required-features = ["lunasoc-pac/rt"]
 
@@ -52,9 +56,9 @@ name = "hello"
 required-features = ["lunasoc-pac/rt"]
 
 [[bin]]
-name = "usb"
+name = "mutex"
 required-features = ["lunasoc-pac/rt"]
 
 [[bin]]
-name = "cdc-serial-loopback"
+name = "usb"
 required-features = ["lunasoc-pac/rt"]

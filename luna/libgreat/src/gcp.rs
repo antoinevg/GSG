@@ -4,10 +4,8 @@ use zerocopy::{AsBytes, BigEndian, FromBytes, LittleEndian, Unaligned, U32};
 
 ///! Great Communications Protocol
 pub mod class;
-pub mod class_core;
 
 pub use class::Class;
-pub use class_core::Core;
 
 /// CommandPrelude
 #[repr(C)]
@@ -59,7 +57,7 @@ mod tests {
         );
 
         assert_eq!(class_core, Class::core);
-        assert_eq!(class_reserved, Class::reserved(1));
+        assert_eq!(class_reserved, Class::unsupported(1));
         assert_eq!(core_read_version_string, Core::read_version_string);
         assert_eq!(core_reserved, Core::reserved(0x20));
     }

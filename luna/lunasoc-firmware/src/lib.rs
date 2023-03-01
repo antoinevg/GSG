@@ -4,6 +4,7 @@
 
 // - modules ------------------------------------------------------------------
 
+pub mod error;
 pub mod log;
 pub mod panic_log;
 
@@ -11,6 +12,11 @@ pub mod panic_log;
 
 pub use lunasoc_hal as hal;
 pub use lunasoc_pac as pac;
+
+// - re-exports ---------------------------------------------------------------
+
+pub use error::FirmwareError;
+pub use libgreat::error::Result;
 
 // - constants ----------------------------------------------------------------
 
@@ -46,37 +52,4 @@ pub enum Message {
 
     // TODO
     TimerEvent(u32),
-}
-
-// - Error --------------------------------------------------------------------
-
-#[derive(Debug, Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash)]
-pub enum ErrorKind {
-    Unknown,
-}
-
-// trait: core::error::Error
-impl core::error::Error for ErrorKind {
-    #[allow(deprecated)]
-    fn description(&self) -> &str {
-        use ErrorKind::*;
-        match self {
-            Unknown => "TODO Unknown",
-        }
-    }
-}
-
-// trait:: core::fmt::Display
-impl core::fmt::Display for ErrorKind {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        core::fmt::Debug::fmt(&self, f)
-    }
-}
-
-// trait: libgreat::error::Error
-impl libgreat::error::Error for ErrorKind {
-    type Error = Self;
-    fn kind(&self) -> Self::Error {
-        *self
-    }
 }

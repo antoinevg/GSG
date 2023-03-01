@@ -40,7 +40,7 @@ heapless = { version = "=0.7.16" } # TODO 0.8.0 is en-route...
 libgreat = { path = "../libgreat", features = [] }
 lunasoc-pac = { path = "../lunasoc-pac", default-features = false }
 nb = "=1.0.0"
-riscv = { version = "=0.10.1", default-features = false }
+riscv = "=0.10.1"
 zerocopy = { version = "=0.7.0-alpha.2", default-features = false }
 
 # https://github.com/rust-lang/log/issues/526

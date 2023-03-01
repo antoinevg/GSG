@@ -188,7 +188,7 @@ fn main() -> ! {
                                 "  COMMAND PRELUDE: {:?} => {:?}.{:?}",
                                 prelude,
                                 gcp::Class::from(prelude.class),
-                                gcp::Core::from(prelude.verb),
+                                gcp::class::Core::from(prelude.verb),
                             );
                             // TODO we really need a better way to get this to the vendor request
                             let data = GCP_CLASS_DISPATCH.handle(prelude);

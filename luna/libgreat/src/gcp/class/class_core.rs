@@ -6,16 +6,43 @@ use zerocopy::{AsBytes, BigEndian, FromBytes, LittleEndian, Unaligned, U32};
 #[derive(Debug, PartialEq)]
 #[allow(non_camel_case_types)]
 pub enum Core {
+    // - board information --
+
+    ///
+    ///
     read_board_id = 0x0,
+    ///
+    ///
     read_version_string = 0x1,
+    ///
+    ///
     read_part_id = 0x2,
+    ///
+    ///
     read_serial_number = 0x3,
+
+    // - api introspection --
+
+    ///
+    ///
     get_available_classes = 0x4,
+    ///
+    ///
     get_available_verbs = 0x5,
+    ///
+    ///
     get_verb_name = 0x6,
+    ///
+    ///
     get_verb_descriptor = 0x7,
+    ///
+    ///
     get_class_name = 0x8,
+    ///
+    ///
     get_class_docs = 0x9,
+
+    /// Unsupported verb
     reserved(u32),
 }
 
@@ -67,6 +94,8 @@ impl Dispatch {
         }
     }
 }
+
+// - verb implementations -----------------------------------------------------
 
 pub fn read_board_id() -> &'static [u8] {
     static BOARD_ID: [u8; 4] = [0x00, 0x00, 0x00, 0x00];
