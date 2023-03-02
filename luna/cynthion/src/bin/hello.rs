@@ -6,8 +6,8 @@ use riscv_rt::entry;
 use cynthion::pac;
 
 use cynthion::hal;
-use hal::Serial;
 use hal::hal::delay::DelayUs;
+use hal::Serial;
 use hal::Timer;
 
 use log::{debug, info};

@@ -11,9 +11,10 @@ pub use gpio::Gpio;
 pub use greatdancer::Greatdancer;
 pub use moondancer::Moondancer;
 
-use super::CommandPrelude;
+use super::{Command, CommandPrelude};
 
-use log::error;
+use log::{debug, error};
+
 use zerocopy::{AsBytes, BigEndian, FromBytes, LittleEndian, Unaligned, U32};
 
 /// Class
@@ -38,6 +39,19 @@ impl core::convert::From<u32> for Class {
             0x0104 => Class::greatdancer,
             0x0120 => Class::moondancer,
             _ => Class::unsupported(class),
+        }
+    }
+}
+
+impl From<Class> for u32 {
+    fn from(class: Class) -> Self {
+        match class {
+            Class::core => 0x0000,
+            Class::firmware => 0x0001,
+            Class::gpio => 0x0103,
+            Class::greatdancer => 0x0104,
+            Class::moondancer => 0x0120,
+            Class::unsupported(value) => value,
         }
     }
 }
@@ -70,6 +84,19 @@ impl Dispatch {
 }
 
 impl Dispatch {
+    pub fn dispatch<'a, B>(&'a self, command: Command<B>) -> &[u8]
+    where
+        B: zerocopy::ByteSlice,
+    {
+        let class = command.class();
+        match class {
+            Class::core => self.core.dispatch(command),
+            _ => {
+                unimplemented!()
+            }
+        }
+    }
+
     pub fn handle(&self, command_prelude: CommandPrelude) -> &[u8] {
         let class = Class::from(command_prelude.class);
         match class {

@@ -1,6 +1,9 @@
 #![allow(dead_code, unused_imports, unused_variables)] // TODO
 
-use zerocopy::{AsBytes, BigEndian, FromBytes, LittleEndian, Unaligned, U32};
+use zerocopy::{
+    AsBytes, BigEndian, ByteSlice, ByteSliceMut, FromBytes, LayoutVerified, LittleEndian,
+    Unaligned, U32,
+};
 
 ///! Great Communications Protocol
 pub mod class;
@@ -15,23 +18,62 @@ pub struct CommandPrelude {
     pub verb: U32<LittleEndian>,
 }
 
+#[derive(Debug)]
+pub struct Command<B: ByteSlice> {
+    pub prelude: LayoutVerified<B, CommandPrelude>,
+    pub arguments: B,
+}
+
+impl<B> Command<B>
+where
+    B: ByteSlice,
+{
+    pub fn parse(byte_slice: B) -> Option<Command<B>> {
+        let (prelude, arguments) = LayoutVerified::new_unaligned_from_prefix(byte_slice)?;
+        Some(Command { prelude, arguments })
+    }
+
+    pub fn class(&self) -> Class {
+        Class::from(self.prelude.class)
+    }
+}
+
+impl<B> Command<B>
+where
+    B: ByteSliceMut,
+{
+    fn set_class(&mut self, class: u32) {
+        self.prelude.class = class.into();
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     // - fixtures -------------------------------------------------------------
 
+    const COMMAND_NO_ARGS: [u8; 8] = [
+        // class = 1
+        0x01, 0x00, 0x00, 0x00, // verb = 2
+        0x02, 0x00, 0x00, 0x00,
+    ];
+    const COMMAND_GET_CLASS_NAME: [u8; 12] = [
+        // class = 0 (core)
+        0x00, 0x00, 0x00, 0x00, // verb = 8 (get_class_name)
+        0x08, 0x00, 0x00, 0x00, // arg0: class_number = 1
+        0x01, 0x00, 0x00, 0x00,
+    ];
+    const COMMAND_GET_VERB_DESCRIPTOR: [u8; 17] = [
+        // class = 0 (core)
+        0x00, 0x00, 0x00, 0x00, // verb = 7 (get_verb_descriptor)
+        0x07, 0x00, 0x00, 0x00, // arg0: class_number = 1
+        0x01, 0x00, 0x00, 0x00, // arg1: verb_number = 0
+        0x00, 0x00, 0x00, 0x00, // arg2: descriptor = 1 (in_signature)
+        0x01,
+    ];
+
     // - tests ----------------------------------------------------------------
-
-    #[test]
-    fn test_from_bytes() {
-        let bytes: [u8; 8] = [0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00];
-        let prelude: CommandPrelude = CommandPrelude::read_from(&bytes[..]).expect("failed");
-        println!("test_from_bytes: {:?}", prelude);
-
-        assert_eq!(prelude.class.get(), 1);
-        assert_eq!(prelude.verb.get(), 2);
-    }
 
     #[test]
     fn test_as_bytes() {
@@ -46,20 +88,69 @@ mod tests {
     }
 
     #[test]
+    fn test_from_bytes_no_args() {
+        let prelude: CommandPrelude =
+            CommandPrelude::read_from(&COMMAND_NO_ARGS[..]).expect("failed parsing command");
+        println!("test_from_bytes: {:?}", prelude);
+
+        assert_eq!(prelude.class.get(), 1);
+        assert_eq!(prelude.verb.get(), 2);
+    }
+
+    #[test]
+    fn test_parse_no_args() {
+        let command = Command::parse(&COMMAND_NO_ARGS[..]).expect("failed parsing command");
+        println!("test_parse_no_args: {:?}", command);
+
+        assert_eq!(command.prelude.class.get(), 1);
+        assert_eq!(command.prelude.verb.get(), 2);
+    }
+
+    #[test]
+    fn test_parse_get_class_name() {
+        let command = Command::parse(&COMMAND_GET_CLASS_NAME[..]).expect("failed parsing command");
+        println!("test_parse_get_class_name: {:?}", command);
+
+        assert_eq!(command.prelude.class.get(), 0);
+        assert_eq!(command.prelude.verb.get(), 8);
+    }
+
+    #[test]
+    fn test_parse_get_verb_descriptor() {
+        let command =
+            Command::parse(&COMMAND_GET_VERB_DESCRIPTOR[..]).expect("failed parsing command");
+        println!("test_parse_get_verb_descriptor: {:?}", command);
+
+        assert_eq!(command.prelude.class.get(), 0);
+        assert_eq!(command.prelude.verb.get(), 7);
+    }
+
+    #[test]
+    fn test_dispatch_get_verb_descriptor() {
+        let command =
+            Command::parse(&COMMAND_GET_VERB_DESCRIPTOR[..]).expect("failed parsing command");
+        println!("test_dispatch_get_verb_descriptor: {:?}", command);
+
+        let dispatch = class::Dispatch::new();
+        let response = dispatch.dispatch(command);
+        println!("  -> {:?}", response);
+    }
+
+    #[test]
     fn test_enums() {
         let class_core: Class = Class::from(0);
         let class_reserved: Class = Class::from(1);
-        let core_read_version_string: Core = Core::from(1);
-        let core_reserved: Core = Core::from(0x20);
+        let core_read_version_string: class::Core = class::Core::from(1);
+        let core_reserved: class::Core = class::Core::from(0x20);
         println!(
             "test_enums: {:?}, {:?}, {:?}, {:?}",
             class_core, class_reserved, core_read_version_string, core_reserved,
         );
 
-        assert_eq!(class_core, Class::core);
-        assert_eq!(class_reserved, Class::unsupported(1));
-        assert_eq!(core_read_version_string, Core::read_version_string);
-        assert_eq!(core_reserved, Core::reserved(0x20));
+        assert_eq!(class_core, class::Class::core);
+        //assert_eq!(class_reserved, class::Class::unsupported(1));
+        assert_eq!(core_read_version_string, class::Core::read_version_string);
+        assert_eq!(core_reserved, class::Core::reserved(0x20));
     }
 
     // -

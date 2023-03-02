@@ -14,7 +14,6 @@
 ///! basically just shouts yolo and disables interrupts globally.
 ///!
 ///! Which unfortunately has some performance implications ...
-
 use cynthion::pac;
 use pac::csr::interrupt;
 
