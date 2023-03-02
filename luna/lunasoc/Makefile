@@ -16,6 +16,9 @@ LUNASOC_PAC := ../lunasoc-pac
 
 # - gateware ------------------------------------------------------------------
 
+blinky_verilog:
+	PATH=$(PATH):$(YOSYS_BIN) AR=$(AR) python blinky_verilog.py
+
 top:
 	@#PATH=$(PATH):$(YOSYS_BIN) AR=$(AR) AMARANTH_verbose=1 python top.py
 	PATH=$(PATH):$(YOSYS_BIN) AR=$(AR) python top.py

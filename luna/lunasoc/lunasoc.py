@@ -44,6 +44,8 @@ class CoreSoC(CPUSoC, Elaboratable):
 
         # from femtorv import FemtoRV
         # foo = FemtoRV()
+        # import sys
+        # sys.exit(1)
 
         # create cpu - TODO maybe do this _after_ we've added our RAM
         self.internal_sram_size = internal_sram_size
