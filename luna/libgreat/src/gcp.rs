@@ -7,8 +7,10 @@ use zerocopy::{
 
 ///! Great Communications Protocol
 pub mod class;
+pub mod class_core;
+//pub mod old_core;
 
-pub use class::Class;
+pub use class::*;
 
 /// CommandPrelude
 #[repr(C)]
@@ -58,11 +60,14 @@ mod tests {
         0x01, 0x00, 0x00, 0x00, // verb = 2
         0x02, 0x00, 0x00, 0x00,
     ];
+    const COMMAND_READ_BOARD_ID: [u8; 8] = [
+        0x00, 0x00, 0x00, 0x00, // class = 0 (core)
+        0x00, 0x00, 0x00, 0x00, // verb = 0 (read_board_id)
+    ];
     const COMMAND_GET_CLASS_NAME: [u8; 12] = [
-        // class = 0 (core)
-        0x00, 0x00, 0x00, 0x00, // verb = 8 (get_class_name)
-        0x08, 0x00, 0x00, 0x00, // arg0: class_number = 1
-        0x01, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00, // class = 0 (core)
+        0x08, 0x00, 0x00, 0x00, // verb = 8 (get_class_name)
+        0x01, 0x00, 0x00, 0x00, // arg0: class_number = 1
     ];
     const COMMAND_GET_VERB_DESCRIPTOR: [u8; 17] = [
         // class = 0 (core)
@@ -74,9 +79,28 @@ mod tests {
     ];
 
     // - tests ----------------------------------------------------------------
+/*
+    #[test]
+    fn test_enum_class() {
+        let class_core: Class = Class::from(0);
+        let class_reserved: Class = Class::from(1);
+        let core_read_version_string: class::Core = class::Core::from(1);
+        let core_reserved: class::Core = class::Core::from(0x20);
+        println!(
+            "test_enums: {:?}, {:?}, {:?}, {:?}",
+            class_core, class_reserved, core_read_version_string, core_reserved,
+        );
+
+        assert_eq!(class_core, class::Class::core);
+        //assert_eq!(class_reserved, class::Class::unsupported(1));
+        assert_eq!(core_read_version_string, class::Core::read_version_string);
+        assert_eq!(core_reserved, class::Core::reserved(0x20));
+    }
+*/
+    // - test_parse_* --
 
     #[test]
-    fn test_as_bytes() {
+    fn test_parse_as_bytes() {
         let prelude: CommandPrelude = CommandPrelude {
             class: 1.into(),
             verb: 2.into(),
@@ -88,7 +112,7 @@ mod tests {
     }
 
     #[test]
-    fn test_from_bytes_no_args() {
+    fn test_parse_from_bytes_no_args() {
         let prelude: CommandPrelude =
             CommandPrelude::read_from(&COMMAND_NO_ARGS[..]).expect("failed parsing command");
         println!("test_from_bytes: {:?}", prelude);
@@ -125,35 +149,56 @@ mod tests {
         assert_eq!(command.prelude.verb.get(), 7);
     }
 
+    // - test_olddispatch_* --
+
+    /*#[test]
+    fn test_olddispatch_get_verb_descriptor() {
+        let command =
+            Command::parse(&COMMAND_GET_VERB_DESCRIPTOR[..]).expect("failed parsing command");
+        println!("\ntest_dispatch_get_verb_descriptor: {:?}", command);
+
+        let dispatch = class::OldDispatch::new();
+        let response = dispatch.dispatch(command);
+        println!("  -> {:?}\n", response);
+    }*/
+
+    // - test_dispatch_* --
+
+    #[test]
+    fn test_dispatch_read_board_id() {
+        let command =
+            Command::parse(&COMMAND_READ_BOARD_ID[..]).expect("failed parsing command");
+        println!("\ntest_dispatch_read_board_id: {:?}", command);
+
+        let mut context = 0;
+        let dispatch = class::AltDispatch::new();
+        let response = dispatch.dispatch(command, &mut context);
+        println!("  -> {:?}", response);
+
+        assert_eq!(response.as_slice(), [0, 0, 0, 0]);
+    }
+
     #[test]
     fn test_dispatch_get_verb_descriptor() {
         let command =
             Command::parse(&COMMAND_GET_VERB_DESCRIPTOR[..]).expect("failed parsing command");
-        println!("test_dispatch_get_verb_descriptor: {:?}", command);
+        println!("\ntest_dispatch_get_verb_descriptor: {:?}", command);
 
-        let dispatch = class::Dispatch::new();
-        let response = dispatch.dispatch(command);
+        let mut context: (u32, u32, u32) = (23, 42, 12);
+        let dispatch = class::AltDispatch::new();
+        let response = dispatch.dispatch(command, &mut context);
         println!("  -> {:?}", response);
+        println!("  -> {:?}", context);
+
+        let command =
+            Command::parse(&COMMAND_GET_VERB_DESCRIPTOR[..]).expect("failed parsing command");
+        let dispatch = class::AltDispatch::new();
+        let response = dispatch.dispatch(command, &mut context);
+        println!("  -> {:?}", response);
+        println!("  -> {:?}", context);
     }
 
-    #[test]
-    fn test_enums() {
-        let class_core: Class = Class::from(0);
-        let class_reserved: Class = Class::from(1);
-        let core_read_version_string: class::Core = class::Core::from(1);
-        let core_reserved: class::Core = class::Core::from(0x20);
-        println!(
-            "test_enums: {:?}, {:?}, {:?}, {:?}",
-            class_core, class_reserved, core_read_version_string, core_reserved,
-        );
-
-        assert_eq!(class_core, class::Class::core);
-        //assert_eq!(class_reserved, class::Class::unsupported(1));
-        assert_eq!(core_read_version_string, class::Core::read_version_string);
-        assert_eq!(core_reserved, class::Core::reserved(0x20));
-    }
-
-    // -
+    // - test_any --
 
     use core::any::Any;
 

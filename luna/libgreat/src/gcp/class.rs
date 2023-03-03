@@ -1,21 +1,15 @@
 ///! Great Communications Protocol Class Registry
-pub mod class_core;
-pub mod firmware;
-pub mod gpio;
-pub mod greatdancer;
-pub mod moondancer;
 
-pub use class_core::Core;
-pub use firmware::Firmware;
-pub use gpio::Gpio;
-pub use greatdancer::Greatdancer;
-pub use moondancer::Moondancer;
+// - Class --------------------------------------------------------------------
 
 use super::{Command, CommandPrelude};
+use super::class_core;
 
 use log::{debug, error};
-
 use zerocopy::{AsBytes, BigEndian, FromBytes, LittleEndian, Unaligned, U32};
+
+use core::any::Any;
+use core::slice;
 
 /// Class
 #[repr(u32)]
@@ -62,19 +56,104 @@ impl core::convert::From<U32<LittleEndian>> for Class {
     }
 }
 
+
+// - VerbRecord ---------------------------------------------------------------
+
+pub trait VerbRecordCollection<'a> {
+    fn iter(&'a self) -> slice::Iter<VerbRecord>;
+    fn verb(&'a self, verb_number: u32) -> &'a VerbRecord;
+}
+
+/// VerbRecord
+pub struct VerbRecord<'a> {
+    pub verb_number: u32,
+    pub name: &'a str,
+    pub in_signature: &'a str,
+    pub in_param_names: &'a str,
+    pub out_signature: &'a str,
+    pub out_param_names: &'a str,
+    pub doc: &'a str,
+    pub command_handler: fn(arguments: &[u8], context: &'a mut dyn Any) -> slice::Iter<'a, u8>,
+}
+
+/*
+impl<'a, 'b> VerbRecord<'a, 'b> {
+    pub fn new() -> Self {
+        fn empty_command_handler<'a, 'b>(_arguments: &[u8], _context: &'b mut dyn Any) -> slice::Iter<'a, u8> {
+            [].iter()
+        }
+        Self {
+            verb_number: 0,
+            name: "",
+            in_signature: "",
+            in_param_names: "",
+            out_signature: "",
+            out_param_names: "",
+            doc: "",
+            command_handler: empty_command_handler,
+        }
+    }
+}
+*/
+
+// - Class AltDispatch -----------------------------------------------------------
+
 /// Dispatch
-pub struct Dispatch {
-    core: class_core::Dispatch,
+pub struct AltDispatch<'a> {
+    core: class_core::Verbs<'a>,
+    //firmware: firmware::Dispatch,
+}
+
+impl<'a> AltDispatch<'a> {
+    pub fn new() -> Self {
+        Self {
+            core: class_core::Verbs::new(),
+            //firmware: firmware::Dispatch::new(),
+        }
+    }
+}
+
+impl<'a> AltDispatch<'a> {
+    pub fn dispatch<B>(&'a self, command: Command<B>, context: &'a mut dyn Any) -> slice::Iter<'a, u8>
+    where
+        B: zerocopy::ByteSlice,
+    {
+        let class = command.class();
+        let verb_number = command.prelude.verb.get();
+        match class {
+            Class::core => {
+                //self.core.dispatch(command)
+                //let record = &alt_core::VERBS[verb_number];
+                let record = &self.core.verb(verb_number);
+                let handler = record.command_handler;
+                let arguments = command.arguments.as_bytes();
+                let response = handler(arguments, context);
+                response
+            },
+            _ => {
+                unimplemented!()
+            }
+        }
+    }
+}
+
+
+// - Class Dispatch -----------------------------------------------------------
+/*
+
+/// Dispatch
+pub struct OldDispatch {
+    core: old_core::Dispatch,
     firmware: firmware::Dispatch,
     gpio: gpio::Dispatch,
     greatdancer: greatdancer::Dispatch,
     moondancer: moondancer::Dispatch,
 }
 
-impl Dispatch {
+impl OldDispatch {
     pub const fn new() -> Self {
         Self {
-            core: class_core::Dispatch::new(),
+            core: old_core::Dispatch::new(),
             firmware: firmware::Dispatch::new(),
             gpio: gpio::Dispatch::new(),
             greatdancer: greatdancer::Dispatch::new(),
@@ -83,7 +162,7 @@ impl Dispatch {
     }
 }
 
-impl Dispatch {
+impl OldDispatch {
     pub fn dispatch<'a, B>(&'a self, command: Command<B>) -> &[u8]
     where
         B: zerocopy::ByteSlice,
@@ -127,3 +206,4 @@ impl Dispatch {
         }
     }
 }
+*/

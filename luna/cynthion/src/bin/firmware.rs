@@ -128,7 +128,7 @@ fn main() -> ! {
         interrupt::enable(pac::Interrupt::USB1_EP_OUT);
     }
 
-    static GCP_CLASS_DISPATCH: gcp::class::Dispatch = gcp::class::Dispatch::new();
+    static GCP_CLASS_DISPATCH: gcp::class::OldDispatch = gcp::class::OldDispatch::new();
 
     let mut response: Option<&[u8]> = None;
 
