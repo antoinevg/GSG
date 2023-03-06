@@ -25,30 +25,36 @@ pub enum Class {
 }
 
 impl core::convert::From<u32> for Class {
-    fn from(class: u32) -> Self {
-        match class {
+    fn from(value: u32) -> Self {
+        match value {
             0x0000 => Class::core,
             0x0001 => Class::firmware,
             0x0103 => Class::gpio,
             0x0104 => Class::greatdancer,
             0x0120 => Class::moondancer,
-            _ => Class::unsupported(class),
+            _ => Class::unsupported(value),
         }
     }
 }
 
-impl From<Class> for u32 {
-    fn from(class: Class) -> Self {
-        match class {
+impl Class {
+    pub const fn into_u32(&self) -> u32 {
+        match self {
             Class::core => 0x0000,
             Class::firmware => 0x0001,
             Class::gpio => 0x0103,
             Class::greatdancer => 0x0104,
             Class::moondancer => 0x0120,
-            Class::unsupported(value) => value,
+            Class::unsupported(value) => *value,
         }
     }
 }
+
+/*impl From<Class> for u32 {
+    fn from(class: Class) -> Self {
+        class.into_u32()
+    }
+}*/
 
 impl core::convert::From<U32<LittleEndian>> for Class {
     fn from(value: U32<LittleEndian>) -> Self {
@@ -73,7 +79,7 @@ pub struct VerbRecord<'a> {
     pub out_signature: &'a str,
     pub out_param_names: &'a str,
     pub doc: &'a str,
-    pub command_handler: fn(arguments: &[u8], context: &'a mut dyn Any) -> slice::Iter<'a, u8>,
+    pub command_handler: fn(arguments: &[u8], context: &'a dyn Any) -> slice::Iter<'a, u8>,
 }
 
 /*
@@ -99,12 +105,12 @@ impl<'a, 'b> VerbRecord<'a, 'b> {
 // - Class AltDispatch -----------------------------------------------------------
 
 /// Dispatch
-pub struct AltDispatch<'a> {
+pub struct Dispatch<'a> {
     core: class_core::Verbs<'a>,
     //firmware: firmware::Dispatch,
 }
 
-impl<'a> AltDispatch<'a> {
+impl<'a> Dispatch<'a> {
     pub fn new() -> Self {
         Self {
             core: class_core::Verbs::new(),
@@ -113,8 +119,8 @@ impl<'a> AltDispatch<'a> {
     }
 }
 
-impl<'a> AltDispatch<'a> {
-    pub fn dispatch<B>(&'a self, command: Command<B>, context: &'a mut dyn Any) -> slice::Iter<'a, u8>
+impl<'a> Dispatch<'a> {
+    pub fn dispatch<B>(&'a self, command: Command<B>, context: &'a dyn Any) -> slice::Iter<'a, u8>
     where
         B: zerocopy::ByteSlice,
     {

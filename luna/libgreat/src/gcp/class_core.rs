@@ -11,16 +11,6 @@ static CLASS_DOCS: &str
 
 pub struct Verbs<'a>([VerbRecord<'a>; 10]);
 
-impl<'a> VerbRecordCollection<'a> for Verbs<'a> {
-    fn iter(&'a self) -> slice::Iter<VerbRecord> {
-        self.0.iter()
-    }
-
-    fn verb(&'a self, verb_number: u32) -> &'a VerbRecord {
-        self.0.iter().find(|&record| record.verb_number == verb_number).expect("could not find verb")
-    }
-}
-
 impl<'a> Verbs<'a> {
     pub fn new() -> Self {
         Self([
@@ -131,29 +121,39 @@ impl<'a> Verbs<'a> {
     }
 }
 
+impl<'a> VerbRecordCollection<'a> for Verbs<'a> {
+    fn iter(&'a self) -> slice::Iter<VerbRecord> {
+        self.0.iter()
+    }
+
+    fn verb(&'a self, verb_number: u32) -> &'a VerbRecord {
+        self.0.iter().find(|&record| record.verb_number == verb_number).expect("could not find verb")
+    }
+}
+
 
 // - verb implementations: board ----------------------------------------------
 
-fn read_board_id<'a>(arguments: &[u8], _context: &'a mut dyn Any) -> slice::Iter<'a, u8> {
+fn read_board_id<'a>(arguments: &[u8], _context: &'a dyn Any) -> slice::Iter<'a, u8> {
     static BOARD_ID: [u8; 4] = [0x00, 0x00, 0x00, 0x00];
     debug!("  sending board id: {:?}", BOARD_ID);
     BOARD_ID.iter()
 }
 
-fn read_version_string<'a>(arguments: &[u8], _context: &'a mut dyn Any) -> slice::Iter<'a, u8> {
+fn read_version_string<'a>(arguments: &[u8], _context: &'a dyn Any) -> slice::Iter<'a, u8> {
     static VERSION_STRING: &[u8] = "v2021.2.1\0".as_bytes();
     debug!("  sending version string: {:?}", VERSION_STRING);
     VERSION_STRING.iter()
 }
 
-fn read_part_id<'a>(arguments: &[u8], _context: &'a mut dyn Any) -> slice::Iter<'a, u8> {
+fn read_part_id<'a>(arguments: &[u8], _context: &'a dyn Any) -> slice::Iter<'a, u8> {
     // TODO this should probably come from the SoC
     static PART_ID: [u8; 8] = [0x30, 0xa, 0x00, 0xa0, 0x5e, 0x4f, 0x60, 0x00];
     debug!("  sending part id: {:?}", PART_ID);
     PART_ID.iter()
 }
 
-fn read_serial_number<'a>(arguments: &[u8], _context: &'a mut dyn Any) -> slice::Iter<'a, u8> {
+fn read_serial_number<'a>(arguments: &[u8], _context: &'a dyn Any) -> slice::Iter<'a, u8> {
     // TODO this should probably come from the SoC
     static SERIAL_NUMBER: [u8; 16] = [
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xe6, 0x67, 0xcc, 0x57, 0x57, 0x53, 0x6f,
@@ -166,7 +166,7 @@ fn read_serial_number<'a>(arguments: &[u8], _context: &'a mut dyn Any) -> slice:
 
 // - verb implementations: api ------------------------------------------------
 
-fn get_available_classes<'a>(arguments: &[u8], _context: &'a mut dyn Any) -> slice::Iter<'a, u8> {
+fn get_available_classes<'a>(arguments: &[u8], _context: &'a dyn Any) -> slice::Iter<'a, u8> {
     // can't set alignment
     /*#[repr(C)]
     #[derive(Debug, AsBytes)]
@@ -184,31 +184,31 @@ fn get_available_classes<'a>(arguments: &[u8], _context: &'a mut dyn Any) -> sli
     for (dest, source) in response.chunks_exact_mut(4).zip(CLASSES.iter()) {
         dest.copy_from_slice(&source.to_le_bytes())
     }
-    response*/
+    response.iter()*/
 
     // TODO iter ?
 
     [].iter()
 }
 
-fn get_class_name<'a>(arguments: &[u8], _context: &'a mut dyn Any) -> slice::Iter<'a, u8> {
+fn get_class_name<'a>(arguments: &[u8], _context: &'a dyn Any) -> slice::Iter<'a, u8> {
     [].iter()
 }
 
-fn get_class_docs<'a>(arguments: &[u8], _context: &'a mut dyn Any) -> slice::Iter<'a, u8> {
+fn get_class_docs<'a>(arguments: &[u8], _context: &'a dyn Any) -> slice::Iter<'a, u8> {
     [].iter()
 }
 
-fn get_available_verbs<'a>(arguments: &[u8], _context: &'a mut dyn Any) -> slice::Iter<'a, u8> {
+fn get_available_verbs<'a>(arguments: &[u8], _context: &'a dyn Any) -> slice::Iter<'a, u8> {
     [].iter()
 }
 
-fn get_verb_name<'a>(arguments: &[u8], _context: &'a mut dyn Any) -> slice::Iter<'a, u8> {
+fn get_verb_name<'a>(arguments: &[u8], _context: &'a dyn Any) -> slice::Iter<'a, u8> {
     [].iter()
 }
 
 
-fn get_verb_descriptor<'a>(arguments: &[u8], _context: &'a mut dyn Any) -> slice::Iter<'a, u8> {
+fn get_verb_descriptor<'a>(arguments: &[u8], _context: &'a dyn Any) -> slice::Iter<'a, u8> {
     #[repr(C)]
     #[derive(Debug, FromBytes, Unaligned)]
     struct Args {
@@ -218,12 +218,10 @@ fn get_verb_descriptor<'a>(arguments: &[u8], _context: &'a mut dyn Any) -> slice
     }
     match Args::read_from(arguments) {
         Some(arguments) => {
-            let context = _context.downcast_mut::<(u32, u32, u32)>().expect("argh");
-            println!("get_verb_descriptor -> {:?} -> {:?}",
-                     arguments, context);
-            context.0 *= 2;
-            context.1 *= 3;
-            context.2 *= 4;
+            let context = _context.downcast_ref::<(u32, u32, u32)>().expect("argh");
+            //context.0 *= 2;
+            //context.1 *= 3;
+            //context.2 *= 4;
             [].iter()
         }
         None => {

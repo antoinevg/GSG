@@ -53,6 +53,9 @@ where
 mod tests {
     use super::*;
 
+    use core::slice;
+
+
     // - fixtures -------------------------------------------------------------
 
     const COMMAND_NO_ARGS: [u8; 8] = [
@@ -171,7 +174,7 @@ mod tests {
         println!("\ntest_dispatch_read_board_id: {:?}", command);
 
         let mut context = 0;
-        let dispatch = class::AltDispatch::new();
+        let dispatch = class::Dispatch::new();
         let response = dispatch.dispatch(command, &mut context);
         println!("  -> {:?}", response);
 
@@ -185,17 +188,54 @@ mod tests {
         println!("\ntest_dispatch_get_verb_descriptor: {:?}", command);
 
         let mut context: (u32, u32, u32) = (23, 42, 12);
-        let dispatch = class::AltDispatch::new();
+        let dispatch = class::Dispatch::new();
         let response = dispatch.dispatch(command, &mut context);
         println!("  -> {:?}", response);
         println!("  -> {:?}", context);
 
         let command =
             Command::parse(&COMMAND_GET_VERB_DESCRIPTOR[..]).expect("failed parsing command");
-        let dispatch = class::AltDispatch::new();
+        let dispatch = class::Dispatch::new();
         let response = dispatch.dispatch(command, &mut context);
         println!("  -> {:?}", response);
         println!("  -> {:?}", context);
+    }
+
+    // - figure out introspection --
+
+    struct ClassRegistry {
+    }
+
+    fn get_available_classes<'a>() -> impl Iterator<Item = u8>  {
+        static CLASSES: [u32; 3] = [
+            Class::core.into_u32(),
+            Class::firmware.into_u32(),
+            Class::gpio.into_u32(),
+        ];
+        CLASSES.iter().flat_map(|class| class.to_le_bytes())
+    }
+
+    fn get_available_verbs_core<'a>(verbs: &'a class_core::Verbs<'a>) -> impl Iterator<Item = u8> + 'a {
+        let iter: slice::Iter<'a, VerbRecord> = verbs.iter();
+        let iter = iter.map(|verb| verb.verb_number);
+        let iter = iter.flat_map(|verb_number| verb_number.to_le_bytes());
+        iter
+    }
+
+    #[test]
+    fn test_introspection() {
+        //println!("\ntest_iter: {:?}\n", classes);
+
+        let classes = get_available_classes();
+        for class in classes {
+            println!("class: {}", class);
+        }
+
+        let verbs = class_core::Verbs::new();
+        let verbs = get_available_verbs_core(&verbs);
+        for verb in verbs {
+            println!("verb: {}", verb);
+        }
     }
 
     // - test_any --

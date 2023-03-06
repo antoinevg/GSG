@@ -1,5 +1,22 @@
+use super::{Class, Command, VerbRecord, VerbRecordCollection};
+
 use log::{debug, error};
 use zerocopy::{AsBytes, BigEndian, FromBytes, LittleEndian, Unaligned, U32};
+
+use core::any::Any;
+use core::slice;
+
+static CLASS_DOCS: &str
+    = "Common API for updating firmware on a libgreat device.";
+
+pub struct Verbs<'a>([VerbRecord<'a>; 10]);
+
+impl<'a> Verbs<'a> {
+    pub fn new() -> Self {
+        Self([
+        ])
+    }
+}
 
 /// Verbs for class: Firmware
 #[repr(u32)]

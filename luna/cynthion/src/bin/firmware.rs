@@ -5,7 +5,6 @@ use cynthion::pac;
 use pac::csr::interrupt;
 
 use cynthion::hal;
-
 use hal::smolusb;
 use smolusb::class;
 use smolusb::class::cynthion::vendor::{VendorRequest, VendorRequestValue};
@@ -16,10 +15,8 @@ use smolusb::traits::{
 };
 
 use libgreat::gcp;
-use zerocopy::FromBytes;
 
 use log::{debug, error, info, trace, warn};
-
 use riscv_rt::entry;
 
 // - global static state ------------------------------------------------------
@@ -128,8 +125,9 @@ fn main() -> ! {
         interrupt::enable(pac::Interrupt::USB1_EP_OUT);
     }
 
-    static GCP_CLASS_DISPATCH: gcp::class::OldDispatch = gcp::class::OldDispatch::new();
 
+    let gcp_class_dispatch: gcp::class::Dispatch = gcp::class::Dispatch::new();
+    let some_state: u32 = 45;
     let mut response: Option<&[u8]> = None;
 
     loop {
@@ -183,20 +181,15 @@ fn main() -> ! {
 
                         // read & dispatch command prelude
                         let data = &buffer[0..8];
-                        if let Some(prelude) = gcp::CommandPrelude::read_from(data) {
-                            info!(
-                                "  COMMAND PRELUDE: {:?} => {:?}.{:?}",
-                                prelude,
-                                gcp::Class::from(prelude.class),
-                                gcp::class::Core::from(prelude.verb),
-                            );
+                        if let Some(command) = gcp::Command::parse(data) {
+                            info!("  COMMAND: {:?}", command);
                             // TODO we really need a better way to get this to the vendor request
-                            let data = GCP_CLASS_DISPATCH.handle(prelude);
+                            let reply = gcp_class_dispatch.dispatch(command, &some_state);
                             //debug!("  sending gcp response: {:?}", response);
                             //usb1_device.hal_driver.write_ref(0, data.into_iter());
                             //usb1_device.hal_driver.write_ref(0, [].into_iter());
                             //usb1_device.hal_driver.ack_status_stage(&packet);
-                            response = Some(data);
+                            response = Some(reply.as_slice());
                             info!("\n");
                         } else {
                             // actually infallible

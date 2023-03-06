@@ -23,6 +23,10 @@ top:
 	@#PATH=$(PATH):$(YOSYS_BIN) AR=$(AR) AMARANTH_verbose=1 python top.py
 	PATH=$(PATH):$(YOSYS_BIN) AR=$(AR) python top.py
 
+top_femtorv:
+	rm -rf build
+	PATH=$(PATH):$(YOSYS_BIN) AR=$(AR) python top_femtorv.py
+
 load:
 	@#apollo configure build/top.bit
 	python configure_ecp5.py build/top.bit
