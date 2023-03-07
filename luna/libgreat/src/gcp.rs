@@ -1,16 +1,14 @@
 #![allow(dead_code, unused_imports, unused_variables)] // TODO
 
+///! Great Communications Protocol
+pub mod class;
+pub mod class_core;
+pub use class::*;
+
 use zerocopy::{
     AsBytes, BigEndian, ByteSlice, ByteSliceMut, FromBytes, LayoutVerified, LittleEndian,
     Unaligned, U32,
 };
-
-///! Great Communications Protocol
-pub mod class;
-pub mod class_core;
-//pub mod old_core;
-
-pub use class::*;
 
 /// CommandPrelude
 #[repr(C)]
@@ -35,8 +33,12 @@ where
         Some(Command { prelude, arguments })
     }
 
-    pub fn class(&self) -> Class {
-        Class::from(self.prelude.class)
+    pub fn class(&self) -> ClassId {
+        ClassId::from(self.prelude.class)
+    }
+
+    pub fn verb(&self) -> u32 {
+        self.prelude.verb.get()
     }
 }
 
@@ -55,13 +57,11 @@ mod tests {
 
     use core::slice;
 
-
     // - fixtures -------------------------------------------------------------
 
     const COMMAND_NO_ARGS: [u8; 8] = [
-        // class = 1
-        0x01, 0x00, 0x00, 0x00, // verb = 2
-        0x02, 0x00, 0x00, 0x00,
+        0x01, 0x00, 0x00, 0x00, // class = 1
+        0x02, 0x00, 0x00, 0x00, // verb = 2
     ];
     const COMMAND_READ_BOARD_ID: [u8; 8] = [
         0x00, 0x00, 0x00, 0x00, // class = 0 (core)
@@ -73,33 +73,25 @@ mod tests {
         0x01, 0x00, 0x00, 0x00, // arg0: class_number = 1
     ];
     const COMMAND_GET_VERB_DESCRIPTOR: [u8; 17] = [
-        // class = 0 (core)
-        0x00, 0x00, 0x00, 0x00, // verb = 7 (get_verb_descriptor)
-        0x07, 0x00, 0x00, 0x00, // arg0: class_number = 1
-        0x01, 0x00, 0x00, 0x00, // arg1: verb_number = 0
-        0x00, 0x00, 0x00, 0x00, // arg2: descriptor = 1 (in_signature)
-        0x01,
+        0x00, 0x00, 0x00, 0x00, // class = 0 (core)
+        0x07, 0x00, 0x00, 0x00, // verb = 7 (get_verb_descriptor)
+        0x01, 0x00, 0x00, 0x00, // arg0: class_number = 1
+        0x00, 0x00, 0x00, 0x00, // arg1: verb_number = 0
+        0x01, // arg2: descriptor = 1 (in_signature)
     ];
 
     // - tests ----------------------------------------------------------------
-/*
-    #[test]
-    fn test_enum_class() {
-        let class_core: Class = Class::from(0);
-        let class_reserved: Class = Class::from(1);
-        let core_read_version_string: class::Core = class::Core::from(1);
-        let core_reserved: class::Core = class::Core::from(0x20);
-        println!(
-            "test_enums: {:?}, {:?}, {:?}, {:?}",
-            class_core, class_reserved, core_read_version_string, core_reserved,
-        );
 
-        assert_eq!(class_core, class::Class::core);
-        //assert_eq!(class_reserved, class::Class::unsupported(1));
-        assert_eq!(core_read_version_string, class::Core::read_version_string);
-        assert_eq!(core_reserved, class::Core::reserved(0x20));
+    #[test]
+    fn test_enum_class_id() {
+        let class_core: ClassId = ClassId::from(0);
+        let class_unsupported: ClassId = ClassId::from(0xdeadbeef);
+        println!("test_enums: {:?}, {:?}", class_core, class_unsupported,);
+
+        assert_eq!(class_core, ClassId::core);
+        assert_eq!(class_unsupported, ClassId::unsupported(0xdeadbeef));
     }
-*/
+
     // - test_parse_* --
 
     #[test]
@@ -152,30 +144,25 @@ mod tests {
         assert_eq!(command.prelude.verb.get(), 7);
     }
 
-    // - test_olddispatch_* --
-
-    /*#[test]
-    fn test_olddispatch_get_verb_descriptor() {
-        let command =
-            Command::parse(&COMMAND_GET_VERB_DESCRIPTOR[..]).expect("failed parsing command");
-        println!("\ntest_dispatch_get_verb_descriptor: {:?}", command);
-
-        let dispatch = class::OldDispatch::new();
-        let response = dispatch.dispatch(command);
-        println!("  -> {:?}\n", response);
-    }*/
-
     // - test_dispatch_* --
 
     #[test]
     fn test_dispatch_read_board_id() {
-        let command =
-            Command::parse(&COMMAND_READ_BOARD_ID[..]).expect("failed parsing command");
+        let command = Command::parse(&COMMAND_READ_BOARD_ID[..]).expect("failed parsing command");
         println!("\ntest_dispatch_read_board_id: {:?}", command);
 
+        let verbs_core = class_core::verbs();
+        let class_core = Class {
+            id: ClassId::core,
+            verbs: &verbs_core,
+        };
+        let supported_classes = [class_core];
+        let classes = Classes(&supported_classes);
+
         let mut context = 0;
-        let dispatch = class::Dispatch::new();
-        let response = dispatch.dispatch(command, &mut context);
+        let response = classes
+            .dispatch(command, &mut context)
+            .expect("failed dispatch");
         println!("  -> {:?}", response);
 
         assert_eq!(response.as_slice(), [0, 0, 0, 0]);
@@ -187,55 +174,116 @@ mod tests {
             Command::parse(&COMMAND_GET_VERB_DESCRIPTOR[..]).expect("failed parsing command");
         println!("\ntest_dispatch_get_verb_descriptor: {:?}", command);
 
-        let mut context: (u32, u32, u32) = (23, 42, 12);
-        let dispatch = class::Dispatch::new();
-        let response = dispatch.dispatch(command, &mut context);
+        let context: (u32, u32, u32) = (23, 42, 12);
+
+        let verbs_core = class_core::verbs();
+        let class_core = Class {
+            id: ClassId::core,
+            verbs: &verbs_core,
+        };
+        let supported_classes = [class_core];
+        let classes = Classes(&supported_classes);
+
+        let response = classes
+            .dispatch(command, &context)
+            .expect("failed dispatch");
         println!("  -> {:?}", response);
         println!("  -> {:?}", context);
 
         let command =
             Command::parse(&COMMAND_GET_VERB_DESCRIPTOR[..]).expect("failed parsing command");
-        let dispatch = class::Dispatch::new();
-        let response = dispatch.dispatch(command, &mut context);
+        let response = classes.dispatch(command, &context);
         println!("  -> {:?}", response);
         println!("  -> {:?}", context);
     }
 
     // - figure out introspection --
 
-    struct ClassRegistry {
+    struct TestClasses<'a> {
+        pub classes: &'a [TestClass<'a>],
     }
 
-    fn get_available_classes<'a>() -> impl Iterator<Item = u8>  {
+    struct TestClass<'a> {
+        pub id: ClassId,
+        pub verbs: &'a [TestVerb],
+    }
+
+    struct TestVerb {
+        pub id: u32,
+        pub name: &'static str,
+        //pub command_handler: fn(arguments: &[u8]) -> slice::Iter<u8>,
+    }
+
+    struct Dispatch<'a> {
+        classes: TestClasses<'a>,
+    }
+
+    fn boink() {
+        let verb_0 = TestVerb {
+            id: 0,
+            name: "zero",
+        };
+        let verb_1 = TestVerb { id: 1, name: "one" };
+        let verb_2 = TestVerb { id: 0, name: "two" };
+        let verb_3 = TestVerb {
+            id: 1,
+            name: "three",
+        };
+
+        let class_0 = TestClass {
+            id: ClassId::core,
+            verbs: &[verb_0, verb_1],
+        };
+        let class_1 = TestClass {
+            id: ClassId::firmware,
+            verbs: &[verb_2, verb_3],
+        };
+
+        let classes = TestClasses {
+            classes: &[class_0, class_1],
+        };
+
+        let dispatch = Dispatch { classes };
+    }
+
+    fn get_available_classes<'a>() -> impl Iterator<Item = u8> {
         static CLASSES: [u32; 3] = [
-            Class::core.into_u32(),
-            Class::firmware.into_u32(),
-            Class::gpio.into_u32(),
+            ClassId::core.into_u32(),
+            ClassId::firmware.into_u32(),
+            ClassId::gpio.into_u32(),
         ];
         CLASSES.iter().flat_map(|class| class.to_le_bytes())
     }
 
-    fn get_available_verbs_core<'a>(verbs: &'a class_core::Verbs<'a>) -> impl Iterator<Item = u8> + 'a {
-        let iter: slice::Iter<'a, VerbRecord> = verbs.iter();
-        let iter = iter.map(|verb| verb.verb_number);
+    fn get_available_verbs_core<'a>(verbs: &'a [Verb<'a>]) -> impl Iterator<Item = u8> + 'a {
+        let iter: slice::Iter<'a, Verb> = verbs.iter();
+        let iter = iter.map(|verb| verb.id);
         let iter = iter.flat_map(|verb_number| verb_number.to_le_bytes());
         iter
     }
 
     #[test]
     fn test_introspection() {
-        //println!("\ntest_iter: {:?}\n", classes);
+        //println!("\ntest_introspection: {:?}\n", classes);
 
         let classes = get_available_classes();
-        for class in classes {
-            println!("class: {}", class);
-        }
+        let expected = [
+            0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x03, 0x01, 0x00, 0x00,
+        ]
+        .iter()
+        .copied();
+        assert!(classes.eq(expected));
 
-        let verbs = class_core::Verbs::new();
+        let verbs = class_core::verbs();
         let verbs = get_available_verbs_core(&verbs);
-        for verb in verbs {
-            println!("verb: {}", verb);
-        }
+        let expected = [
+            0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x02, 0x00, 0x00, 0x00, 0x03, 0x00,
+            0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00, 0x06, 0x00, 0x00, 0x00,
+            0x07, 0x00, 0x00, 0x00, 0x08, 0x00, 0x00, 0x00, 0x09, 0x00, 0x00, 0x00,
+        ]
+        .iter()
+        .copied();
+        assert!(verbs.eq(expected));
     }
 
     // - test_any --

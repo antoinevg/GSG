@@ -125,10 +125,21 @@ fn main() -> ! {
         interrupt::enable(pac::Interrupt::USB1_EP_OUT);
     }
 
+    let verbs_core = gcp::class_core::verbs();
+    let class_core = gcp::Class {
+        id: gcp::ClassId::core,
+        verbs: &verbs_core,
+    };
+    let verbs_firmware = cynthion::class::firmware::verbs();
+    let class_firmware = gcp::Class {
+        id: gcp::ClassId::firmware,
+        verbs: &verbs_firmware,
+    };
+    let supported_classes = [class_core, class_firmware];
+    let classes = gcp::Classes(&supported_classes);
 
-    let gcp_class_dispatch: gcp::class::Dispatch = gcp::class::Dispatch::new();
     let some_state: u32 = 45;
-    let mut response: Option<&[u8]> = None;
+    let mut next_response: Option<&[u8]> = None;
 
     loop {
         if let Some(message) = MESSAGE_QUEUE.dequeue() {
@@ -143,7 +154,7 @@ fn main() -> ! {
                         (RequestType::Vendor, VendorRequest::UsbCommandRequest) => {
                             if handle_vendor_request(&usb1_device, &packet, packet.request) {
                                 // do we have a response ready? should we wait if we don't?
-                                if let Some(response) = response {
+                                if let Some(response) = next_response {
                                     // send it
                                     debug!("  sending gcp response: {:?}", response);
                                     usb1_device.hal_driver.write_ref(
@@ -184,12 +195,18 @@ fn main() -> ! {
                         if let Some(command) = gcp::Command::parse(data) {
                             info!("  COMMAND: {:?}", command);
                             // TODO we really need a better way to get this to the vendor request
-                            let reply = gcp_class_dispatch.dispatch(command, &some_state);
+                            //let reply = gcp_class_dispatch.dispatch(command, &some_state);
+                            //next_response = Some(reply.as_slice());
+                            match classes.dispatch(command, &some_state) {
+                                Ok(response) => next_response = Some(response.as_slice()),
+                                Err(e) => {
+                                    error!("  failed to dispatch command: {}", e);
+                                }
+                            }
                             //debug!("  sending gcp response: {:?}", response);
                             //usb1_device.hal_driver.write_ref(0, data.into_iter());
                             //usb1_device.hal_driver.write_ref(0, [].into_iter());
                             //usb1_device.hal_driver.ack_status_stage(&packet);
-                            response = Some(reply.as_slice());
                             info!("\n");
                         } else {
                             // actually infallible

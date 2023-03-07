@@ -18,7 +18,7 @@
 /// The libgreat Error trait
 pub trait Error: core::fmt::Debug {
     type Error: Error;
-    fn kind(&self) -> Self::Error; // TODO hrmm... can we just return Self ?
+    fn kind(&self) -> Self::Error;
 }
 
 /// Defines an error type, to be used by any other traits.
@@ -33,6 +33,41 @@ impl<T: ErrorType> ErrorType for &mut T {
 
 /// Result<T>
 pub type Result<T> = core::result::Result<T, &'static (dyn core::error::Error + 'static)>;
+
+/// GreatError
+#[derive(Debug, Copy, Clone)]
+pub enum GreatError {
+    NotFound(&'static str),
+}
+
+impl<'a> From<&'a GreatError> for &'a dyn core::error::Error {
+    fn from(error: &'a GreatError) -> Self {
+        error
+    }
+}
+
+impl core::fmt::Display for GreatError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        core::fmt::Debug::fmt(&self, f)
+    }
+}
+
+impl core::error::Error for GreatError {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        use GreatError::*;
+        match self {
+            NotFound(description) => description,
+        }
+    }
+}
+
+/*impl Error for GreatError {
+    type Error = Self;
+    fn kind(&self) -> Self::Error {
+        *self
+    }
+}*/
 
 #[cfg(test)]
 mod tests {
