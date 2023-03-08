@@ -18,10 +18,20 @@ pub use lunasoc_pac as pac;
 
 pub use error::FirmwareError;
 pub use libgreat::error::Result;
+pub use libgreat::firmware::BoardInformation;
 
 // - constants ----------------------------------------------------------------
 
 pub const SYSTEM_CLOCK_FREQUENCY: u32 = pac::clock::sysclk();
+pub const BOARD_INFORMATION: BoardInformation = BoardInformation {
+    board_id: [0x00, 0x00, 0x00, 0x00],
+    version_string: "v2023.0.1\0",
+    part_id: [0x30, 0xa, 0x00, 0xa0, 0x5e, 0x4f, 0x60, 0x00],
+    serial_number: [
+        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xe6, 0x67, 0xcc, 0x57, 0x57, 0x53, 0x6f,
+        0x30,
+    ],
+};
 
 // - messages -----------------------------------------------------------------
 

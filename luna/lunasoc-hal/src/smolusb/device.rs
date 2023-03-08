@@ -61,7 +61,7 @@ pub enum DeviceState {
 ///     * a set of string descriptors
 ///
 pub struct UsbDevice<'a, D> {
-    pub hal_driver: &'a D,
+    pub hal_driver: D,
     device_descriptor: &'a DeviceDescriptor,
     //configuration_descriptor: &'a ConfigurationDescriptor<'a>,
     configuration_descriptor: ConfigurationDescriptor<'a>,
@@ -86,7 +86,7 @@ where
     D: ControlRead + EndpointRead + EndpointWrite + EndpointWriteRef + UsbDriverOperations,
 {
     pub fn new(
-        hal_driver: &'a D,
+        hal_driver: D,
         device_descriptor: &'a DeviceDescriptor,
         configuration_descriptor: &'a ConfigurationDescriptor<'a>,
         string_descriptor_zero: &'a StringDescriptorZero<'a>,

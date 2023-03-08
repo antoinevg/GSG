@@ -9,7 +9,7 @@ use core::slice;
 pub static CLASS_DOCS: &str =
     "Core API used to query information about the device, and perform a few standard functions.";
 
-pub fn verbs<'a>() -> [Verb<'a>; 10] {
+pub const fn verbs<'a>() -> [Verb<'a>; 10] {
     [
         Verb {
             id: 0x0,

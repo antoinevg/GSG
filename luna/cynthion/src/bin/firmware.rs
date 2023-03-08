@@ -1,3 +1,5 @@
+#![allow(dead_code, unused_imports)] // TODO
+
 #![no_std]
 #![no_main]
 
@@ -32,13 +34,14 @@ static MESSAGE_QUEUE: Queue<Message, 128> = Queue::new();
 fn MachineExternal() {
     // peripherals
     let peripherals = unsafe { pac::Peripherals::steal() };
-    let leds = &peripherals.LEDS;
+    let _leds = &peripherals.LEDS;
     let usb1 = unsafe { hal::Usb1::summon() };
 
-    // debug
     let pending = interrupt::reg_pending();
-    leds.output
-        .write(|w| unsafe { w.output().bits(pending as u8) });
+
+    // leds: debug
+    //_leds.output
+    //    .write(|w| unsafe { w.output().bits(pending as u8) });
 
     // - usb1 interrupts - "host_phy" --
     let message = if usb1.is_pending(pac::Interrupt::USB1) {
@@ -80,51 +83,7 @@ fn MachineExternal() {
 
 #[entry]
 fn main() -> ! {
-    let peripherals = pac::Peripherals::take().unwrap();
-    let leds = &peripherals.LEDS;
-    leds.output.write(|w| unsafe { w.output().bits(0x0) });
-
-    // initialize logging
-    let serial = hal::Serial::new(peripherals.UART);
-    cynthion::log::init(serial);
-    info!("logging initialized");
-
-    // usb1 - "host_phy"
-    let usb1 = hal::Usb1::new(
-        peripherals.USB1,
-        peripherals.USB1_EP_CONTROL,
-        peripherals.USB1_EP_IN,
-        peripherals.USB1_EP_OUT,
-    );
-    let speed = usb1.connect();
-    info!("Connected usb1 device: {:?}", Speed::from(speed));
-
-    // usb1_device
-    let mut usb1_device = UsbDevice::new(
-        &usb1,
-        &class::cynthion::DEVICE_DESCRIPTOR,
-        &class::cynthion::CONFIGURATION_DESCRIPTOR_0,
-        &class::cynthion::USB_STRING_DESCRIPTOR_0,
-        &class::cynthion::USB_STRING_DESCRIPTORS,
-    );
-    //usb1_device.cb_vendor_request = Some(handle_vendor_request);
-
-    // interrupts
-    usb1.enable_interrupts();
-    unsafe {
-        // set mstatus register: interrupt enable
-        riscv::interrupt::enable();
-
-        // set mie register: machine external interrupts enable
-        riscv::register::mie::set_mext();
-
-        // write csr: enable interrupts
-        interrupt::enable(pac::Interrupt::USB1);
-        interrupt::enable(pac::Interrupt::USB1_EP_CONTROL);
-        interrupt::enable(pac::Interrupt::USB1_EP_IN);
-        interrupt::enable(pac::Interrupt::USB1_EP_OUT);
-    }
-
+    // initialize class registry
     let verbs_core = gcp::class_core::verbs();
     let class_core = gcp::Class {
         id: gcp::ClassId::core,
@@ -135,114 +94,207 @@ fn main() -> ! {
         id: gcp::ClassId::firmware,
         verbs: &verbs_firmware,
     };
-    let supported_classes = [class_core, class_firmware];
-    let classes = gcp::Classes(&supported_classes);
+    let classes = [class_core, class_firmware];
 
-    let some_state: u32 = 45;
-    let mut next_response: Option<&[u8]> = None;
+    // initialize firmware
+    let mut firmware = Firmware::new(
+        pac::Peripherals::take().unwrap(),
+        gcp::Classes(&classes)
+    );
+    match firmware.initialize() {
+        Ok(()) => (),
+        Err(e) => panic!("Firmware panicked during initialization: {}", e)
+    }
 
-    loop {
-        if let Some(message) = MESSAGE_QUEUE.dequeue() {
-            match message {
-                // usb1 message handlers
-                Message::Usb1ReceiveSetupPacket(packet) => {
-                    let request_type = packet.request_type();
-                    let vendor_request = VendorRequest::from(packet.request);
-
-                    match (&request_type, &vendor_request) {
-                        // TODO add a Any parametr to handle_setup_packet, or just catch vendor requests here?
-                        (RequestType::Vendor, VendorRequest::UsbCommandRequest) => {
-                            if handle_vendor_request(&usb1_device, &packet, packet.request) {
-                                // do we have a response ready? should we wait if we don't?
-                                if let Some(response) = next_response {
-                                    // send it
-                                    debug!("  sending gcp response: {:?}", response);
-                                    usb1_device.hal_driver.write_ref(
-                                        0,
-                                        response.into_iter().take(packet.length as usize),
-                                    );
-                                    usb1_device.hal_driver.ack_status_stage(&packet);
-                                } else {
-                                    // TODO something has gone wrong
-                                    error!(
-                                        "  stall: gcp response requested but no response queued"
-                                    );
-                                    usb1_device.hal_driver.stall_request();
-                                }
-                            }
-                        }
-                        _ => match usb1_device.handle_setup_request(&packet) {
-                            Ok(()) => debug!("OK\n"),
-                            Err(e) => panic!("  handle_setup_request: {:?}: {:?}", e, packet),
-                        },
-                    }
-                }
-                Message::Usb1ReceiveData(endpoint, bytes_read, buffer) => {
-                    // TODO endpoint == 0 && state == Command::Send
-
-                    if bytes_read == 0 {
-                        // ignore
-                    } else if bytes_read >= 8 {
-                        debug!(
-                            "Received {} bytes on usb1 endpoint: {} - {:?}",
-                            bytes_read,
-                            endpoint,
-                            &buffer[0..bytes_read]
-                        );
-
-                        // read & dispatch command prelude
-                        let data = &buffer[0..8];
-                        if let Some(command) = gcp::Command::parse(data) {
-                            info!("  COMMAND: {:?}", command);
-                            // TODO we really need a better way to get this to the vendor request
-                            //let reply = gcp_class_dispatch.dispatch(command, &some_state);
-                            //next_response = Some(reply.as_slice());
-                            match classes.dispatch(command, &some_state) {
-                                Ok(response) => next_response = Some(response.as_slice()),
-                                Err(e) => {
-                                    error!("  failed to dispatch command: {}", e);
-                                }
-                            }
-                            //debug!("  sending gcp response: {:?}", response);
-                            //usb1_device.hal_driver.write_ref(0, data.into_iter());
-                            //usb1_device.hal_driver.write_ref(0, [].into_iter());
-                            //usb1_device.hal_driver.ack_status_stage(&packet);
-                            info!("\n");
-                        } else {
-                            // actually infallible
-                            error!("  failed to read prelude: {:?}\n", data);
-                        }
-                    } else {
-                        debug!(
-                            "Received {} bytes on usb1 endpoint: {} - {:?}",
-                            bytes_read,
-                            endpoint,
-                            &buffer[0..bytes_read]
-                        );
-                        error!("  short read: {} bytes\n", bytes_read);
-                    }
-                }
-
-                // usb1 interrupts
-                Message::HandleInterrupt(pac::Interrupt::USB1) => {
-                    usb1_device.reset();
-                    trace!("MachineExternal - USB1\n");
-                }
-                Message::HandleInterrupt(pac::Interrupt::USB1_EP_IN) => {
-                    // TODO
-                    trace!("MachineExternal - USB1_EP_IN\n");
-                }
-
-                // unhandled
-                _ => {
-                    warn!("Unhandled message: {:?}\n", message);
-                }
-            }
-        }
+    // enter main loop
+    match firmware.main_loop() {
+        Ok(()) => panic!("Firmware exited unexpectedly in main loop"),
+        Err(e) => panic!("Firmware panicked in main loop: {}", e)
     }
 }
 
-// - vendor request handlers --------------------------------------------------
+// - Firmware -----------------------------------------------------------------
+
+struct Firmware<'a> {
+    // peripherals
+    leds: pac::LEDS,
+    usb1: UsbDevice<'a, hal::Usb1>,
+
+    // state
+    classes: gcp::Classes<'a>,
+    next_response: Option<&'a [u8]>,
+    some_state: u32,
+}
+
+impl<'a> Firmware<'a> {
+    fn new(peripherals: pac::Peripherals, classes: gcp::Classes<'a>) -> Self {
+        // initialize logging
+        cynthion::log::init(hal::Serial::new(peripherals.UART));
+        trace!("logging initialized");
+
+        Self {
+            leds: peripherals.LEDS,
+            usb1: UsbDevice::new(
+                hal::Usb1::new(
+                    peripherals.USB1,
+                    peripherals.USB1_EP_CONTROL,
+                    peripherals.USB1_EP_IN,
+                    peripherals.USB1_EP_OUT,
+                ),
+                &class::cynthion::DEVICE_DESCRIPTOR,
+                &class::cynthion::CONFIGURATION_DESCRIPTOR_0,
+                &class::cynthion::USB_STRING_DESCRIPTOR_0,
+                &class::cynthion::USB_STRING_DESCRIPTORS,
+            ),
+            classes,
+            next_response: None,
+            some_state: 42,
+        }
+    }
+
+    fn initialize(&mut self) -> cynthion::Result<()> {
+        // leds: starting up
+        self.leds.output.write(|w| unsafe { w.output().bits(1 << 2) });
+
+        // connect usb1
+        let speed = self.usb1.hal_driver.connect();
+        trace!("Connected usb1 device: {:?}", Speed::from(speed));
+
+        // enable interrupts
+        self.usb1.hal_driver.enable_interrupts();
+        unsafe {
+            // set mstatus register: interrupt enable
+            riscv::interrupt::enable();
+
+            // set mie register: machine external interrupts enable
+            riscv::register::mie::set_mext();
+
+            // write csr: enable interrupts
+            interrupt::enable(pac::Interrupt::USB1);
+            interrupt::enable(pac::Interrupt::USB1_EP_CONTROL);
+            interrupt::enable(pac::Interrupt::USB1_EP_IN);
+            interrupt::enable(pac::Interrupt::USB1_EP_OUT);
+        }
+
+        // leds: ready
+        self.leds.output.write(|w| unsafe { w.output().bits(1 << 1) });
+
+        Ok(())
+    }
+
+    fn main_loop(&'a mut self) -> cynthion::Result<()> {
+        // leds: main loop
+        self.leds.output.write(|w| unsafe { w.output().bits(1 << 0) });
+
+        loop {
+            while let Some(message) = MESSAGE_QUEUE.dequeue() {
+                match message {
+                    // usb1 message handlers
+                    Message::Usb1ReceiveSetupPacket(packet) => {
+                        let request_type = packet.request_type();
+                        let vendor_request = VendorRequest::from(packet.request);
+
+                        match (&request_type, &vendor_request) {
+                            // TODO add a Any parameter to handle_setup_packet,
+                            // or just catch vendor requests here?
+                            (RequestType::Vendor, VendorRequest::UsbCommandRequest) => {
+                                if handle_vendor_request(&self.usb1, &packet, packet.request) {
+                                    // do we have a response ready? should we wait if we don't?
+                                    if let Some(response) = self.next_response {
+                                        // send it
+                                        debug!("  sending gcp response: {:?}", response);
+                                        self.usb1.hal_driver.write_ref(
+                                            0,
+                                            response.into_iter().take(packet.length as usize),
+                                        );
+                                        self.usb1.hal_driver.ack_status_stage(&packet);
+                                    } else {
+                                        // TODO something has gone wrong
+                                        error!(
+                                            "  stall: gcp response requested but no response queued"
+                                        );
+                                        self.usb1.hal_driver.stall_request();
+                                    }
+                                }
+                            }
+                            _ => match self.usb1.handle_setup_request(&packet) {
+                                Ok(()) => debug!("OK\n"),
+                                Err(e) => panic!("  handle_setup_request: {:?}: {:?}", e, packet),
+                            },
+                        }
+                    }
+                    Message::Usb1ReceiveData(endpoint, bytes_read, buffer) => {
+                        // TODO endpoint == 0 && state == Command::Send
+
+                        if bytes_read == 0 {
+                            // ignore
+                        } else if bytes_read >= 8 {
+                            debug!(
+                                "Received {} bytes on usb1 endpoint: {} - {:?}",
+                                bytes_read,
+                                endpoint,
+                                &buffer[0..bytes_read]
+                            );
+
+                            // read & dispatch command prelude
+                            let data = &buffer[0..8];
+                            if let Some(command) = gcp::Command::parse(data) {
+                                info!("  COMMAND: {:?}", command);
+                                // TODO we really need a better way to get this to the vendor request
+                                //let reply = gcp_class_dispatch.dispatch(command, &some_state);
+                                //next_response = Some(reply.as_slice());
+                                match self.classes.dispatch(command, &self.some_state) {
+                                    Ok(response) => self.next_response = Some(response.as_slice()),
+                                    Err(e) => {
+                                        self.next_response = None;
+                                        error!("  stall: failed to dispatch command {}", e);
+                                        self.usb1.hal_driver.stall_request();
+                                    }
+                                }
+                                //debug!("  sending gcp response: {:?}", response);
+                                //self.usb1_device.hal_driver.write_ref(0, data.into_iter());
+                                //self.usb1_device.hal_driver.write_ref(0, [].into_iter());
+                                //self.usb1_device.hal_driver.ack_status_stage(&packet);
+                                info!("\n");
+                            } else {
+                                // actually infallible
+                                error!("  failed to read prelude: {:?}\n", data);
+                            }
+                        } else {
+                            debug!(
+                                "Received {} bytes on usb1 endpoint: {} - {:?}",
+                                bytes_read,
+                                endpoint,
+                                &buffer[0..bytes_read]
+                            );
+                            error!("  short read: {} bytes\n", bytes_read);
+                        }
+                    }
+
+                    // usb1 interrupts
+                    Message::HandleInterrupt(pac::Interrupt::USB1) => {
+                        self.usb1.reset();
+                        trace!("MachineExternal - USB1\n");
+                    }
+                    Message::HandleInterrupt(pac::Interrupt::USB1_EP_IN) => {
+                        // TODO
+                        trace!("MachineExternal - USB1_EP_IN\n");
+                    }
+
+                    // unhandled
+                    _ => {
+                        warn!("Unhandled message: {:?}\n", message);
+                    }
+                }
+            }
+        }
+
+        #[allow(unreachable_code)] // TODO
+        Ok(())
+    }
+}
+
+// - gcp vendor request handler -----------------------------------------------
 
 fn handle_vendor_request<'a, D>(
     device: &UsbDevice<'a, D>,

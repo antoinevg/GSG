@@ -10,7 +10,7 @@ use core::slice;
 
 pub static CLASS_DOCS: &str = "Common API for updating firmware on a libgreat device.";
 
-pub fn verbs<'a>() -> [Verb<'a>; 5] {
+pub const fn verbs<'a>() -> [Verb<'a>; 5] {
     [
         Verb {
             id: 0x0,

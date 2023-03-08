@@ -41,6 +41,10 @@ impl<'a> Classes<'a> {
     pub fn class(&'a self, id: ClassId) -> Option<&Class> {
         self.0.iter().find(|&class| class.id == id)
     }
+
+    pub fn new() -> Self {
+        Self(&[])
+    }
 }
 
 // - Class --------------------------------------------------------------------
