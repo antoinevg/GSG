@@ -1,6 +1,6 @@
 use super::{ClassId, Command, Verb};
 
-use log::{debug, error};
+use log::{trace, error};
 use zerocopy::{AsBytes, BigEndian, ByteSlice, FromBytes, LittleEndian, Unaligned, U32};
 
 use core::any::Any;
@@ -9,7 +9,11 @@ use core::slice;
 pub static CLASS_DOCS: &str =
     "Core API used to query information about the device, and perform a few standard functions.";
 
-pub const fn verbs<'a>() -> [Verb<'a>; 10] {
+fn dummy_handler<'a>(_arguments: &[u8], _context: &'a dyn Any) -> slice::Iter<'a, u8> {
+    [].iter()
+}
+
+pub const fn verbs<'a>() -> [Verb<'a>; 1] {
     [
         Verb {
             id: 0x0,
@@ -19,9 +23,9 @@ pub const fn verbs<'a>() -> [Verb<'a>; 10] {
             in_param_names: "",
             out_signature: "",
             out_param_names: "",
-            command_handler: read_board_id,
+            command_handler: dummy_handler, //read_board_id,
         },
-        Verb {
+        /*Verb {
             id: 0x1,
             name: "read_version_string",
             doc: "Return the board version string.",
@@ -111,44 +115,54 @@ pub const fn verbs<'a>() -> [Verb<'a>; 10] {
             out_signature: "",
             out_param_names: "",
             command_handler: get_class_docs,
-        },
+        },*/
     ]
 }
 
 // - verb implementations: board ----------------------------------------------
 
-fn read_board_id<'a>(arguments: &[u8], _context: &'a dyn Any) -> slice::Iter<'a, u8> {
+pub fn man_read_board_id<'a>(board_information: &'a crate::firmware::BoardInformation) -> impl Iterator<Item = u8> + 'a {
+    let board_id = board_information.board_id;
+    trace!("  sending board id: {:?}", board_information.board_id);
+    board_information.board_id.into_iter()
+}
+
+fn read_board_id<'a>(arguments: &[u8], _context: &'a dyn Any) -> impl Iterator<Item = u8> + 'a {
     static BOARD_ID: [u8; 4] = [0x00, 0x00, 0x00, 0x00];
-    debug!("  sending board id: {:?}", BOARD_ID);
-    BOARD_ID.iter()
+    trace!("  sending board id: {:?}", BOARD_ID);
+    BOARD_ID.into_iter()
 }
 
-fn read_version_string<'a>(arguments: &[u8], _context: &'a dyn Any) -> slice::Iter<'a, u8> {
+fn read_version_string<'a>(arguments: &[u8], _context: &'a dyn Any) -> impl Iterator<Item = u8> + 'a {
     static VERSION_STRING: &[u8] = "v2021.2.1\0".as_bytes();
-    debug!("  sending version string: {:?}", VERSION_STRING);
-    VERSION_STRING.iter()
+    trace!("  sending version string: {:?}", VERSION_STRING);
+    VERSION_STRING.into_iter().copied()
 }
 
-fn read_part_id<'a>(arguments: &[u8], _context: &'a dyn Any) -> slice::Iter<'a, u8> {
+fn read_part_id<'a>(arguments: &[u8], _context: &'a dyn Any) -> impl Iterator<Item = u8> + 'a {
     // TODO this should probably come from the SoC
     static PART_ID: [u8; 8] = [0x30, 0xa, 0x00, 0xa0, 0x5e, 0x4f, 0x60, 0x00];
-    debug!("  sending part id: {:?}", PART_ID);
-    PART_ID.iter()
+    trace!("  sending part id: {:?}", PART_ID);
+    PART_ID.into_iter()
 }
 
-fn read_serial_number<'a>(arguments: &[u8], _context: &'a dyn Any) -> slice::Iter<'a, u8> {
+fn read_serial_number<'a>(arguments: &[u8], _context: &'a dyn Any) -> impl Iterator<Item = u8> + 'a {
     // TODO this should probably come from the SoC
     static SERIAL_NUMBER: [u8; 16] = [
         0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xe6, 0x67, 0xcc, 0x57, 0x57, 0x53, 0x6f,
         0x30,
     ];
-    debug!("  sending part id: {:?}", SERIAL_NUMBER);
-    SERIAL_NUMBER.iter()
+    trace!("  sending part id: {:?}", SERIAL_NUMBER);
+    SERIAL_NUMBER.into_iter()
 }
 
 // - verb implementations: api ------------------------------------------------
 
-fn get_available_classes<'a>(arguments: &[u8], _context: &'a dyn Any) -> slice::Iter<'a, u8> {
+pub fn man_get_available_classes<'a>(classes: &'a crate::gcp::Classes) -> impl Iterator<Item = u8> + 'a {
+    [].into_iter()
+}
+
+fn get_available_classes<'a>(arguments: &[u8], _context: &'a dyn Any) -> impl Iterator<Item = u8> + 'a {
     // can't set alignment
     /*#[repr(C)]
     #[derive(Debug, AsBytes)]
@@ -170,26 +184,26 @@ fn get_available_classes<'a>(arguments: &[u8], _context: &'a dyn Any) -> slice::
 
     // TODO iter ?
 
-    [].iter()
+    [].into_iter()
 }
 
-fn get_class_name<'a>(arguments: &[u8], _context: &'a dyn Any) -> slice::Iter<'a, u8> {
-    [].iter()
+fn get_class_name<'a>(arguments: &[u8], _context: &'a dyn Any) -> impl Iterator<Item = u8> + 'a {
+    [].into_iter()
 }
 
-fn get_class_docs<'a>(arguments: &[u8], _context: &'a dyn Any) -> slice::Iter<'a, u8> {
-    [].iter()
+fn get_class_docs<'a>(arguments: &[u8], _context: &'a dyn Any) -> impl Iterator<Item = u8> + 'a {
+    [].into_iter()
 }
 
-fn get_available_verbs<'a>(arguments: &[u8], _context: &'a dyn Any) -> slice::Iter<'a, u8> {
-    [].iter()
+fn get_available_verbs<'a>(arguments: &[u8], _context: &'a dyn Any) -> impl Iterator<Item = u8> + 'a {
+    [].into_iter()
 }
 
-fn get_verb_name<'a>(arguments: &[u8], _context: &'a dyn Any) -> slice::Iter<'a, u8> {
-    [].iter()
+fn get_verb_name<'a>(arguments: &[u8], _context: &'a dyn Any) -> impl Iterator<Item = u8> + 'a {
+    [].into_iter()
 }
 
-fn get_verb_descriptor<'a>(arguments: &[u8], _context: &'a dyn Any) -> slice::Iter<'a, u8> {
+fn get_verb_descriptor<'a>(arguments: &[u8], _context: &'a dyn Any) -> impl Iterator<Item = u8> + 'a {
     #[repr(C)]
     #[derive(Debug, FromBytes, Unaligned)]
     struct Args {
@@ -203,11 +217,11 @@ fn get_verb_descriptor<'a>(arguments: &[u8], _context: &'a dyn Any) -> slice::It
             //context.0 *= 2;
             //context.1 *= 3;
             //context.2 *= 4;
-            [].iter()
+            [].into_iter()
         }
         None => {
             error!("get_verb_descriptor received invalid arguments");
-            [].iter()
+            [].into_iter()
         }
     }
 }

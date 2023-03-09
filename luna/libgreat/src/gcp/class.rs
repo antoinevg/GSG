@@ -14,6 +14,7 @@ use core::slice;
 // - Classes ------------------------------------------------------------------
 
 /// Classes
+#[derive(Copy, Clone)]
 pub struct Classes<'a>(pub &'a [Class<'a>]);
 
 impl<'a> Classes<'a> {
@@ -26,10 +27,10 @@ impl<'a> Classes<'a> {
         B: zerocopy::ByteSlice,
     {
         let class = self
-            .class(command.class())
+            .class(command.class_id())
             .ok_or(&GreatError::NotFound("class not found"))?;
         let verb = class
-            .verb(command.verb())
+            .verb(command.verb_id())
             .ok_or(&GreatError::NotFound("verb not found"))?;
         let handler = verb.command_handler;
         let arguments = command.arguments.as_bytes();
@@ -49,6 +50,7 @@ impl<'a> Classes<'a> {
 
 // - Class --------------------------------------------------------------------
 
+#[derive(Copy, Clone)]
 pub struct Class<'a> {
     pub id: ClassId,
     pub verbs: &'a [Verb<'a>],
@@ -80,6 +82,7 @@ impl CommandHandler for SomeCommand {
 // - Verb ---------------------------------------------------------------------
 
 /// Verb
+#[derive(Copy, Clone)]
 pub struct Verb<'a> {
     pub id: u32,
     pub name: &'a str,
@@ -89,13 +92,14 @@ pub struct Verb<'a> {
     pub out_param_names: &'a str,
     pub doc: &'a str,
     pub command_handler: fn(arguments: &[u8], context: &'a dyn Any) -> slice::Iter<'a, u8>,
+    //pub command_handler: fn(arguments: &[u8], _context: &'a dyn Any) -> impl Iterator<Item = u8>,
 }
 
 // - ClassId ------------------------------------------------------------------
 
 /// Class
 #[repr(u32)]
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 #[allow(non_camel_case_types)]
 pub enum ClassId {
     core = 0x0000,

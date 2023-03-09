@@ -1,5 +1,4 @@
-#![allow(dead_code, unused_imports)] // TODO
-
+#![allow(dead_code, unused_imports, unused_variables)] // TODO
 #![no_std]
 #![no_main]
 
@@ -20,6 +19,11 @@ use libgreat::gcp;
 
 use log::{debug, error, info, trace, warn};
 use riscv_rt::entry;
+
+use core::any::Any;
+use core::array;
+use core::iter;
+use core::slice;
 
 // - global static state ------------------------------------------------------
 
@@ -97,19 +101,16 @@ fn main() -> ! {
     let classes = [class_core, class_firmware];
 
     // initialize firmware
-    let mut firmware = Firmware::new(
-        pac::Peripherals::take().unwrap(),
-        gcp::Classes(&classes)
-    );
+    let mut firmware = Firmware::new(pac::Peripherals::take().unwrap(), gcp::Classes(&classes));
     match firmware.initialize() {
         Ok(()) => (),
-        Err(e) => panic!("Firmware panicked during initialization: {}", e)
+        Err(e) => panic!("Firmware panicked during initialization: {}", e),
     }
 
     // enter main loop
     match firmware.main_loop() {
         Ok(()) => panic!("Firmware exited unexpectedly in main loop"),
-        Err(e) => panic!("Firmware panicked in main loop: {}", e)
+        Err(e) => panic!("Firmware panicked in main loop: {}", e),
     }
 }
 
@@ -122,7 +123,10 @@ struct Firmware<'a> {
 
     // state
     classes: gcp::Classes<'a>,
-    next_response: Option<&'a [u8]>,
+    //next_response: Option<&'a [u8]>,
+    //next_response: Option<&'a mut dyn Iterator<Item = u8>>,
+    next_response: Option<iter::Take<array::IntoIter<u8, MAX_RESPONSE_LENGTH>>>,
+    response_queue: heapless::Deque<iter::Take<array::IntoIter<u8, MAX_RESPONSE_LENGTH>>, 16>,
     some_state: u32,
 }
 
@@ -148,13 +152,16 @@ impl<'a> Firmware<'a> {
             ),
             classes,
             next_response: None,
+            response_queue: heapless::Deque::new(),
             some_state: 42,
         }
     }
 
     fn initialize(&mut self) -> cynthion::Result<()> {
         // leds: starting up
-        self.leds.output.write(|w| unsafe { w.output().bits(1 << 2) });
+        self.leds
+            .output
+            .write(|w| unsafe { w.output().bits(1 << 2) });
 
         // connect usb1
         let speed = self.usb1.hal_driver.connect();
@@ -177,14 +184,19 @@ impl<'a> Firmware<'a> {
         }
 
         // leds: ready
-        self.leds.output.write(|w| unsafe { w.output().bits(1 << 1) });
+        self.leds
+            .output
+            .write(|w| unsafe { w.output().bits(1 << 1) });
 
         Ok(())
     }
 
+    #[inline(always)]
     fn main_loop(&'a mut self) -> cynthion::Result<()> {
         // leds: main loop
-        self.leds.output.write(|w| unsafe { w.output().bits(1 << 0) });
+        self.leds
+            .output
+            .write(|w| unsafe { w.output().bits(1 << 0) });
 
         loop {
             while let Some(message) = MESSAGE_QUEUE.dequeue() {
@@ -200,21 +212,23 @@ impl<'a> Firmware<'a> {
                             (RequestType::Vendor, VendorRequest::UsbCommandRequest) => {
                                 if handle_vendor_request(&self.usb1, &packet, packet.request) {
                                     // do we have a response ready? should we wait if we don't?
-                                    if let Some(response) = self.next_response {
+                                    //if let Some(response) = &mut self.next_response {
+                                    if let Some(response) = self.response_queue.pop_front() {
                                         // send it
-                                        debug!("  sending gcp response: {:?}", response);
-                                        self.usb1.hal_driver.write_ref(
+                                        debug!("  gcp: sending command response of {} bytes: {:?}", packet.length, response);
+                                        self.usb1.hal_driver.write(
                                             0,
-                                            response.into_iter().take(packet.length as usize),
+                                            response.take(packet.length as usize),
                                         );
                                         self.usb1.hal_driver.ack_status_stage(&packet);
                                     } else {
                                         // TODO something has gone wrong
                                         error!(
-                                            "  stall: gcp response requested but no response queued"
+                                            "  gcp: stall: gcp response requested but no response queued"
                                         );
                                         self.usb1.hal_driver.stall_request();
                                     }
+                                    self.next_response = None;
                                 }
                             }
                             _ => match self.usb1.handle_setup_request(&packet) {
@@ -226,48 +240,47 @@ impl<'a> Firmware<'a> {
                     Message::Usb1ReceiveData(endpoint, bytes_read, buffer) => {
                         // TODO endpoint == 0 && state == Command::Send
 
-                        if bytes_read == 0 {
-                            // ignore
-                        } else if bytes_read >= 8 {
+                        if bytes_read != 0 {
                             debug!(
                                 "Received {} bytes on usb1 endpoint: {} - {:?}",
                                 bytes_read,
                                 endpoint,
                                 &buffer[0..bytes_read]
                             );
+                        }
 
+                        if bytes_read == 0 {
+                            // ignore
+                        } else if bytes_read < 8 {
+                            // short read
+                            error!("  gcp: short read of {} bytes\n", bytes_read);
+                        } else if bytes_read >= 8 {
                             // read & dispatch command prelude
                             let data = &buffer[0..8];
                             if let Some(command) = gcp::Command::parse(data) {
-                                info!("  COMMAND: {:?}", command);
-                                // TODO we really need a better way to get this to the vendor request
-                                //let reply = gcp_class_dispatch.dispatch(command, &some_state);
-                                //next_response = Some(reply.as_slice());
-                                match self.classes.dispatch(command, &self.some_state) {
-                                    Ok(response) => self.next_response = Some(response.as_slice()),
+                                info!("  gcp: dispatching command: {:?}", command);
+                                // let response = self.classes.dispatch(command, &self.some_state);
+                                let response = giga_dispatch(
+                                    command.class_id(),
+                                    command.verb_id(),
+                                    command.arguments,
+                                    &self.classes,
+                                );
+                                match response {
+                                    Ok(response) => {
+                                        // TODO we really need a better way to get this to the vendor request
+                                        debug!("  gcp: queueing next response");
+                                        //self.next_response = Some(response)
+                                        self.response_queue.push_back(response).expect("gcp response queue overflow");
+                                    }
                                     Err(e) => {
-                                        self.next_response = None;
-                                        error!("  stall: failed to dispatch command {}", e);
+                                        //self.next_response = None;
+                                        error!("  gcp: stall: failed to dispatch command {}", e);
                                         self.usb1.hal_driver.stall_request();
                                     }
                                 }
-                                //debug!("  sending gcp response: {:?}", response);
-                                //self.usb1_device.hal_driver.write_ref(0, data.into_iter());
-                                //self.usb1_device.hal_driver.write_ref(0, [].into_iter());
-                                //self.usb1_device.hal_driver.ack_status_stage(&packet);
                                 info!("\n");
-                            } else {
-                                // actually infallible
-                                error!("  failed to read prelude: {:?}\n", data);
                             }
-                        } else {
-                            debug!(
-                                "Received {} bytes on usb1 endpoint: {} - {:?}",
-                                bytes_read,
-                                endpoint,
-                                &buffer[0..bytes_read]
-                            );
-                            error!("  short read: {} bytes\n", bytes_read);
                         }
                     }
 
@@ -294,6 +307,99 @@ impl<'a> Firmware<'a> {
     }
 }
 
+// - gigantic manual dispatch -------------------------------------------------
+
+fn giga_dispatch<'a, 'b>(
+    class_id: gcp::ClassId,
+    verb_id: u32,
+    arguments: &'a [u8],
+    classes: &'b gcp::Classes,
+//) -> cynthion::Result<impl Iterator<Item = u8>>
+) -> cynthion::Result<iter::Take<array::IntoIter<u8, MAX_RESPONSE_LENGTH>>>
+{
+    //return Ok(cynthion::BOARD_INFORMATION.part_id.iter().copied());
+    //return Ok(CLASSES.iter().flat_map(|class| class.to_le_bytes()));
+
+    static CLASSES: [u32; 2] = [
+        gcp::ClassId::core.into_u32(),
+        gcp::ClassId::firmware.into_u32(),
+    ];
+
+    match (class_id, verb_id) {
+        (gcp::ClassId::core, 0x0) => {
+            // read_board_id
+            let iter = gcp::class_core::man_read_board_id(&cynthion::BOARD_INFORMATION);
+            let response = unsafe { iter_to_response(iter) };
+            Ok(response)
+        }
+        (gcp::ClassId::core, 0x1) => {
+            // read_version_string
+            let iter = cynthion::BOARD_INFORMATION.version_string.as_bytes().into_iter();
+            let response = unsafe { iter_ref_to_response(iter) };
+            Ok(response)
+        }
+        (gcp::ClassId::core, 0x2) => {
+            // read_part_id
+            let iter = cynthion::BOARD_INFORMATION.part_id.into_iter();
+            let response = unsafe { iter_to_response(iter) };
+            Ok(response)
+        }
+        (gcp::ClassId::core, 0x3) => {
+            // read_serial_number
+            let iter = cynthion::BOARD_INFORMATION.serial_number.into_iter();
+            let response = unsafe { iter_to_response(iter) };
+            Ok(response)
+        }
+        (gcp::ClassId::core, 0x4) => {
+            // get_available_classes
+            //unimplemented!();
+            /*let classes = [
+                gcp::ClassId::core.into_u32(),
+                gcp::ClassId::firmware.into_u32(),
+            ];
+            let response = classes.iter().flat_map(|class| class.to_le_bytes());
+            Ok(response)*/
+
+            //let iter = CLASSES.iter().flat_map(|class| class.to_le_bytes());
+            let iter = [].into_iter();
+            let response = unsafe { iter_to_response(iter) };
+            Ok(response)
+        }
+        _ => Err(&libgreat::error::GreatError::NotFound(
+            "class or verb not found",
+        )),
+    }
+}
+
+// TODO an ugly hack to tide us over while I try abstain from digging a deeper hole
+const MAX_RESPONSE_LENGTH: usize = 32;
+unsafe fn iter_to_response(
+    iter: impl Iterator<Item = u8>,
+) -> iter::Take<array::IntoIter<u8, MAX_RESPONSE_LENGTH>>
+{
+    let mut response: [u8; MAX_RESPONSE_LENGTH] = [0; MAX_RESPONSE_LENGTH];
+    let mut length = 0;
+    for (ret, src) in response.iter_mut().zip(iter) {
+        *ret = src;
+        length += 1;
+    }
+    response.into_iter().take(length)
+}
+
+unsafe fn iter_ref_to_response<'a>(
+    iter: impl Iterator<Item = &'a u8>,
+) -> iter::Take<array::IntoIter<u8, MAX_RESPONSE_LENGTH>>
+{
+    let mut response: [u8; MAX_RESPONSE_LENGTH] = [0; MAX_RESPONSE_LENGTH];
+    let mut length = 0;
+    for (ret, src) in response.iter_mut().zip(iter) {
+        *ret = *src;
+        length += 1;
+    }
+    response.into_iter().take(length)
+}
+
+
 // - gcp vendor request handler -----------------------------------------------
 
 fn handle_vendor_request<'a, D>(
@@ -310,7 +416,7 @@ where
     let length = setup_packet.length as usize;
 
     debug!(
-        "  CYNTHION vendor_request: {:?} dir:{:?} value:{:?} length:{} index:{}",
+        "  gcp: CYNTHION vendor_request: {:?} dir:{:?} value:{:?} length:{} index:{}",
         request, direction, request_value, length, setup_packet.index
     );
 
@@ -318,25 +424,25 @@ where
         // host is starting a new command sequence
         (Direction::HostToDevice, VendorRequest::UsbCommandRequest, VendorRequestValue::Start) => {
             device.hal_driver.ack_status_stage(setup_packet);
-            debug!("  TODO state = Command::Begin");
-            debug!("  ack: {}", length);
+            debug!("  gcp: TODO state = Command::Begin");
+            debug!("  gcp: ack {}", length);
         }
 
         // host is ready to receive a response
         (Direction::DeviceToHost, VendorRequest::UsbCommandRequest, VendorRequestValue::Start) => {
-            debug!("  TODO state = Command::Send");
+            debug!("  gcp: TODO state = Command::Send");
             return true;
         }
 
         // host would like to abort the current command sequence
         (Direction::HostToDevice, VendorRequest::UsbCommandRequest, VendorRequestValue::Cancel) => {
             // TODO cancel
-            debug!("  TODO state = Command::Cancel");
-            debug!("  TODO cancel cynthion vendor request sequence");
+            debug!("  gcp: TODO state = Command::Cancel");
+            debug!("  gcp: TODO cancel cynthion vendor request sequence");
         }
         _ => {
             error!(
-                "  stall: unknown vendor request and/or value: {:?} {:?} {:?}",
+                "  gcp: stall: unknown vendor request and/or value: {:?} {:?} {:?}",
                 direction, request, request_value
             );
             device.hal_driver.stall_request();

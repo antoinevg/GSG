@@ -10,9 +10,9 @@ use core::slice;
 
 pub static CLASS_DOCS: &str = "Common API for updating firmware on a libgreat device.";
 
-pub const fn verbs<'a>() -> [Verb<'a>; 5] {
+pub const fn verbs<'a>() -> [Verb<'a>; 0] {
     [
-        Verb {
+        /*Verb {
             id: 0x0,
             name: "initialize",
             doc: "Prepares the board up to have its firmware programmed.",
@@ -61,7 +61,7 @@ pub const fn verbs<'a>() -> [Verb<'a>; 5] {
             out_signature: "<*X",
             out_param_names: "data",
             command_handler: read_page,
-        },
+        },*/
     ]
 }
 

@@ -33,11 +33,11 @@ where
         Some(Command { prelude, arguments })
     }
 
-    pub fn class(&self) -> ClassId {
+    pub fn class_id(&self) -> ClassId {
         ClassId::from(self.prelude.class)
     }
 
-    pub fn verb(&self) -> u32 {
+    pub fn verb_id(&self) -> u32 {
         self.prelude.verb.get()
     }
 }
@@ -55,6 +55,8 @@ where
 mod tests {
     use super::*;
 
+    use core::array;
+    use core::iter;
     use core::slice;
 
     // - fixtures -------------------------------------------------------------
@@ -197,7 +199,7 @@ mod tests {
         println!("  -> {:?}", context);
     }
 
-    // - figure out introspection --
+    // - test dispatch --
 
     struct TestClasses<'a> {
         pub classes: &'a [TestClass<'a>],
@@ -246,6 +248,9 @@ mod tests {
         let dispatch = Dispatch { classes };
     }
 
+
+    // - test_introspection --
+
     fn get_available_classes<'a>() -> impl Iterator<Item = u8> {
         static CLASSES: [u32; 3] = [
             ClassId::core.into_u32(),
@@ -284,6 +289,63 @@ mod tests {
         .iter()
         .copied();
         assert!(verbs.eq(expected));
+    }
+
+    // - test_buffer_copy --
+
+    fn get_some_iterator() -> impl Iterator<Item = u8> {
+        let mut response: [u8; 32] = [0; 32];
+        let iter = get_available_classes();
+        let mut length = 0;
+        for (ret, src) in response.iter_mut().zip(iter) {
+            *ret = src;
+            length += 1;
+        }
+        println!("get_some_iterator: {} bytes - {:?}", length, response);
+        response.into_iter().take(length)
+    }
+
+    fn iter_to_response(iter: impl Iterator<Item = u8>) -> iter::Take<array::IntoIter<u8, 32>> {
+        let mut response: [u8; 32] = [0; 32];
+        let mut length = 0;
+        for (ret, src) in response.iter_mut().zip(iter) {
+            *ret = src;
+            length += 1;
+        }
+        println!("iter_to_response: {} bytes - {:?}", length, response);
+        let response: iter::Take<array::IntoIter<u8, 32>> = response.into_iter().take(length);
+        response
+    }
+
+    fn iter_ref_to_response<'a>(iter: impl Iterator<Item = &'a u8>) -> impl Iterator<Item = u8> {
+        let mut response: [u8; 32] = [0; 32];
+        let mut length = 0;
+        for (ret, src) in response.iter_mut().zip(iter) {
+            *ret = *src;
+            length += 1;
+        }
+        println!("iter_to_response: {} bytes - {:?}", length, response);
+        response.into_iter().take(length)
+    }
+
+    fn get_some_other_iterator() -> impl Iterator<Item = u8> {
+        let iter = get_available_classes();
+        iter_to_response(iter)
+    }
+
+    #[test]
+    fn test_buffer_copy() {
+        println!("\ntest_buffer_copy - get_some_iterator");
+        let iter = get_some_iterator();
+        for el in iter {
+            println!("element: {}", el);
+        }
+
+        println!("\ntest_buffer_copy - get_some_other_iterator");
+        let iter = get_some_other_iterator();
+        for el in iter {
+            println!("some other element: {}", el);
+        }
     }
 
     // - test_any --
