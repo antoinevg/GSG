@@ -33,6 +33,8 @@ pub const BOARD_INFORMATION: BoardInformation = BoardInformation {
     ],
 };
 
+pub const EP_MAX_RECEIVE_LENGTH: usize = 64;
+
 // - messages -----------------------------------------------------------------
 
 #[derive(Debug)]
@@ -51,15 +53,15 @@ pub enum Message {
     /// Received data on USB0_EP_OUT
     ///
     /// Contents is (endpoint, bytes_read, buffer)
-    Usb0ReceiveData(u8, usize, [u8; 64]),
+    Usb0ReceiveData(u8, usize, [u8; EP_MAX_RECEIVE_LENGTH]),
     /// Received data on USB1_EP_OUT
     ///
     /// Contents is (endpoint, bytes_read, buffer)
-    Usb1ReceiveData(u8, usize, [u8; 64]),
+    Usb1ReceiveData(u8, usize, [u8; EP_MAX_RECEIVE_LENGTH]),
     /// Received data on USB2_EP_OUT
     ///
     /// Contents is (endpoint, bytes_read, buffer)
-    Usb2ReceiveData(u8, usize, [u8; 64]),
+    Usb2ReceiveData(u8, usize, [u8; EP_MAX_RECEIVE_LENGTH]),
 
     // TODO
     TimerEvent(u32),
