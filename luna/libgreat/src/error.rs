@@ -1,3 +1,5 @@
+#![allow(unused_variables)] // TODO
+
 /**
  * Rust error-handling continues to be somewhat of a chore in no_std.
  *
@@ -32,12 +34,19 @@ impl<T: ErrorType> ErrorType for &mut T {
 }
 
 /// Result<T>
+///
+/// TODO consider switching to a single global enum
 pub type Result<T> = core::result::Result<T, &'static (dyn core::error::Error + 'static)>;
 
 /// GreatError
 #[derive(Debug, Copy, Clone)]
 pub enum GreatError {
-    NotFound(&'static str),
+    Message(&'static str),
+    // TODO - move these to gcp errors
+    GcpInvalidArguments,
+    GcpClassNotFound,         // TODO (u32)
+    GcpVerbNotFound,          // TODO (u32, u32)
+    GcpUnknownVerbDescriptor, // TODO (u32)
 }
 
 impl<'a> From<&'a GreatError> for &'a dyn core::error::Error {
@@ -57,7 +66,12 @@ impl core::error::Error for GreatError {
     fn description(&self) -> &str {
         use GreatError::*;
         match self {
-            NotFound(description) => description,
+            Message(message) => message,
+            // TODO - move these to gcp errors
+            GcpInvalidArguments => "gcp invalid arguments",
+            GcpClassNotFound => "gcp class not found",
+            GcpVerbNotFound => "gcp verb not found",
+            GcpUnknownVerbDescriptor => "gcp unknown verb descriptor",
         }
     }
 }

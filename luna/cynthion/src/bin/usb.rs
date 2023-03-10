@@ -131,7 +131,7 @@ fn main() -> ! {
     }
 
     let mut usb0_device = UsbDevice::new(
-        &usb0,
+        usb0,
         &USB_DEVICE_DESCRIPTOR,
         &USB_CONFIG_DESCRIPTOR_0,
         &USB_STRING_DESCRIPTOR_0,
@@ -150,7 +150,7 @@ fn main() -> ! {
                 .try_into()
                 .unwrap();
             let bytes_written = data.len();
-            usb0.write(endpoint, data.into_iter());
+            usb0_device.hal_driver.write(endpoint, data.into_iter());
             info!("Sent {} bytes to endpoint: {}", bytes_written, endpoint);
 
             counter = 1;
@@ -170,7 +170,7 @@ fn main() -> ! {
                 .try_into()
                 .unwrap();
             let bytes_written = data.len();
-            usb0.write(endpoint, data.into_iter());
+            usb0_device.hal_driver.write(endpoint, data.into_iter());
             info!(
                 "Sent {} bytes to interrupt endpoint: {}",
                 bytes_written, endpoint
@@ -210,7 +210,7 @@ fn main() -> ! {
                         let data: heapless::Vec<u8, SIZE> =
                             (0..(SIZE as u8)).collect::<heapless::Vec<u8, SIZE>>().try_into().unwrap();
                         let bytes_written = data.len();
-                        usb0.write(endpoint, data.into_iter());
+                        usb0_device.hal_driver.write(endpoint, data.into_iter());
                         info!(
                             "Sent {} bytes to interrupt endpoint: {}",
                             bytes_written, endpoint

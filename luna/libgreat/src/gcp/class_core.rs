@@ -1,227 +1,284 @@
-use super::{ClassId, Command, Verb};
+use super::{ClassId, Command, Verb, VerbDescriptor};
 
-use log::{trace, error};
+use crate::error::{GreatError, Result};
+
+use log::{error, trace};
 use zerocopy::{AsBytes, BigEndian, ByteSlice, FromBytes, LittleEndian, Unaligned, U32};
 
 use core::any::Any;
 use core::slice;
 
 pub static CLASS_DOCS: &str =
-    "Core API used to query information about the device, and perform a few standard functions.";
+    "Core API\0"; // used to query information about the device, and perform a few standard functions.\0";
 
 fn dummy_handler<'a>(_arguments: &[u8], _context: &'a dyn Any) -> slice::Iter<'a, u8> {
     [].iter()
 }
 
-pub const fn verbs<'a>() -> [Verb<'a>; 1] {
+pub const fn verbs<'a>() -> [Verb<'a>; 10] {
     [
         Verb {
             id: 0x0,
-            name: "read_board_id",
-            doc: "Return the board id.",
-            in_signature: "",
-            in_param_names: "",
-            out_signature: "",
-            out_param_names: "",
-            command_handler: dummy_handler, //read_board_id,
+            name: "read_board_id\0",
+            doc: "Return the board id.\0",
+            in_signature: "\0",
+            in_param_names: "\0",
+            out_signature: "\0",
+            out_param_names: "\0",
+            command_handler: old_read_board_id,
         },
-        /*Verb {
+        Verb {
             id: 0x1,
-            name: "read_version_string",
-            doc: "Return the board version string.",
-            in_signature: "",
-            in_param_names: "",
-            out_signature: "",
-            out_param_names: "",
-            command_handler: read_version_string,
+            name: "read_version_string\0",
+            doc: "Return the board version string.\0",
+            in_signature: "\0",
+            in_param_names: "\0",
+            out_signature: "\0",
+            out_param_names: "\0",
+            command_handler: dummy_handler, //read_version_string,
         },
         Verb {
             id: 0x2,
-            name: "read_part_id",
-            doc: "Return the board part id.",
-            in_signature: "",
-            in_param_names: "",
-            out_signature: "",
-            out_param_names: "",
-            command_handler: read_part_id,
+            name: "read_part_id\0",
+            doc: "Return the board part id.\0",
+            in_signature: "\0",
+            in_param_names: "\0",
+            out_signature: "\0",
+            out_param_names: "\0",
+            command_handler: dummy_handler, //read_part_id,
         },
         Verb {
             id: 0x3,
-            name: "read_serial_number",
-            doc: "Return the board serial number.",
-            in_signature: "",
-            in_param_names: "",
-            out_signature: "",
-            out_param_names: "",
-            command_handler: read_serial_number,
+            name: "read_serial_number\0",
+            doc: "Return the board serial number.\0",
+            in_signature: "\0",
+            in_param_names: "\0",
+            out_signature: "\0",
+            out_param_names: "\0",
+            command_handler: dummy_handler, //read_serial_number,
         },
         // - api introspection --
         Verb {
             id: 0x4,
-            name: "get_available_classes",
-            doc: "Return the classes supported by the board.",
-            in_signature: "",
-            in_param_names: "",
-            out_signature: "",
-            out_param_names: "",
-            command_handler: get_available_classes,
+            name: "get_available_classes\0",
+            doc: "Return the classes supported by the board.\0",
+            in_signature: "\0",
+            in_param_names: "\0",
+            out_signature: "\0",
+            out_param_names: "\0",
+            command_handler: dummy_handler, //get_available_classes,
         },
         Verb {
             id: 0x5,
-            name: "get_available_verbs",
-            doc: "Return the verbs supported by the given class.",
-            in_signature: "<I",
-            in_param_names: "class_number",
-            out_signature: "",
-            out_param_names: "",
-            command_handler: get_available_verbs,
+            name: "get_available_verbs\0",
+            doc: "Return the verbs supported by the given class.\0",
+            in_signature: "<I\0",
+            in_param_names: "class_number\0",
+            out_signature: "\0",
+            out_param_names: "\0",
+            command_handler: dummy_handler, //get_available_verbs,
         },
         Verb {
             id: 0x6,
-            name: "get_verb_name",
-            doc: "Return the name of the given class and verb.",
-            in_signature: "<II",
-            in_param_names: "class_number, verb_number",
-            out_signature: "",
-            out_param_names: "",
-            command_handler: get_verb_name,
+            name: "get_verb_name\0",
+            doc: "Return the name of the given class and verb.\0",
+            in_signature: "<II\0",
+            in_param_names: "class_number, verb_number\0",
+            out_signature: "\0",
+            out_param_names: "\0",
+            command_handler: dummy_handler, //get_verb_name,
         },
         Verb {
             id: 0x7,
-            name: "get_verb_descriptor",
-            doc: "Returns the descriptor of the given class, verb and descriptor.",
-            in_signature: "<III",
-            in_param_names: "class_number, verb_number, descriptor_number",
-            out_signature: "",
-            out_param_names: "",
-            command_handler: get_verb_descriptor,
+            name: "get_verb_descriptor\0",
+            doc: "Returns the descriptor of the given class, verb and descriptor.\0",
+            in_signature: "<III\0",
+            in_param_names: "class_number, verb_number, descriptor_number\0",
+            out_signature: "\0",
+            out_param_names: "\0",
+            command_handler: dummy_handler, //get_verb_descriptor,
         },
         Verb {
             id: 0x8,
-            name: "get_class_name",
-            doc: "Return the name of the given class.",
-            in_signature: "<I",
-            in_param_names: "class_number",
-            out_signature: "",
-            out_param_names: "",
-            command_handler: get_class_name,
+            name: "get_class_name\0",
+            doc: "Return the name of the given class.\0",
+            in_signature: "<I\0",
+            in_param_names: "class_number\0",
+            out_signature: "\0",
+            out_param_names: "\0",
+            command_handler: dummy_handler, //get_class_name,
         },
         Verb {
             id: 0x9,
-            name: "get_class_docs",
-            doc: "Return the documentation for the given class.",
-            in_signature: "<I",
-            in_param_names: "class_number",
-            out_signature: "",
-            out_param_names: "",
-            command_handler: get_class_docs,
-        },*/
+            name: "get_class_docs\0",
+            doc: "Return the documentation for the given class.\0",
+            in_signature: "<I\0",
+            in_param_names: "class_number\0",
+            out_signature: "\0",
+            out_param_names: "\0",
+            command_handler: dummy_handler, //get_class_docs,
+        },
     ]
 }
 
 // - verb implementations: board ----------------------------------------------
 
-pub fn man_read_board_id<'a>(board_information: &'a crate::firmware::BoardInformation) -> impl Iterator<Item = u8> + 'a {
-    let board_id = board_information.board_id;
-    trace!("  sending board id: {:?}", board_information.board_id);
-    board_information.board_id.into_iter()
-}
-
-fn read_board_id<'a>(arguments: &[u8], _context: &'a dyn Any) -> impl Iterator<Item = u8> + 'a {
+fn old_read_board_id<'a>(arguments: &[u8], _context: &'a dyn Any) -> slice::Iter<'a, u8> {
     static BOARD_ID: [u8; 4] = [0x00, 0x00, 0x00, 0x00];
     trace!("  sending board id: {:?}", BOARD_ID);
-    BOARD_ID.into_iter()
+    BOARD_ID.iter()
 }
 
-fn read_version_string<'a>(arguments: &[u8], _context: &'a dyn Any) -> impl Iterator<Item = u8> + 'a {
-    static VERSION_STRING: &[u8] = "v2021.2.1\0".as_bytes();
-    trace!("  sending version string: {:?}", VERSION_STRING);
-    VERSION_STRING.into_iter().copied()
+pub fn read_board_id<'a>(
+    _arguments: &[u8],
+    board_information: &'a crate::firmware::BoardInformation,
+) -> Result<impl Iterator<Item = u8> + 'a> {
+    let board_id = board_information.board_id;
+    trace!("  sending board id: {:?}", board_information.board_id);
+    Ok(board_information.board_id.into_iter())
 }
 
-fn read_part_id<'a>(arguments: &[u8], _context: &'a dyn Any) -> impl Iterator<Item = u8> + 'a {
-    // TODO this should probably come from the SoC
-    static PART_ID: [u8; 8] = [0x30, 0xa, 0x00, 0xa0, 0x5e, 0x4f, 0x60, 0x00];
-    trace!("  sending part id: {:?}", PART_ID);
-    PART_ID.into_iter()
+pub fn read_version_string<'a>(
+    _arguments: &[u8],
+    board_information: &'a crate::firmware::BoardInformation,
+) -> Result<impl Iterator<Item = u8> + 'a> {
+    let version_string = board_information.version_string;
+    trace!("  sending version string: {:?}", version_string);
+    Ok(version_string.as_bytes().into_iter().copied())
 }
 
-fn read_serial_number<'a>(arguments: &[u8], _context: &'a dyn Any) -> impl Iterator<Item = u8> + 'a {
-    // TODO this should probably come from the SoC
-    static SERIAL_NUMBER: [u8; 16] = [
-        0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xe6, 0x67, 0xcc, 0x57, 0x57, 0x53, 0x6f,
-        0x30,
-    ];
-    trace!("  sending part id: {:?}", SERIAL_NUMBER);
-    SERIAL_NUMBER.into_iter()
+pub fn read_part_id<'a>(
+    _arguments: &[u8],
+    board_information: &'a crate::firmware::BoardInformation,
+) -> Result<impl Iterator<Item = u8> + 'a> {
+    let part_id = board_information.part_id;
+    trace!("  sending part id: {:?}", part_id);
+    Ok(part_id.into_iter())
+}
+
+pub fn read_serial_number<'a>(
+    _arguments: &[u8],
+    board_information: &'a crate::firmware::BoardInformation,
+) -> Result<impl Iterator<Item = u8> + 'a> {
+    let serial_number = board_information.serial_number;
+    trace!("  sending serial number id: {:?}", serial_number);
+    Ok(serial_number.into_iter())
 }
 
 // - verb implementations: api ------------------------------------------------
 
-pub fn man_get_available_classes<'a>(classes: &'a crate::gcp::Classes) -> impl Iterator<Item = u8> + 'a {
-    [].into_iter()
+fn old_get_available_classes<'a>(arguments: &[u8], _context: &'a dyn Any) -> slice::Iter<'a, u8> {
+    static CLASSES: [u8; 8] = [
+        0x0, 0x0, 0x0, 0x0,
+        0x1, 0x0, 0x0, 0x0,
+    ];
+    CLASSES.iter()
 }
 
-fn get_available_classes<'a>(arguments: &[u8], _context: &'a dyn Any) -> impl Iterator<Item = u8> + 'a {
-    // can't set alignment
-    /*#[repr(C)]
-    #[derive(Debug, AsBytes)]
-    struct Classes {
-        classes: [u32; 3] // not aligned
+pub fn get_available_classes<'a, 'b>(
+    _arguments: &'a [u8],
+    classes: &'b crate::gcp::Classes<'b>,
+) -> Result<impl Iterator<Item = u8> + 'b> {
+    let classes = classes
+        .iter()
+        .flat_map(|class| class.id.into_u32().to_le_bytes());
+    Ok(classes)
+}
+
+pub fn get_available_verbs<'a, 'b>(
+    arguments: &[u8],
+    classes: &'b crate::gcp::Classes<'b>,
+) -> Result<impl Iterator<Item = u8> + 'b> {
+    #[repr(C)]
+    #[derive(FromBytes, Unaligned)]
+    struct Args {
+        class_number: U32<LittleEndian>,
     }
-    static CLASSES: Classes = Classes {
-        classes: [0x0, 0x1, 0x2]
-    };
-    CLASSES.as_bytes()*/
+    let args = Args::read_from(arguments).ok_or(&GreatError::GcpInvalidArguments)?;
+    let class = classes
+        .class(args.class_number.into())
+        .ok_or(&GreatError::GcpClassNotFound)?;
+    let verbs = class.verbs.iter().flat_map(|verb| verb.id.to_le_bytes());
+    Ok(verbs)
+}
 
-    // can't return as ref
-    /*static CLASSES: [u32; 2] = [ 0x0, 0x1 ];
-    let mut response = [0; 8];
-    for (dest, source) in response.chunks_exact_mut(4).zip(CLASSES.iter()) {
-        dest.copy_from_slice(&source.to_le_bytes())
+pub fn get_verb_name<'a, 'b>(
+    arguments: &[u8],
+    classes: &'b crate::gcp::Classes<'b>,
+) -> Result<impl Iterator<Item = u8> + 'b> {
+    #[repr(C)]
+    #[derive(FromBytes, Unaligned)]
+    struct Args {
+        class_number: U32<LittleEndian>,
+        verb_number: U32<LittleEndian>,
     }
-    response.iter()*/
-
-    // TODO iter ?
-
-    [].into_iter()
+    let args = Args::read_from(arguments).ok_or(&GreatError::GcpInvalidArguments)?;
+    let class = classes
+        .class(args.class_number.into())
+        .ok_or(&GreatError::GcpClassNotFound)?;
+    let verb = class
+        .verb(args.verb_number.into())
+        .ok_or(&GreatError::GcpVerbNotFound)?;
+    Ok(verb.name.as_bytes().into_iter().copied())
 }
 
-fn get_class_name<'a>(arguments: &[u8], _context: &'a dyn Any) -> impl Iterator<Item = u8> + 'a {
-    [].into_iter()
-}
-
-fn get_class_docs<'a>(arguments: &[u8], _context: &'a dyn Any) -> impl Iterator<Item = u8> + 'a {
-    [].into_iter()
-}
-
-fn get_available_verbs<'a>(arguments: &[u8], _context: &'a dyn Any) -> impl Iterator<Item = u8> + 'a {
-    [].into_iter()
-}
-
-fn get_verb_name<'a>(arguments: &[u8], _context: &'a dyn Any) -> impl Iterator<Item = u8> + 'a {
-    [].into_iter()
-}
-
-fn get_verb_descriptor<'a>(arguments: &[u8], _context: &'a dyn Any) -> impl Iterator<Item = u8> + 'a {
+pub fn get_verb_descriptor<'a, 'b>(
+    arguments: &[u8],
+    classes: &'b crate::gcp::Classes<'b>,
+) -> Result<impl Iterator<Item = u8> + 'b> {
     #[repr(C)]
     #[derive(Debug, FromBytes, Unaligned)]
     struct Args {
-        class: U32<LittleEndian>,
-        verb: U32<LittleEndian>,
+        class_number: U32<LittleEndian>,
+        verb_number: U32<LittleEndian>,
         descriptor: u8,
     }
-    match Args::read_from(arguments) {
-        Some(arguments) => {
-            //let context = _context.downcast_ref::<(u32, u32, u32)>().expect("argh");
-            //context.0 *= 2;
-            //context.1 *= 3;
-            //context.2 *= 4;
-            [].into_iter()
-        }
-        None => {
-            error!("get_verb_descriptor received invalid arguments");
-            [].into_iter()
-        }
+    let args = Args::read_from(arguments).ok_or(&GreatError::GcpInvalidArguments)?;
+    let class = classes
+        .class(args.class_number.into())
+        .ok_or(&GreatError::GcpClassNotFound)?;
+    let verb = class
+        .verb(args.verb_number.into())
+        .ok_or(&GreatError::GcpVerbNotFound)?;
+    match args.descriptor.into() {
+        VerbDescriptor::InSignature => Ok(verb.in_signature.as_bytes().into_iter().copied()),
+        VerbDescriptor::InParamNames => Ok(verb.in_param_names.as_bytes().into_iter().copied()),
+        VerbDescriptor::OutSignature => Ok(verb.out_signature.as_bytes().into_iter().copied()),
+        VerbDescriptor::OutParamNames => Ok(verb.out_param_names.as_bytes().into_iter().copied()),
+        VerbDescriptor::Doc => Ok(verb.doc.as_bytes().into_iter().copied()),
+        VerbDescriptor::Unknown(_value) => Err(&GreatError::GcpUnknownVerbDescriptor),
     }
+}
+
+pub fn get_class_name<'a, 'b>(
+    arguments: &[u8],
+    classes: &'b crate::gcp::Classes<'b>,
+) -> Result<impl Iterator<Item = u8> + 'b> {
+    trace!("  get_class_name: {:?}", arguments);
+    #[repr(C)]
+    #[derive(FromBytes, Unaligned)]
+    struct Args {
+        class_number: U32<LittleEndian>,
+    }
+    let args = Args::read_from(arguments).ok_or(&GreatError::GcpInvalidArguments)?;
+    let class = classes
+        .class(args.class_number.into())
+        .ok_or(&GreatError::GcpClassNotFound)?;
+    Ok(class.name.as_bytes().iter().copied())
+}
+
+pub fn get_class_docs<'a, 'b>(
+    arguments: &[u8],
+    classes: &'b crate::gcp::Classes<'b>,
+) -> Result<impl Iterator<Item = u8> + 'b> {
+    #[repr(C)]
+    #[derive(FromBytes, Unaligned)]
+    struct Args {
+        class_number: U32<LittleEndian>,
+    }
+    let args = Args::read_from(arguments).ok_or(&GreatError::GcpInvalidArguments)?;
+    let class = classes
+        .class(args.class_number.into())
+        .ok_or(&GreatError::GcpClassNotFound)?;
+    Ok(class.docs.as_bytes().into_iter().copied())
 }

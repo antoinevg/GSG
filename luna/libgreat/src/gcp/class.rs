@@ -18,7 +18,7 @@ use core::slice;
 pub struct Classes<'a>(pub &'a [Class<'a>]);
 
 impl<'a> Classes<'a> {
-    pub fn dispatch<B>(
+    pub fn old_dispatch<B>(
         &'a self,
         command: Command<B>,
         context: &'a dyn Any,
@@ -28,10 +28,10 @@ impl<'a> Classes<'a> {
     {
         let class = self
             .class(command.class_id())
-            .ok_or(&GreatError::NotFound("class not found"))?;
+            .ok_or(&GreatError::GcpClassNotFound)?;
         let verb = class
-            .verb(command.verb_id())
-            .ok_or(&GreatError::NotFound("verb not found"))?;
+            .verb(command.verb_number())
+            .ok_or(&GreatError::GcpVerbNotFound)?;
         let handler = verb.command_handler;
         let arguments = command.arguments.as_bytes();
         let response = handler(arguments, context);
@@ -48,11 +48,20 @@ impl<'a> Classes<'a> {
     }
 }
 
+impl<'a> core::ops::Deref for Classes<'a> {
+    type Target = &'a [Class<'a>];
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
 // - Class --------------------------------------------------------------------
 
 #[derive(Copy, Clone)]
 pub struct Class<'a> {
     pub id: ClassId,
+    pub name: &'a str,
+    pub docs: &'a str,
     pub verbs: &'a [Verb<'a>],
 }
 
@@ -95,9 +104,35 @@ pub struct Verb<'a> {
     //pub command_handler: fn(arguments: &[u8], _context: &'a dyn Any) -> impl Iterator<Item = u8>,
 }
 
+/// Verb Descriptor
+#[repr(u8)]
+pub enum VerbDescriptor {
+    OutSignature = 0,
+    InSignature = 1,
+    Doc = 2,
+    OutParamNames = 3,
+    InParamNames = 4,
+    Unknown(u8),
+}
+
+impl core::convert::From<u8> for VerbDescriptor {
+    fn from(value: u8) -> Self {
+        use VerbDescriptor::*;
+        match value {
+            0 => OutSignature,
+            1 => InSignature,
+            2 => Doc,
+            3 => OutParamNames,
+            4 => InParamNames,
+            _ => Unknown(value),
+        }
+    }
+}
+
+
 // - ClassId ------------------------------------------------------------------
 
-/// Class
+/// ClassId
 #[repr(u32)]
 #[derive(Debug, PartialEq, Copy, Clone)]
 #[allow(non_camel_case_types)]

@@ -37,7 +37,11 @@ where
         ClassId::from(self.prelude.class)
     }
 
-    pub fn verb_id(&self) -> u32 {
+    pub fn class_number(&self) -> u32 {
+        self.prelude.class.into()
+    }
+
+    pub fn verb_number(&self) -> u32 {
         self.prelude.verb.get()
     }
 }
@@ -156,6 +160,8 @@ mod tests {
         let verbs_core = class_core::verbs();
         let class_core = Class {
             id: ClassId::core,
+            name: "core",
+            docs: class_core::CLASS_DOCS,
             verbs: &verbs_core,
         };
         let supported_classes = [class_core];
@@ -163,7 +169,7 @@ mod tests {
 
         let mut context = 0;
         let response = classes
-            .dispatch(command, &mut context)
+            .old_dispatch(command, &mut context)
             .expect("failed dispatch");
         println!("  -> {:?}", response);
 
@@ -181,20 +187,22 @@ mod tests {
         let verbs_core = class_core::verbs();
         let class_core = Class {
             id: ClassId::core,
+            name: "core",
+            docs: class_core::CLASS_DOCS,
             verbs: &verbs_core,
         };
         let supported_classes = [class_core];
         let classes = Classes(&supported_classes);
 
         let response = classes
-            .dispatch(command, &context)
+            .old_dispatch(command, &context)
             .expect("failed dispatch");
         println!("  -> {:?}", response);
         println!("  -> {:?}", context);
 
         let command =
             Command::parse(&COMMAND_GET_VERB_DESCRIPTOR[..]).expect("failed parsing command");
-        let response = classes.dispatch(command, &context);
+        let response = classes.old_dispatch(command, &context);
         println!("  -> {:?}", response);
         println!("  -> {:?}", context);
     }

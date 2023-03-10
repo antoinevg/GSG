@@ -28,7 +28,11 @@ use core::slice;
 // - global constants ---------------------------------------------------------
 
 // TODO get rid of this
-pub const GCP_MAX_RESPONSE_LENGTH: usize = 32;
+pub const GCP_MAX_RESPONSE_LENGTH: usize = 64;
+
+type GcpResponse<'a> = iter::Take<array::IntoIter<u8, GCP_MAX_RESPONSE_LENGTH>>;
+//type GcpResponse<'a> = iter::Take<core::slice::IterMut<'a, u8>>;
+
 
 // - global static state ------------------------------------------------------
 
@@ -111,11 +115,15 @@ fn main() -> ! {
     let verbs_core = gcp::class_core::verbs();
     let class_core = gcp::Class {
         id: gcp::ClassId::core,
+        name: "core",
+        docs: gcp::class_core::CLASS_DOCS,
         verbs: &verbs_core,
     };
     let verbs_firmware = cynthion::class::firmware::verbs();
     let class_firmware = gcp::Class {
         id: gcp::ClassId::firmware,
+        name: "firmware",
+        docs: cynthion::class::firmware::CLASS_DOCS,
         verbs: &verbs_firmware,
     };
     let classes = [class_core, class_firmware];
@@ -136,8 +144,6 @@ fn main() -> ! {
 
 // - Firmware -----------------------------------------------------------------
 
-type GcpResponse = iter::Take<array::IntoIter<u8, GCP_MAX_RESPONSE_LENGTH>>;
-
 struct Firmware<'a> {
     // peripherals
     leds: pac::LEDS,
@@ -145,7 +151,7 @@ struct Firmware<'a> {
 
     // state
     classes: gcp::Classes<'a>,
-    active_response: Option<GcpResponse>,
+    active_response: Option<GcpResponse<'a>>,
 }
 
 impl<'a> Firmware<'a> {
@@ -281,13 +287,13 @@ impl<'a> Firmware<'a> {
                         }
 
                         // parse & dispatch command
-                        if let Some(command) = gcp::Command::parse(&buffer[0..8]) {
+                        if let Some(command) = gcp::Command::parse(&buffer[0..bytes_read]) {
                             warn!("ORDER: #2");
                             debug!("  gcp: dispatching command: {:?}", command);
                             // let response = self.classes.dispatch(command, &self.some_state);
-                            let response = giga_dispatch(
+                            let response = big_old_manual_dispatch(
                                 command.class_id(),
-                                command.verb_id(),
+                                command.verb_number(),
                                 command.arguments,
                                 &self.classes,
                             );
@@ -342,73 +348,132 @@ impl<'a> Firmware<'a> {
     }
 }
 
-// - gigantic manual dispatch -------------------------------------------------
+// - a big old manual dispatch ------------------------------------------------
 
-fn giga_dispatch<'a, 'b>(
+fn big_old_manual_dispatch<'a, 'b>(
     class_id: gcp::ClassId,
     verb_id: u32,
     arguments: &'a [u8],
-    classes: &'b gcp::Classes,
-) -> cynthion::Result<iter::Take<array::IntoIter<u8, GCP_MAX_RESPONSE_LENGTH>>> {
-    static CLASSES: [u32; 2] = [
-        gcp::ClassId::core.into_u32(),
-        gcp::ClassId::firmware.into_u32(),
-    ];
+    classes: &'b gcp::Classes<'b>,
+) -> cynthion::Result<GcpResponse<'a>> {
+    let no_context: Option<u8> = None;
+    let response: [u8; GCP_MAX_RESPONSE_LENGTH] = [0; GCP_MAX_RESPONSE_LENGTH];
 
     match (class_id, verb_id) {
+        // class: core
         (gcp::ClassId::core, 0x0) => {
-            // read_board_id
-            let iter = gcp::class_core::man_read_board_id(&cynthion::BOARD_INFORMATION);
-            let response = unsafe { iter_to_response(iter) };
+            // core::read_board_id
+            let iter = gcp::class_core::read_board_id(arguments, &cynthion::BOARD_INFORMATION)?;
+            let response = unsafe { iter_to_response(iter, response) };
             Ok(response)
         }
         (gcp::ClassId::core, 0x1) => {
-            // read_version_string
+            // core::read_version_string
             let iter = cynthion::BOARD_INFORMATION
                 .version_string
                 .as_bytes()
                 .into_iter();
-            let response = unsafe { iter_ref_to_response(iter) };
+            //let response = unsafe { iter_ref_to_response(iter, response) };
+            let response = unsafe { iter_to_response(iter.copied(), response) };
             Ok(response)
         }
         (gcp::ClassId::core, 0x2) => {
-            // read_part_id
-            let iter = cynthion::BOARD_INFORMATION.part_id.into_iter();
-            let response = unsafe { iter_to_response(iter) };
+            // core::read_part_id
+            let iter = gcp::class_core::read_part_id(arguments, &cynthion::BOARD_INFORMATION)?;
+            let response = unsafe { iter_to_response(iter, response) };
             Ok(response)
         }
         (gcp::ClassId::core, 0x3) => {
-            // read_serial_number
-            let iter = cynthion::BOARD_INFORMATION.serial_number.into_iter();
-            let response = unsafe { iter_to_response(iter) };
+            // core::read_serial_number
+            let iter =
+                gcp::class_core::read_serial_number(arguments, &cynthion::BOARD_INFORMATION)?;
+            let response = unsafe { iter_to_response(iter, response) };
             Ok(response)
         }
         (gcp::ClassId::core, 0x4) => {
-            // get_available_classes
-            //unimplemented!();
-            /*let classes = [
-                gcp::ClassId::core.into_u32(),
-                gcp::ClassId::firmware.into_u32(),
-            ];
-            let response = classes.iter().flat_map(|class| class.to_le_bytes());
-            Ok(response)*/
-
-            //let iter = CLASSES.iter().flat_map(|class| class.to_le_bytes());
-            let iter = [].into_iter();
-            let response = unsafe { iter_to_response(iter) };
+            // core::get_available_classes
+            let iter = classes
+                .iter()
+                .flat_map(|class| class.id.into_u32().to_le_bytes());
+            //let iter = gcp::class_core::get_available_classes(arguments, classes);
+            let response = unsafe { iter_to_response(iter, response) };
             Ok(response)
         }
-        _ => Err(&libgreat::error::GreatError::NotFound(
+        (gcp::ClassId::core, 0x5) => {
+            // core::get_available_verbs
+            let iter = gcp::class_core::get_available_verbs(arguments, classes)?;
+            let response = unsafe { iter_to_response(iter, response) };
+            Ok(response)
+        }
+        (gcp::ClassId::core, 0x6) => {
+            // core::get_verb_name
+            let iter = gcp::class_core::get_verb_name(arguments, classes)?;
+            let response = unsafe { iter_to_response(iter, response) };
+            Ok(response)
+        }
+        (gcp::ClassId::core, 0x7) => {
+            // core::get_verb_descriptor
+            let iter = gcp::class_core::get_verb_descriptor(arguments, classes)?;
+            let response = unsafe { iter_to_response(iter, response) };
+            Ok(response)
+        }
+        (gcp::ClassId::core, 0x8) => {
+            // core::get_class_name
+            let iter = gcp::class_core::get_class_name(arguments, classes)?;
+            let response = unsafe { iter_to_response(iter, response) };
+            Ok(response)
+        }
+        (gcp::ClassId::core, 0x9) => {
+            // core::get_class_docs
+            let iter = gcp::class_core::get_class_docs(arguments, classes)?;
+            let response = unsafe { iter_to_response(iter, response) };
+            Ok(response)
+        }
+
+        // class: firmware
+        (gcp::ClassId::firmware, 0x0) => {
+            // firmware::initialize
+            let iter = cynthion::class::firmware::initialize(arguments, &no_context)?;
+            let response = unsafe { iter_to_response(iter, response) };
+            Ok(response)
+        }
+        (gcp::ClassId::firmware, 0x1) => {
+            // firmware::full_erase
+            let iter = cynthion::class::firmware::full_erase(arguments, &no_context)?;
+            let response = unsafe { iter_to_response(iter, response) };
+            Ok(response)
+        }
+        (gcp::ClassId::firmware, 0x2) => {
+            // firmware::page_erase
+            let iter = cynthion::class::firmware::page_erase(arguments, &no_context)?;
+            let response = unsafe { iter_to_response(iter, response) };
+            Ok(response)
+        }
+        (gcp::ClassId::firmware, 0x3) => {
+            // firmware::write_page
+            let iter = cynthion::class::firmware::write_page(arguments, &no_context)?;
+            let response = unsafe { iter_to_response(iter, response) };
+            Ok(response)
+        }
+        (gcp::ClassId::firmware, 0x4) => {
+            // firmware::read_page
+            let iter = cynthion::class::firmware::read_page(arguments, &no_context)?;
+            let response = unsafe { iter_to_response(iter, response) };
+            Ok(response)
+        }
+
+        _ => Err(&libgreat::error::GreatError::Message(
             "class or verb not found",
         )),
     }
 }
 
 // TODO an ugly hack to tide us over while I try abstain from digging a deeper hole
-unsafe fn iter_to_response(
+unsafe fn iter_to_response<'a>(
     iter: impl Iterator<Item = u8>,
-) -> iter::Take<array::IntoIter<u8, GCP_MAX_RESPONSE_LENGTH>> {
-    let mut response: [u8; GCP_MAX_RESPONSE_LENGTH] = [0; GCP_MAX_RESPONSE_LENGTH];
+    mut response: [u8; GCP_MAX_RESPONSE_LENGTH]
+) -> GcpResponse<'a> {
+
     let mut length = 0;
     for (ret, src) in response.iter_mut().zip(iter) {
         *ret = src;
@@ -416,10 +481,11 @@ unsafe fn iter_to_response(
     }
     response.into_iter().take(length)
 }
-
+/*
 unsafe fn iter_ref_to_response<'a>(
     iter: impl Iterator<Item = &'a u8>,
-) -> iter::Take<array::IntoIter<u8, GCP_MAX_RESPONSE_LENGTH>> {
+    _response: &mut [u8; GCP_MAX_RESPONSE_LENGTH],
+) -> GcpResponse {
     let mut response: [u8; GCP_MAX_RESPONSE_LENGTH] = [0; GCP_MAX_RESPONSE_LENGTH];
     let mut length = 0;
     for (ret, src) in response.iter_mut().zip(iter) {
@@ -427,7 +493,7 @@ unsafe fn iter_ref_to_response<'a>(
         length += 1;
     }
     response.into_iter().take(length)
-}
+}*/
 
 // - gcp vendor request handler -----------------------------------------------
 
@@ -474,7 +540,9 @@ where
                 length
             );
             // TODO - how long? ack?
-            device.hal_driver.write(0, [0xde, 0xad, 0xde, 0xad].into_iter());
+            device
+                .hal_driver
+                .write(0, [0xde, 0xad, 0xde, 0xad].into_iter());
             device.hal_driver.stall_request();
         }
         _ => {
