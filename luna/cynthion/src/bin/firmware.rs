@@ -28,7 +28,7 @@ use core::slice;
 // - global constants ---------------------------------------------------------
 
 // TODO get rid of this
-pub const GCP_MAX_RESPONSE_LENGTH: usize = 64;
+pub const GCP_MAX_RESPONSE_LENGTH: usize = 128;
 
 type GcpResponse<'a> = iter::Take<array::IntoIter<u8, GCP_MAX_RESPONSE_LENGTH>>;
 //type GcpResponse<'a> = iter::Take<core::slice::IterMut<'a, u8>>;
@@ -38,7 +38,7 @@ type GcpResponse<'a> = iter::Take<array::IntoIter<u8, GCP_MAX_RESPONSE_LENGTH>>;
 
 use cynthion::Message;
 use heapless::mpmc::MpMcQueue as Queue;
-static MESSAGE_QUEUE: Queue<Message, 128> = Queue::new();
+static MESSAGE_QUEUE: Queue<Message, 32> = Queue::new();
 
 // - MachineExternal interrupt handler ----------------------------------------
 
@@ -85,13 +85,6 @@ fn MachineExternal() {
     // USB1_EP_OUT Usb1ReceiveData
     } else if usb1.is_pending(pac::Interrupt::USB1_EP_OUT) {
         let endpoint = usb1.ep_out.data_ep.read().bits() as u8;
-        /*if endpoint == 0 {
-            // skip control endpoint, we're going to try read it in
-            // the vendor request handler instead.
-            debug!("MachineExternal - skipping USB1_EP_OUT(0)");
-            usb1.clear_pending(pac::Interrupt::USB1_EP_OUT);
-            return;
-        }*/
         let mut buffer = [0_u8; cynthion::EP_MAX_RECEIVE_LENGTH];
         let bytes_read = usb1.read(endpoint, &mut buffer);
         usb1.clear_pending(pac::Interrupt::USB1_EP_OUT);
@@ -151,6 +144,7 @@ struct Firmware<'a> {
 
     // state
     classes: gcp::Classes<'a>,
+    great_context: cynthion::class::greatdancer::Context<'a>,
     active_response: Option<GcpResponse<'a>>,
 }
 
@@ -159,6 +153,9 @@ impl<'a> Firmware<'a> {
         // initialize logging
         cynthion::log::init(hal::Serial::new(peripherals.UART));
         trace!("logging initialized");
+
+        //let great_context = cynthion::class::greatdancer::Context::new(&self.usb1);
+        let great_context = cynthion::class::greatdancer::Context::new();
 
         Self {
             leds: peripherals.LEDS,
@@ -175,6 +172,7 @@ impl<'a> Firmware<'a> {
                 &class::cynthion::USB_STRING_DESCRIPTORS,
             ),
             classes,
+            great_context,
             active_response: None,
         }
     }
@@ -245,13 +243,12 @@ impl<'a> Firmware<'a> {
                                         // send it
                                         debug!(
                                             "  gcp: sending command response of {} bytes: {:?}",
-                                            packet.length, response
+                                            response.len(),
+                                            response.take(packet.length as usize).len()
                                         );
                                         self.usb1
                                             .hal_driver
                                             .write(0, response.take(packet.length as usize));
-                                        // TODO do we need to ACK?
-                                        self.usb1.hal_driver.ack_status_stage(&packet);
                                         self.active_response = None;
                                     } else {
                                         // TODO something has gone wrong
@@ -296,6 +293,7 @@ impl<'a> Firmware<'a> {
                                 command.verb_number(),
                                 command.arguments,
                                 &self.classes,
+                                &self.great_context,
                             );
                             match response {
                                 Ok(response) => {
@@ -355,6 +353,7 @@ fn big_old_manual_dispatch<'a, 'b>(
     verb_id: u32,
     arguments: &'a [u8],
     classes: &'b gcp::Classes<'b>,
+    great_context: &'b cynthion::class::greatdancer::Context<'b>,
 ) -> cynthion::Result<GcpResponse<'a>> {
     let no_context: Option<u8> = None;
     let response: [u8; GCP_MAX_RESPONSE_LENGTH] = [0; GCP_MAX_RESPONSE_LENGTH];
@@ -458,6 +457,86 @@ fn big_old_manual_dispatch<'a, 'b>(
         (gcp::ClassId::firmware, 0x4) => {
             // firmware::read_page
             let iter = cynthion::class::firmware::read_page(arguments, &no_context)?;
+            let response = unsafe { iter_to_response(iter, response) };
+            Ok(response)
+        }
+
+        // class: greatdancer
+        (gcp::ClassId::greatdancer, 0x0) => {
+            // greatdancer::connect
+            let iter = cynthion::class::greatdancer::connect(arguments, &great_context)?;
+            let response = unsafe { iter_to_response(iter, response) };
+            Ok(response)
+        }
+        (gcp::ClassId::greatdancer, 0x1) => {
+            // greatdancer::disconnect
+            let iter = cynthion::class::greatdancer::disconnect(arguments, &great_context)?;
+            let response = unsafe { iter_to_response(iter, response) };
+            Ok(response)
+        }
+        (gcp::ClassId::greatdancer, 0x2) => {
+            // greatdancer::bus_reset
+            let iter = cynthion::class::greatdancer::bus_reset(arguments, &great_context)?;
+            let response = unsafe { iter_to_response(iter, response) };
+            Ok(response)
+        }
+        (gcp::ClassId::greatdancer, 0x3) => {
+            // greatdancer::set_address
+            let iter = cynthion::class::greatdancer::set_address(arguments, &great_context)?;
+            let response = unsafe { iter_to_response(iter, response) };
+            Ok(response)
+        }
+        (gcp::ClassId::greatdancer, 0x4) => {
+            // greatdancer::set_up_endpoints
+            let iter = cynthion::class::greatdancer::set_up_endpoints(arguments, &great_context)?;
+            let response = unsafe { iter_to_response(iter, response) };
+            Ok(response)
+        }
+        (gcp::ClassId::greatdancer, 0x5) => {
+            // greatdancer::get_status
+            let iter = cynthion::class::greatdancer::get_status(arguments, &great_context)?;
+            let response = unsafe { iter_to_response(iter, response) };
+            Ok(response)
+        }
+        (gcp::ClassId::greatdancer, 0x6) => {
+            // greatdancer::read_setup
+            let iter = cynthion::class::greatdancer::read_setup(arguments, &great_context)?;
+            let response = unsafe { iter_to_response(iter, response) };
+            Ok(response)
+        }
+        (gcp::ClassId::greatdancer, 0x7) => {
+            // greatdancer::stall_endpoint
+            let iter = cynthion::class::greatdancer::stall_endpoint(arguments, &great_context)?;
+            let response = unsafe { iter_to_response(iter, response) };
+            Ok(response)
+        }
+        (gcp::ClassId::greatdancer, 0x8) => {
+            // greatdancer::send_on_endpoint
+            let iter = cynthion::class::greatdancer::send_on_endpoint(arguments, &great_context)?;
+            let response = unsafe { iter_to_response(iter, response) };
+            Ok(response)
+        }
+        (gcp::ClassId::greatdancer, 0x9) => {
+            // greatdancer::clean_up_transfer
+            let iter = cynthion::class::greatdancer::clean_up_transfer(arguments, &great_context)?;
+            let response = unsafe { iter_to_response(iter, response) };
+            Ok(response)
+        }
+        (gcp::ClassId::greatdancer, 0xa) => {
+            // greatdancer::start_nonblocking_read
+            let iter = cynthion::class::greatdancer::start_nonblocking_read(arguments, &great_context)?;
+            let response = unsafe { iter_to_response(iter, response) };
+            Ok(response)
+        }
+        (gcp::ClassId::greatdancer, 0xb) => {
+            // greatdancer::finish_nonblocking_read
+            let iter = cynthion::class::greatdancer::finish_nonblocking_read(arguments, &great_context)?;
+            let response = unsafe { iter_to_response(iter, response) };
+            Ok(response)
+        }
+        (gcp::ClassId::greatdancer, 0xc) => {
+            // greatdancer::get_nonblocking_data_length
+            let iter = cynthion::class::greatdancer::get_nonblocking_data_length(arguments, &great_context)?;
             let response = unsafe { iter_to_response(iter, response) };
             Ok(response)
         }

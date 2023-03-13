@@ -161,7 +161,7 @@ pub fn read_serial_number<'a>(
     board_information: &'a crate::firmware::BoardInformation,
 ) -> Result<impl Iterator<Item = u8> + 'a> {
     let serial_number = board_information.serial_number;
-    trace!("  sending serial number id: {:?}", serial_number);
+    trace!("  sending serial number: {:?}", serial_number);
     Ok(serial_number.into_iter())
 }
 
