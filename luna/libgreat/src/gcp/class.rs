@@ -15,31 +15,10 @@ use core::slice;
 
 /// Classes
 #[derive(Copy, Clone)]
-pub struct Classes<'a>(pub &'a [Class<'a>]);
+pub struct Classes(pub &'static [Class]);
 
-impl<'a> Classes<'a> {
-    pub fn old_dispatch<B>(
-        &'a self,
-        command: Command<B>,
-        context: &'a dyn Any,
-    ) -> Result<slice::Iter<'a, u8>>
-    where
-        B: zerocopy::ByteSlice,
-    {
-        let class = self
-            .class(command.class_id())
-            .ok_or(&GreatError::GcpClassNotFound)?;
-        let verb = class
-            .verb(command.verb_number())
-            .ok_or(&GreatError::GcpVerbNotFound)?;
-        let handler = verb.command_handler;
-        let arguments = command.arguments.as_bytes();
-        let response = handler(arguments, context);
-
-        Ok(response)
-    }
-
-    pub fn class(&'a self, id: ClassId) -> Option<&Class> {
+impl Classes {
+    pub fn class(&self, id: ClassId) -> Option<&Class> {
         self.0.iter().find(|&class| class.id == id)
     }
 
@@ -48,8 +27,8 @@ impl<'a> Classes<'a> {
     }
 }
 
-impl<'a> core::ops::Deref for Classes<'a> {
-    type Target = &'a [Class<'a>];
+impl core::ops::Deref for Classes {
+    type Target = &'static [Class];
     fn deref(&self) -> &Self::Target {
         &self.0
     }
@@ -58,15 +37,15 @@ impl<'a> core::ops::Deref for Classes<'a> {
 // - Class --------------------------------------------------------------------
 
 #[derive(Copy, Clone)]
-pub struct Class<'a> {
+pub struct Class {
     pub id: ClassId,
-    pub name: &'a str,
-    pub docs: &'a str,
-    pub verbs: &'a [Verb<'a>],
+    pub name: &'static str,
+    pub docs: &'static str,
+    pub verbs: &'static [Verb],
 }
 
-impl<'a> Class<'a> {
-    pub fn verb(&'a self, id: u32) -> Option<&Verb> {
+impl Class {
+    pub fn verb(&self, id: u32) -> Option<&Verb> {
         self.verbs.iter().find(|&verb| verb.id == id)
     }
 }
@@ -92,15 +71,15 @@ impl CommandHandler for SomeCommand {
 
 /// Verb
 #[derive(Copy, Clone)]
-pub struct Verb<'a> {
+pub struct Verb {
     pub id: u32,
-    pub name: &'a str,
-    pub in_signature: &'a str,
-    pub in_param_names: &'a str,
-    pub out_signature: &'a str,
-    pub out_param_names: &'a str,
-    pub doc: &'a str,
-    pub command_handler: fn(arguments: &[u8], context: &'a dyn Any) -> slice::Iter<'a, u8>,
+    pub name: &'static str,
+    pub in_signature: &'static str,
+    pub in_param_names: &'static str,
+    pub out_signature: &'static str,
+    pub out_param_names: &'static str,
+    pub doc: &'static str,
+    //pub command_handler: fn(arguments: &[u8], context: &'a dyn Any) -> slice::Iter<'a, u8>,
     //pub command_handler: fn(arguments: &[u8], _context: &'a dyn Any) -> impl Iterator<Item = u8>,
 }
 
@@ -128,7 +107,6 @@ impl core::convert::From<u8> for VerbDescriptor {
         }
     }
 }
-
 
 // - ClassId ------------------------------------------------------------------
 

@@ -55,6 +55,42 @@ where
     }
 }
 
+// - helpers ------------------------------------------------------------------
+
+// TODO get rid of this
+pub const GCP_MAX_RESPONSE_LENGTH: usize = 128;
+
+pub type GcpResponse<'a> = core::iter::Take<core::array::IntoIter<u8, GCP_MAX_RESPONSE_LENGTH>>;
+//type GcpResponse<'a> = iter::Take<core::slice::IterMut<'a, u8>>;
+
+// TODO an ugly hack to tide us over while I try abstain from digging a deeper hole
+pub unsafe fn iter_to_response<'a>(
+    iter: impl Iterator<Item = u8>,
+    mut response: [u8; GCP_MAX_RESPONSE_LENGTH],
+) -> GcpResponse<'a> {
+    let mut length = 0;
+    for (ret, src) in response.iter_mut().zip(iter) {
+        *ret = src;
+        length += 1;
+    }
+    response.into_iter().take(length)
+}
+/*
+unsafe fn iter_ref_to_response<'a>(
+    iter: impl Iterator<Item = &'a u8>,
+    _response: &mut [u8; GCP_MAX_RESPONSE_LENGTH],
+) -> GcpResponse {
+    let mut response: [u8; GCP_MAX_RESPONSE_LENGTH] = [0; GCP_MAX_RESPONSE_LENGTH];
+    let mut length = 0;
+    for (ret, src) in response.iter_mut().zip(iter) {
+        *ret = *src;
+        length += 1;
+    }
+    response.into_iter().take(length)
+}*/
+
+// - tests --------------------------------------------------------------------
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -255,7 +291,6 @@ mod tests {
 
         let dispatch = Dispatch { classes };
     }
-
 
     // - test_introspection --
 

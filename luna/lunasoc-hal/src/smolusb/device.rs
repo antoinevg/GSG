@@ -11,6 +11,8 @@ use crate::smolusb::traits::{
 use libgreat::error::Result;
 use log::{debug, error, info, trace, warn};
 
+use core::cell::RefCell;
+
 ///! `smolusb` device implementation for Luna USB peripheral
 ///!
 ///! TODO probably not all of this should live in the smolusb crate,
@@ -69,7 +71,7 @@ pub struct UsbDevice<'a, D> {
     string_descriptors: &'a [&'a StringDescriptor<'a>],
     // TODO DeviceQualifierDescriptor
     // TODO OtherSpeedConfiguration
-    pub state: DeviceState,
+    pub state: RefCell<DeviceState>,
     pub reset_count: usize,
     pub feature_remote_wakeup: bool,
 
@@ -107,7 +109,7 @@ where
             configuration_descriptor,
             string_descriptor_zero,
             string_descriptors,
-            state: DeviceState::Reset,
+            state: DeviceState::Reset.into(),
             reset_count: 0,
             feature_remote_wakeup: false,
 
@@ -127,10 +129,10 @@ where
         self.hal_driver.connect().into()
     }
 
-    pub fn reset(&mut self) -> Speed {
+    pub fn reset(&self) -> Speed {
         let speed = self.hal_driver.reset().into();
-        self.reset_count += 1;
-        self.state = DeviceState::Reset;
+        // TODO self.reset_count += 1;
+        self.state.replace(DeviceState::Reset.into());
         speed
     }
 }
@@ -140,8 +142,7 @@ impl<'a, D> UsbDevice<'a, D>
 where
     D: ControlRead + EndpointRead + EndpointWrite + EndpointWriteRef + UsbDriverOperations,
 {
-    // TODO consider a `state: &dyn Any` variable for callbacks
-    pub fn handle_setup_request(&mut self, setup_packet: &SetupPacket) -> Result<()> {
+    pub fn handle_setup_request(&self, setup_packet: &SetupPacket) -> Result<()> {
         debug!("# handle_setup_request()",);
 
         let request_type = setup_packet.request_type();
@@ -211,12 +212,12 @@ where
         Ok(())
     }
 
-    fn handle_set_address(&mut self, setup_packet: &SetupPacket) -> Result<()> {
+    fn handle_set_address(&self, setup_packet: &SetupPacket) -> Result<()> {
         self.hal_driver.ack_status_stage(setup_packet);
 
         let address: u8 = (setup_packet.value & 0x7f) as u8;
         self.hal_driver.set_address(address);
-        self.state = DeviceState::Address;
+        self.state.replace(DeviceState::Address.into());
 
         debug!("  -> handle_set_address({})", address);
 
@@ -300,7 +301,7 @@ where
         Ok(())
     }
 
-    fn handle_set_configuration(&mut self, setup_packet: &SetupPacket) -> Result<()> {
+    fn handle_set_configuration(&self, setup_packet: &SetupPacket) -> Result<()> {
         self.hal_driver.ack_status_stage(setup_packet);
 
         debug!("  -> handle_set_configuration()");
@@ -311,7 +312,7 @@ where
             self.hal_driver.stall_request();
             return Ok(());
         }
-        self.state = DeviceState::Configured;
+        self.state.replace(DeviceState::Configured.into());
 
         Ok(())
     }
@@ -328,7 +329,7 @@ where
         Ok(())
     }
 
-    fn handle_clear_feature(&mut self, setup_packet: &SetupPacket) -> Result<()> {
+    fn handle_clear_feature(&self, setup_packet: &SetupPacket) -> Result<()> {
         debug!("  -> handle_clear_feature()");
 
         // parse request
@@ -345,28 +346,12 @@ where
 
         match (&recipient, &feature) {
             (Recipient::Device, Feature::DeviceRemoteWakeup) => {
-                self.feature_remote_wakeup = false;
+                // TODO self.feature_remote_wakeup = false;
             }
             (Recipient::Endpoint, Feature::EndpointHalt) => {
                 let endpoint = setup_packet.index as u8;
                 self.hal_driver.stall_endpoint(endpoint, false);
                 //debug!("  clear stall: 0x{:x}", endpoint);
-
-                // queue a little test data on interrupt endpoint
-                if endpoint == 0x82 {
-                    let endpoint = endpoint - 0x80;
-                    //self.hal_driver.ack(endpoint, packet);
-                    /*const SIZE: usize = 8;
-                    let data: heapless::Vec<u8, SIZE> =
-                        (0..(SIZE as u8)).collect::<heapless::Vec<u8, SIZE>>().try_into().unwrap();
-                    let bytes_written = data.len();
-                    self.hal_driver.write(endpoint, data.into_iter());
-                    info!(
-                        "Sent {} bytes to interrupt endpoint: {}",
-                        bytes_written, endpoint
-                    );*/
-                    //self.hal_driver.write(endpoint, [].into_iter());
-                }
             }
             _ => {
                 warn!(
@@ -381,7 +366,7 @@ where
         Ok(())
     }
 
-    fn handle_set_feature(&mut self, setup_packet: &SetupPacket) -> Result<()> {
+    fn handle_set_feature(&self, setup_packet: &SetupPacket) -> Result<()> {
         debug!("  -> handle_set_feature()");
 
         // parse request
@@ -398,7 +383,7 @@ where
 
         match (&recipient, &feature) {
             (Recipient::Device, Feature::DeviceRemoteWakeup) => {
-                self.feature_remote_wakeup = true;
+                // TODO self.feature_remote_wakeup = true;
             }
             (Recipient::Endpoint, Feature::EndpointHalt) => {
                 let endpoint = setup_packet.index as u8;

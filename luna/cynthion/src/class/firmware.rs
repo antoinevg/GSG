@@ -1,7 +1,7 @@
 #![allow(dead_code, unused_imports, unused_variables)] // TODO
 
 use libgreat::error::{GreatError, Result};
-use libgreat::gcp::Verb;
+use libgreat::gcp::{self, Verb};
 
 use log::{debug, error};
 use zerocopy::{AsBytes, BigEndian, FromBytes, LittleEndian, Unaligned, U32};
@@ -9,75 +9,64 @@ use zerocopy::{AsBytes, BigEndian, FromBytes, LittleEndian, Unaligned, U32};
 use core::any::Any;
 use core::slice;
 
+pub static CLASS: gcp::Class = gcp::Class {
+    id: gcp::ClassId::firmware,
+    name: "firmware",
+    docs: CLASS_DOCS,
+    verbs: &VERBS,
+};
+
 pub static CLASS_DOCS: &str = "Common API for updating firmware on a libgreat device.\0";
 
-fn dummy_handler<'a>(_arguments: &[u8], _context: &'a dyn Any) -> slice::Iter<'a, u8> {
-    [].iter()
-}
-
-pub const fn verbs<'a>() -> [Verb<'a>; 1] {
-    [
-        Verb {
-            id: 0x0,
-            name: "initialize\0",
-            doc: "Prepare the board to have its firmware programmed.\0",
-            in_signature: "\0",
-            in_param_names: "\0",
-            out_signature: "<II\0",
-            out_param_names: "page_size, total_size\0",
-            command_handler: dummy_handler, // initialize,
-        },
-        /*Verb {
-            id: 0x1,
-            name: "full_erase\0",
-            doc: "Erase the entire firmware flash chip.\0",
-            in_signature: "\0",
-            in_param_names: "\0",
-            out_signature: "\0",
-            out_param_names: "\0",
-            command_handler: dummy_handler, // full_erase,
-        },
-        Verb {
-            id: 0x2,
-            name: "page_erase\0",
-            doc: "Erase the page with the given address on the firmware flash chip.\0",
-            in_signature: "<I\0",
-            in_param_names: "address\0",
-            out_signature: "\0",
-            out_param_names: "\0",
-            command_handler: dummy_handler, // page_erase,
-        },
-        Verb {
-            id: 0x3,
-            name: "write_page\0",
-            doc: "Write the provided data to a single firmware flash page.\0",
-            in_signature: "<I*X\0",
-            in_param_names: "address, data\0",
-            out_signature: "\0",
-            out_param_names: "\0",
-            command_handler: dummy_handler, // write_page,
-        },
-        Verb {
-            id: 0x4,
-            name: "read_page\0",
-            doc: "Return the content of the flash page at the given address.\0",
-            in_signature: "<I\0",
-            in_param_names: "address\0",
-            out_signature: "<*X\0",
-            out_param_names: "data\0",
-            command_handler: dummy_handler, // read_page,
-        },*/
-    ]
-}
+pub static VERBS: [Verb; 1] = [
+    Verb {
+        id: 0x0,
+        name: "initialize\0",
+        doc: "Prepare the board to have its firmware programmed.\0",
+        in_signature: "\0",
+        in_param_names: "\0",
+        out_signature: "<II\0",
+        out_param_names: "page_size, total_size\0",
+    },
+    /*Verb {
+        id: 0x1,
+        name: "full_erase\0",
+        doc: "Erase the entire firmware flash chip.\0",
+        in_signature: "\0",
+        in_param_names: "\0",
+        out_signature: "\0",
+        out_param_names: "\0",
+    },
+    Verb {
+        id: 0x2,
+        name: "page_erase\0",
+        doc: "Erase the page with the given address on the firmware flash chip.\0",
+        in_signature: "<I\0",
+        in_param_names: "address\0",
+        out_signature: "\0",
+        out_param_names: "\0",
+    },
+    Verb {
+        id: 0x3,
+        name: "write_page\0",
+        doc: "Write the provided data to a single firmware flash page.\0",
+        in_signature: "<I*X\0",
+        in_param_names: "address, data\0",
+        out_signature: "\0",
+        out_param_names: "\0",
+    },
+    Verb {
+        id: 0x4,
+        name: "read_page\0",
+        doc: "Return the content of the flash page at the given address.\0",
+        in_signature: "<I\0",
+        in_param_names: "address\0",
+        out_signature: "<*X\0",
+        out_param_names: "data\0",
+    },*/
+];
 
 // - verb implementations -----------------------------------------------------
-
-fn old_initialize<'a>(
-    arguments: &[u8],
-    _context: &'a dyn Any,
-) -> Result<impl Iterator<Item = u8> + 'a> {
-    Ok([].into_iter())
-}
 
 pub fn initialize<'a>(
     arguments: &[u8],
@@ -120,11 +109,8 @@ pub fn write_page<'a>(
         address: zerocopy::LayoutVerified<B, U32<LittleEndian>>,
         data: B,
     }
-    let (address, data) = zerocopy::LayoutVerified::new_unaligned_from_prefix(
-        arguments
-    ).ok_or(
-        &GreatError::GcpInvalidArguments
-    )?;
+    let (address, data) = zerocopy::LayoutVerified::new_unaligned_from_prefix(arguments)
+        .ok_or(&GreatError::GcpInvalidArguments)?;
     let _args = Args { address, data };
     Ok([].into_iter())
 }
@@ -141,4 +127,53 @@ pub fn read_page<'a>(
     let _args = Args::read_from(arguments).ok_or(&GreatError::GcpInvalidArguments)?;
     let data: [u8; 8] = [0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0];
     Ok(data.into_iter())
+}
+
+// - dispatch -----------------------------------------------------------------
+
+use libgreat::gcp::{iter_to_response, GcpResponse, GCP_MAX_RESPONSE_LENGTH};
+
+use core::{array, iter};
+
+pub fn dispatch(
+    verb_id: u32,
+    arguments: &[u8],
+    response_buffer: [u8; GCP_MAX_RESPONSE_LENGTH],
+) -> Result<GcpResponse> {
+    let no_context: Option<u8> = None;
+
+    match verb_id {
+        0x0 => {
+            // firmware::initialize
+            let iter = initialize(arguments, &no_context)?;
+            let response = unsafe { iter_to_response(iter, response_buffer) };
+            Ok(response)
+        }
+        0x1 => {
+            // firmware::full_erase
+            let iter = full_erase(arguments, &no_context)?;
+            let response = unsafe { iter_to_response(iter, response_buffer) };
+            Ok(response)
+        }
+        0x2 => {
+            // firmware::page_erase
+            let iter = page_erase(arguments, &no_context)?;
+            let response = unsafe { iter_to_response(iter, response_buffer) };
+            Ok(response)
+        }
+        0x3 => {
+            // firmware::write_page
+            let iter = write_page(arguments, &no_context)?;
+            let response = unsafe { iter_to_response(iter, response_buffer) };
+            Ok(response)
+        }
+        0x4 => {
+            // firmware::read_page
+            let iter = read_page(arguments, &no_context)?;
+            let response = unsafe { iter_to_response(iter, response_buffer) };
+            Ok(response)
+        }
+
+        _ => Err(&GreatError::Message("class: firmware - verb not found")),
+    }
 }

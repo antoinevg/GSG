@@ -249,9 +249,13 @@ fn main() -> ! {
                             "Received {} bytes on usb0 endpoint: {} - {:?}\n",
                             bytes_read, endpoint, buffer
                         );
-                        usb1_device.hal_driver.write_ref(endpoint, buffer.iter().take(bytes_read).into_iter());
+                        usb1_device
+                            .hal_driver
+                            .write_ref(endpoint, buffer.iter().take(bytes_read).into_iter());
                         info!("Sent {} bytes to usb1 endpoint: {}", bytes_read, endpoint);
-                        usb2_device.hal_driver.write_ref(endpoint, buffer.iter().take(bytes_read).into_iter());
+                        usb2_device
+                            .hal_driver
+                            .write_ref(endpoint, buffer.iter().take(bytes_read).into_iter());
                         info!("Sent {} bytes to usb2 endpoint: {}", bytes_read, endpoint);
                     }
                 }
@@ -269,9 +273,13 @@ fn main() -> ! {
                             "Received {} bytes on usb1 endpoint: {} - {:?}\n",
                             bytes_read, endpoint, buffer
                         );
-                        usb0_device.hal_driver.write_ref(endpoint, buffer.iter().take(bytes_read).into_iter());
+                        usb0_device
+                            .hal_driver
+                            .write_ref(endpoint, buffer.iter().take(bytes_read).into_iter());
                         info!("Sent {} bytes to usb0 endpoint: {}", bytes_read, endpoint);
-                        usb2_device.hal_driver.write_ref(endpoint, buffer.iter().take(bytes_read).into_iter());
+                        usb2_device
+                            .hal_driver
+                            .write_ref(endpoint, buffer.iter().take(bytes_read).into_iter());
                         info!("Sent {} bytes to usb2 endpoint: {}", bytes_read, endpoint);
                     }
                 }
@@ -289,9 +297,13 @@ fn main() -> ! {
                             "Received {} bytes on usb2 endpoint: {} - {:?}\n",
                             bytes_read, endpoint, buffer
                         );
-                        usb0_device.hal_driver.write_ref(endpoint, buffer.iter().take(bytes_read).into_iter());
+                        usb0_device
+                            .hal_driver
+                            .write_ref(endpoint, buffer.iter().take(bytes_read).into_iter());
                         info!("Sent {} bytes to usb0 endpoint: {}", bytes_read, endpoint);
-                        usb1_device.hal_driver.write_ref(endpoint, buffer.iter().take(bytes_read).into_iter());
+                        usb1_device
+                            .hal_driver
+                            .write_ref(endpoint, buffer.iter().take(bytes_read).into_iter());
                         info!("Sent {} bytes to usb1 endpoint: {}", bytes_read, endpoint);
                     }
                 }
