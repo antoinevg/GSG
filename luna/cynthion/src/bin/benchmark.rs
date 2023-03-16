@@ -51,7 +51,7 @@ fn MachineExternal() {
 
 #[derive(Debug)]
 struct State {
-    counter: u32,
+    counter: usize,
     interrupts: u32,
     secondary: u32,
     while_max: u32,

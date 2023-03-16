@@ -52,11 +52,11 @@ fn MachineExternal() {
         usb1.clear_pending(pac::Interrupt::USB1);
         Message::HandleInterrupt(pac::Interrupt::USB1)
 
-    // USB1_EP_CONTROL Usb1ReceiveSetupPacket
+    // USB1_EP_CONTROL UsbReceiveSetupPacket
     } else if usb1.is_pending(pac::Interrupt::USB1_EP_CONTROL) {
-        let mut buffer = [0_u8; 8];
-        usb1.read_control(&mut buffer);
-        let setup_packet = match SetupPacket::try_from(buffer) {
+        let mut setup_packet_buffer = [0_u8; 8];
+        usb1.read_control(&mut setup_packet_buffer);
+        let setup_packet = match SetupPacket::try_from(setup_packet_buffer) {
             Ok(packet) => packet,
             Err(e) => {
                 error!("MachineExternal USB1_EP_CONTROL - {:?}", e);
@@ -64,20 +64,20 @@ fn MachineExternal() {
             }
         };
         usb1.clear_pending(pac::Interrupt::USB1_EP_CONTROL);
-        Message::Usb1ReceiveSetupPacket(setup_packet)
+        Message::UsbReceiveSetupPacket(1, setup_packet)
 
     // USB1_EP_IN transfer complete
     } else if usb1.is_pending(pac::Interrupt::USB1_EP_IN) {
         usb1.clear_pending(pac::Interrupt::USB1_EP_IN);
         Message::HandleInterrupt(pac::Interrupt::USB1_EP_IN)
 
-    // USB1_EP_OUT Usb1ReceiveData
+    // USB1_EP_OUT UsbReceiveData
     } else if usb1.is_pending(pac::Interrupt::USB1_EP_OUT) {
         let endpoint = usb1.ep_out.data_ep.read().bits() as u8;
         let mut buffer = [0_u8; cynthion::EP_MAX_RECEIVE_LENGTH];
         let bytes_read = usb1.read(endpoint, &mut buffer);
         usb1.clear_pending(pac::Interrupt::USB1_EP_OUT);
-        Message::Usb1ReceiveData(endpoint, bytes_read, buffer)
+        Message::UsbReceiveData(1, endpoint, bytes_read, buffer)
 
     // - usb0 interrupts - "target_phy" --
 
@@ -86,11 +86,11 @@ fn MachineExternal() {
         usb0.clear_pending(pac::Interrupt::USB0);
         Message::HandleInterrupt(pac::Interrupt::USB0)
 
-    // USB0_EP_CONTROL Usb0ReceiveSetupPacket
+    // USB0_EP_CONTROL UsbReceiveSetupPacket
     } else if usb0.is_pending(pac::Interrupt::USB0_EP_CONTROL) {
-        let mut buffer = [0_u8; 8];
-        usb0.read_control(&mut buffer);
-        let setup_packet = match SetupPacket::try_from(buffer) {
+        let mut setup_packet_buffer = [0_u8; 8];
+        usb0.read_control(&mut setup_packet_buffer);
+        let setup_packet = match SetupPacket::try_from(setup_packet_buffer) {
             Ok(packet) => packet,
             Err(e) => {
                 error!("MachineExternal USB0_EP_CONTROL - {:?}", e);
@@ -98,29 +98,30 @@ fn MachineExternal() {
             }
         };
         usb0.clear_pending(pac::Interrupt::USB0_EP_CONTROL);
-        Message::Usb0ReceiveSetupPacket(setup_packet)
+        Message::UsbReceiveSetupPacket(0, setup_packet)
 
     // USB0_EP_IN transfer complete
     } else if usb0.is_pending(pac::Interrupt::USB0_EP_IN) {
         usb0.clear_pending(pac::Interrupt::USB0_EP_IN);
         Message::HandleInterrupt(pac::Interrupt::USB0_EP_IN)
 
-    // USB0_EP_OUT Usb0ReceiveData
+    // USB0_EP_OUT UsbReceiveData
     } else if usb0.is_pending(pac::Interrupt::USB0_EP_OUT) {
         let endpoint = usb0.ep_out.data_ep.read().bits() as u8;
         let mut buffer = [0_u8; cynthion::EP_MAX_RECEIVE_LENGTH];
         let bytes_read = usb0.read(endpoint, &mut buffer);
         usb0.clear_pending(pac::Interrupt::USB0_EP_OUT);
-        Message::Usb0ReceiveData(endpoint, bytes_read, buffer)
+        Message::UsbReceiveData(0, endpoint, bytes_read, buffer)
 
     // - Unknown Interrupt --
     } else {
         Message::HandleUnknownInterrupt(pending)
     };
 
-    MESSAGE_QUEUE
-        .enqueue(message)
-        .expect("MachineExternal - message queue overflow")
+    match MESSAGE_QUEUE.enqueue(message) {
+        Ok(()) => (),
+        Err(_) => error!("MachineExternal - message queue overflow"),
+    }
 }
 
 // - main entry point ---------------------------------------------------------
@@ -131,13 +132,22 @@ fn main() -> ! {
     let mut firmware = Firmware::new(pac::Peripherals::take().unwrap());
     match firmware.initialize() {
         Ok(()) => (),
-        Err(e) => panic!("Firmware panicked during initialization: {}", e),
+        Err(e) => {
+            error!("Firmware panicked during initialization: {}", e);
+            panic!("Firmware panicked during initialization: {}", e)
+        },
     }
 
     // enter main loop
     match firmware.main_loop() {
-        Ok(()) => panic!("Firmware exited unexpectedly in main loop"),
-        Err(e) => panic!("Firmware panicked in main loop: {}", e),
+        Ok(()) => {
+            error!("Firmware exited unexpectedly in main loop");
+            panic!("Firmware exited unexpectedly in main loop")
+        },
+        Err(e) => {
+            error!("Firmware panicked in main loop: {}", e);
+            panic!("Firmware panicked in main loop: {}", e)
+        },
     }
 }
 
@@ -255,17 +265,17 @@ impl<'a> Firmware<'a> {
                     // - usb1 message handlers --
 
                     // Usb1 received setup packet
-                    Message::Usb1ReceiveSetupPacket(packet) => {
+                    Message::UsbReceiveSetupPacket(1, packet) => {
                         self.handle_usb1_receive_setup_packet(packet)?;
                     }
 
                     // Usb1 received data on control endpoint
-                    Message::Usb1ReceiveData(0, bytes_read, buffer) => {
+                    Message::UsbReceiveData(1, 0, bytes_read, buffer) => {
                         self.handle_usb1_receive_control_data(bytes_read, buffer)?;
                     }
 
                     // Usb1 received data on endpoint
-                    Message::Usb1ReceiveData(endpoint, bytes_read, buffer) => {
+                    Message::UsbReceiveData(1, endpoint, bytes_read, buffer) => {
                         self.handle_usb1_receive_data(endpoint, bytes_read, buffer)?;
                         debug!(
                             "Received {} bytes on usb1 endpoint: {} - {:?}",
@@ -291,7 +301,7 @@ impl<'a> Firmware<'a> {
 
                     // Unhandled message
                     _ => {
-                        warn!("Unhandled message: {:?}\n", message);
+                        error!("Unhandled message: {:?}\n", message);
                     }
                 }
             }
@@ -301,17 +311,32 @@ impl<'a> Firmware<'a> {
         Ok(())
     }
 
-    fn handle_usb1_receive_setup_packet(&mut self, packet: SetupPacket) -> cynthion::Result<()> {
-        let request_type = packet.request_type();
-        let vendor_request = VendorRequest::from(packet.request);
+    fn handle_usb1_receive_setup_packet(
+        &mut self,
+        setup_packet: SetupPacket,
+    ) -> cynthion::Result<()> {
+        let request_type = setup_packet.request_type();
+        let vendor_request = VendorRequest::from(setup_packet.request);
 
         match (&request_type, &vendor_request) {
             (RequestType::Vendor, VendorRequest::UsbCommandRequest) => {
-                self.usb1_handle_vendor_request(&packet)?;
+                self.usb1_handle_vendor_request(&setup_packet)?;
             }
-            _ => match self.usb1.handle_setup_request(&packet) {
+            (RequestType::Vendor, vendor_request) => {
+                // TODO this is from one of the legacy boards which we
+                // need to support to get `greatfet info` to finish
+                // enumerating through the supported devices.
+                //
+                // see: host/greatfet/boards/legacy.py
+                error!(" gcp: Unknown vendor request '{:?}'", vendor_request);
+                self.usb1.hal_driver.write(0, [0].into_iter());
+            }
+            _ => match self.usb1.handle_setup_request(&setup_packet) {
                 Ok(()) => debug!("OK\n"),
-                Err(e) => panic!("  handle_setup_request: {:?}: {:?}", e, packet),
+                Err(e) => {
+                    error!("  handle_setup_request: {:?}: {:?}", e, setup_packet);
+                    panic!("  handle_setup_request: {:?}: {:?}", e, setup_packet)
+                },
             },
         }
         Ok(())
@@ -337,7 +362,7 @@ impl<'a> Firmware<'a> {
                 VendorRequestValue::Start,
             ) => {
                 self.usb1.hal_driver.ack_status_stage(setup_packet);
-                warn!("ORDER: #1");
+                debug!("ORDER: #1");
                 debug!("  gcp: TODO state = Command::Begin");
                 debug!("  gcp: ack {}", length);
             }
@@ -348,15 +373,14 @@ impl<'a> Firmware<'a> {
                 VendorRequest::UsbCommandRequest,
                 VendorRequestValue::Start,
             ) => {
-                warn!("ORDER: #3");
+                debug!("ORDER: #3");
                 debug!("  gcp: TODO state = Command::Send");
                 // do we have a response ready? should we wait if we don't?
                 if let Some(response) = &mut self.active_response {
                     // send it
                     debug!(
-                        "  gcp: sending command response of {} bytes: {:?}",
-                        response.len(),
-                        response.take(setup_packet.length as usize).len()
+                        "  gcp: sending command response of {} bytes",
+                        response.len()
                     );
                     self.usb1
                         .hal_driver
@@ -367,7 +391,7 @@ impl<'a> Firmware<'a> {
                     error!("  gcp: stall: gcp response requested but no response queued");
                     self.usb1.hal_driver.stall_request();
                 }
-                warn!("ORDER: fin");
+                debug!("ORDER: fin");
             }
 
             // host would like to abort the current command sequence
@@ -376,13 +400,6 @@ impl<'a> Firmware<'a> {
                 VendorRequest::UsbCommandRequest,
                 VendorRequestValue::Cancel,
             ) => {
-                // TODO cancel
-                debug!("  gcp: TODO state = Command::Cancel");
-                debug!(
-                    "  gcp: TODO cancel cynthion vendor request sequence: {}",
-                    length
-                );
-
                 // cancel any queued response
                 self.active_response = None;
 
@@ -390,7 +407,15 @@ impl<'a> Firmware<'a> {
                 self.usb1
                     .hal_driver
                     .write(0, [0xde, 0xad, 0xde, 0xad].into_iter());
-                self.usb1.hal_driver.stall_request();
+                //self.usb1.hal_driver.ack_status_stage(setup_packet);
+                //self.usb1.hal_driver.stall_request();
+
+                // TODO cancel
+                debug!("  gcp: TODO state = Command::Cancel");
+                debug!(
+                    "  gcp: TODO cancel cynthion vendor request sequence: {}",
+                    length
+                );
             }
             _ => {
                 error!(
@@ -425,7 +450,7 @@ impl<'a> Firmware<'a> {
 
         // parse & dispatch command
         if let Some(command) = gcp::Command::parse(&buffer[0..bytes_read]) {
-            warn!("ORDER: #2");
+            debug!("ORDER: #2");
             debug!("  gcp: dispatching command: {:?}", command);
             // let response = self.classes.dispatch(command, &self.some_state);
             let response_buffer: [u8; GCP_MAX_RESPONSE_LENGTH] = [0; GCP_MAX_RESPONSE_LENGTH];

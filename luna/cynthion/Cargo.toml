@@ -48,6 +48,10 @@ name = "benchmark"
 required-features = ["lunasoc-pac/rt"]
 
 [[bin]]
+name = "benchmark-mutex"
+required-features = ["lunasoc-pac/rt"]
+
+[[bin]]
 name = "cdc-serial-loopback"
 required-features = ["lunasoc-pac/rt"]
 

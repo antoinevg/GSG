@@ -9,6 +9,12 @@ use log::error;
 #[inline(never)]
 #[panic_handler]
 fn panic(panic_info: &PanicInfo) -> ! {
+    // panic stations
+    let peripherals = unsafe { crate::pac::Peripherals::steal() };
+    let leds = &peripherals.LEDS;
+    leds.output
+        .write(|w| unsafe { w.output().bits(0b101010) });
+
     if let Some(message) = panic_info.message() {
         error!("Panic: {}", message);
     } else {

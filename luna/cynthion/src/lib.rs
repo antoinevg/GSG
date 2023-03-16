@@ -37,37 +37,42 @@ pub const EP_MAX_RECEIVE_LENGTH: usize = 64;
 
 // - messages -----------------------------------------------------------------
 
-#[derive(Debug)]
 pub enum Message {
     // interrupts
     HandleInterrupt(pac::Interrupt),
     HandleUnknownInterrupt(usize),
 
     // usb events
-    /// Received a SETUP packet on USB0_EP_CONTROL
-    Usb0ReceiveSetupPacket(hal::smolusb::control::SetupPacket),
-
-    /// Received a SETUP packet on USB1_EP_CONTROL
-    Usb1ReceiveSetupPacket(hal::smolusb::control::SetupPacket),
-
-    /// Received a SETUP packet on USB2_EP_CONTROL
-    Usb2ReceiveSetupPacket(hal::smolusb::control::SetupPacket),
-
-    /// Received data on USB0_EP_OUT
+    /// Received a SETUP packet on USBx_EP_CONTROL
     ///
-    /// Contents is (endpoint, bytes_read, buffer)
-    Usb0ReceiveData(u8, usize, [u8; EP_MAX_RECEIVE_LENGTH]),
+    /// Contents is (interface, setup_packet)
+    UsbReceiveSetupPacket(u8, hal::smolusb::control::SetupPacket),
 
-    /// Received data on USB1_EP_OUT
+    /// Received data on USBx_EP_OUT
     ///
-    /// Contents is (endpoint, bytes_read, buffer)
-    Usb1ReceiveData(u8, usize, [u8; EP_MAX_RECEIVE_LENGTH]),
-
-    /// Received data on USB2_EP_OUT
-    ///
-    /// Contents is (endpoint, bytes_read, buffer)
-    Usb2ReceiveData(u8, usize, [u8; EP_MAX_RECEIVE_LENGTH]),
+    /// Contents is (interface, endpoint, bytes_read, buffer)
+    UsbReceiveData(u8, u8, usize, [u8; EP_MAX_RECEIVE_LENGTH]),
 
     // TODO
-    TimerEvent(u32),
+    TimerEvent(usize),
+}
+
+impl core::fmt::Debug for Message {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            Message::HandleInterrupt(interrupt) => write!(f, "HandleInterrupt({:?})", interrupt),
+            Message::HandleUnknownInterrupt(interrupt) => {
+                write!(f, "HandleUnknownInterrupt({})", interrupt)
+            }
+            Message::UsbReceiveSetupPacket(interface, _setup_packet) => {
+                write!(f, "UsbReceiveSetupPacket({})", interface)
+            }
+            Message::UsbReceiveData(interface, endpoint, bytes_read, _buffer) => write!(
+                f,
+                "UsbReceiveData({}, {}, {})",
+                interface, endpoint, bytes_read
+            ),
+            Message::TimerEvent(n) => write!(f, "TimerEvent({})", n),
+        }
+    }
 }

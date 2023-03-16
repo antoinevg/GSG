@@ -44,7 +44,7 @@ impl From<u8> for Speed {
 }
 
 /// USB device state
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum DeviceState {
     Reset,
     Address,
@@ -117,6 +117,10 @@ where
             cb_vendor_request: None,
             cb_string_request: None,
         }
+    }
+
+    pub fn state(&self) -> DeviceState {
+        *self.state.borrow()
     }
 }
 
@@ -194,7 +198,7 @@ where
                     cb(self, setup_packet, *request);
                 } else {
                     warn!(
-                        "   stall: unhandled class request {:?} {:?}",
+                        "   stall: unhandled vendor request {:?} {:?}",
                         request_type, request
                     );
                     self.hal_driver.stall_request();
