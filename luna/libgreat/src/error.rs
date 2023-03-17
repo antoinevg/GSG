@@ -18,18 +18,18 @@
  */
 
 /// The libgreat Error trait
-pub trait Error: core::fmt::Debug {
-    type Error: Error;
+pub trait GreatErrorTrait: core::fmt::Debug {
+    type Error: GreatErrorTrait;
     fn kind(&self) -> Self::Error;
 }
 
 /// Defines an error type, to be used by any other traits.
-pub trait ErrorType {
+pub trait GreatErrorType {
     /// Error type
-    type Error: Error;
+    type Error: GreatErrorTrait;
 }
 
-impl<T: ErrorType> ErrorType for &mut T {
+impl<T: GreatErrorType> GreatErrorType for &mut T {
     type Error = T::Error;
 }
 
@@ -42,6 +42,9 @@ pub type Result<T> = core::result::Result<T, &'static (dyn core::error::Error + 
 #[derive(Debug, Copy, Clone)]
 pub enum GreatError {
     Message(&'static str),
+
+    DynError(&'static (dyn core::error::Error)),
+
     // TODO - move these to gcp errors
     GcpInvalidArguments,
     GcpClassNotFound,         // TODO (u32)
@@ -72,16 +75,17 @@ impl core::error::Error for GreatError {
             GcpClassNotFound => "gcp class not found",
             GcpVerbNotFound => "gcp verb not found",
             GcpUnknownVerbDescriptor => "gcp unknown verb descriptor",
+            _ => "unknown error",
         }
     }
 }
 
-/*impl Error for GreatError {
+impl GreatErrorTrait for GreatError {
     type Error = Self;
     fn kind(&self) -> Self::Error {
         *self
     }
-}*/
+}
 
 #[cfg(test)]
 mod tests {
@@ -99,7 +103,7 @@ mod tests {
     }
 
     // trait: libgreat::Error
-    impl Error for CustomErrorKind {
+    impl GreatErrorTrait for CustomErrorKind {
         type Error = CustomErrorKind;
         fn kind(&self) -> Self::Error {
             *self

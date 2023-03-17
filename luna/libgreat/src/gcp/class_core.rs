@@ -268,11 +268,11 @@ use core::{array, iter};
 impl Core {
     pub fn dispatch(
         &self,
-        verb_id: u32,
+        verb_number: u32,
         arguments: &[u8],
         response_buffer: [u8; GCP_MAX_RESPONSE_LENGTH],
     ) -> Result<GcpResponse> {
-        match verb_id {
+        match verb_number {
             0x0 => {
                 // core::read_board_id
                 let iter = self.read_board_id(arguments)?;

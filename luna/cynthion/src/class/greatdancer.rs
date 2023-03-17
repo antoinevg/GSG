@@ -288,11 +288,11 @@ use core::{array, iter};
 impl<'a> Greatdancer<'a> {
     pub fn dispatch(
         &self,
-        verb_id: u32,
+        verb_number: u32,
         arguments: &[u8],
         response_buffer: [u8; GCP_MAX_RESPONSE_LENGTH],
     ) -> Result<GcpResponse> {
-        match verb_id {
+        match verb_number {
             0x0 => {
                 // greatdancer::connect
                 let iter = self.connect(arguments)?;

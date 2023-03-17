@@ -30,7 +30,7 @@ impl core::convert::From<core::num::TryFromIntError> for ErrorKind {
 }
 
 // trait: libgreat::error::Error
-impl libgreat::error::Error for ErrorKind {
+impl libgreat::error::GreatErrorTrait for ErrorKind {
     type Error = ErrorKind; // TODO can we just say `Self`?
     fn kind(&self) -> Self::Error {
         *self

@@ -24,7 +24,7 @@ impl core::error::Error for FirmwareError {
 }
 
 // trait: libgreat::error::Error
-impl libgreat::error::Error for FirmwareError {
+impl libgreat::error::GreatErrorTrait for FirmwareError {
     type Error = Self;
     fn kind(&self) -> Self::Error {
         *self

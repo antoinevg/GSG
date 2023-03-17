@@ -136,13 +136,13 @@ use libgreat::gcp::{iter_to_response, GcpResponse, GCP_MAX_RESPONSE_LENGTH};
 use core::{array, iter};
 
 pub fn dispatch(
-    verb_id: u32,
+    verb_number: u32,
     arguments: &[u8],
     response_buffer: [u8; GCP_MAX_RESPONSE_LENGTH],
 ) -> Result<GcpResponse> {
     let no_context: Option<u8> = None;
 
-    match verb_id {
+    match verb_number {
         0x0 => {
             // firmware::initialize
             let iter = initialize(arguments, &no_context)?;
