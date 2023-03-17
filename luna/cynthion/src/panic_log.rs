@@ -15,6 +15,7 @@ fn panic(panic_info: &PanicInfo) -> ! {
     leds.output
         .write(|w| unsafe { w.output().bits(0b101010) });
 
+    #[cfg(feature = "nightly")]
     if let Some(message) = panic_info.message() {
         error!("Panic: {}", message);
     } else {

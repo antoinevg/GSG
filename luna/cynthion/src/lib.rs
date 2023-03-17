@@ -1,5 +1,5 @@
-#![feature(error_in_core)]
-#![feature(panic_info_message)]
+#![cfg_attr(feature = "nightly", feature(error_in_core))]
+#![cfg_attr(feature = "nightly", feature(panic_info_message))]
 #![no_std]
 
 // - modules ------------------------------------------------------------------
@@ -17,7 +17,7 @@ pub use lunasoc_pac as pac;
 // - re-exports ---------------------------------------------------------------
 
 pub use error::FirmwareError;
-pub use libgreat::error::Result;
+pub use libgreat::error::GreatResult;
 pub use libgreat::firmware::BoardInformation;
 
 // - constants ----------------------------------------------------------------

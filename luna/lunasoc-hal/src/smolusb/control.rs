@@ -1,5 +1,5 @@
 ///! Types for working with the SETUP packet.
-use crate::smolusb::error::ErrorKind;
+use crate::smolusb::error::SmolError;
 
 // - SetupPacket --------------------------------------------------------------
 
@@ -18,7 +18,7 @@ pub struct SetupPacket {
 }
 
 impl TryFrom<[u8; 8]> for SetupPacket {
-    type Error = &'static dyn core::error::Error;
+    type Error = SmolError;
 
     fn try_from(buffer: [u8; 8]) -> core::result::Result<Self, Self::Error> {
         // Deserialize into a SetupRequest in the most cursed manner available to us
@@ -157,13 +157,13 @@ pub enum Feature {
 }
 
 impl TryFrom<u16> for Feature {
-    type Error = ErrorKind;
+    type Error = SmolError;
 
     fn try_from(value: u16) -> core::result::Result<Self, Self::Error> {
         let result = match value {
             0 => Feature::EndpointHalt,
             1 => Feature::DeviceRemoteWakeup,
-            _ => return Err(ErrorKind::FailedConversion),
+            _ => return Err(SmolError::FailedConversion),
         };
         Ok(result)
     }

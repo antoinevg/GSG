@@ -1,6 +1,6 @@
 ///! Great Communications Protocol Class Registry
 ///!
-use crate::error::{GreatError, Result};
+use crate::error::{GreatError, GreatResult};
 
 use super::class_core;
 use super::{Command, CommandPrelude};

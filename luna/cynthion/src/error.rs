@@ -12,6 +12,7 @@ impl core::fmt::Display for FirmwareError {
     }
 }
 
+#[cfg(feature = "nightly")]
 // trait: core::error::Error
 impl core::error::Error for FirmwareError {
     #[allow(deprecated)]
@@ -23,10 +24,10 @@ impl core::error::Error for FirmwareError {
     }
 }
 
-// trait: libgreat::error::Error
-impl libgreat::error::GreatErrorTrait for FirmwareError {
-    type Error = Self;
-    fn kind(&self) -> Self::Error {
-        *self
-    }
-}
+// // trait: libgreat::error::Error
+// impl libgreat::error::GreatErrorTrait for FirmwareError {
+//     type Error = Self;
+//     fn kind(&self) -> Self::Error {
+//         *self
+//     }
+// }

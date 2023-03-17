@@ -1,6 +1,6 @@
 #![allow(dead_code, unused_imports, unused_variables)] // TODO
 
-use libgreat::error::{GreatError, Result};
+use libgreat::error::{GreatError, GreatResult};
 use libgreat::gcp::{self, Verb};
 
 use log::{debug, error};
@@ -192,17 +192,17 @@ struct State {
 // - verb implementations: connection / disconnection -------------------------
 
 impl<'a> Greatdancer<'a> {
-    pub fn connect(&self, arguments: &[u8]) -> Result<impl Iterator<Item = u8> + 'a> {
+    pub fn connect(&self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8> + 'a> {
         let iter = [].into_iter();
         Ok(iter)
     }
 
-    pub fn disconnect(&self, arguments: &[u8]) -> Result<impl Iterator<Item = u8> + 'a> {
+    pub fn disconnect(&self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8> + 'a> {
         let iter = [].into_iter();
         Ok(iter)
     }
 
-    pub fn bus_reset(&self, arguments: &[u8]) -> Result<impl Iterator<Item = u8> + 'a> {
+    pub fn bus_reset(&self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8> + 'a> {
         self.usb0.reset();
         Ok([].into_iter())
     }
@@ -211,12 +211,12 @@ impl<'a> Greatdancer<'a> {
 // - verb implementations: enumeration / setup --------------------------------
 
 impl<'a> Greatdancer<'a> {
-    pub fn set_address(&self, arguments: &[u8]) -> Result<impl Iterator<Item = u8> + 'a> {
+    pub fn set_address(&self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8> + 'a> {
         let iter = [].into_iter();
         Ok(iter)
     }
 
-    pub fn set_up_endpoints(&self, arguments: &[u8]) -> Result<impl Iterator<Item = u8> + 'a> {
+    pub fn set_up_endpoints(&self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8> + 'a> {
         let iter = [].into_iter();
         Ok(iter)
     }
@@ -225,17 +225,17 @@ impl<'a> Greatdancer<'a> {
 // - verb implementations: status & control -----------------------------------
 
 impl<'a> Greatdancer<'a> {
-    pub fn get_status(&self, arguments: &[u8]) -> Result<impl Iterator<Item = u8> + 'a> {
+    pub fn get_status(&self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8> + 'a> {
         let iter = [].into_iter();
         Ok(iter)
     }
 
-    pub fn read_setup(&self, arguments: &[u8]) -> Result<impl Iterator<Item = u8> + 'a> {
+    pub fn read_setup(&self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8> + 'a> {
         let iter = [].into_iter();
         Ok(iter)
     }
 
-    pub fn stall_endpoint(&self, arguments: &[u8]) -> Result<impl Iterator<Item = u8> + 'a> {
+    pub fn stall_endpoint(&self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8> + 'a> {
         let iter = [].into_iter();
         Ok(iter)
     }
@@ -244,12 +244,12 @@ impl<'a> Greatdancer<'a> {
 // - verb implementations: data transfer --------------------------------------
 
 impl<'a> Greatdancer<'a> {
-    pub fn send_on_endpoint(&self, arguments: &[u8]) -> Result<impl Iterator<Item = u8> + 'a> {
+    pub fn send_on_endpoint(&self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8> + 'a> {
         let iter = [].into_iter();
         Ok(iter)
     }
 
-    pub fn clean_up_transfer(&self, arguments: &[u8]) -> Result<impl Iterator<Item = u8> + 'a> {
+    pub fn clean_up_transfer(&self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8> + 'a> {
         let iter = [].into_iter();
         Ok(iter)
     }
@@ -257,7 +257,7 @@ impl<'a> Greatdancer<'a> {
     pub fn start_nonblocking_read(
         &self,
         arguments: &[u8],
-    ) -> Result<impl Iterator<Item = u8> + 'a> {
+    ) -> GreatResult<impl Iterator<Item = u8> + 'a> {
         let iter = [].into_iter();
         Ok(iter)
     }
@@ -265,7 +265,7 @@ impl<'a> Greatdancer<'a> {
     pub fn finish_nonblocking_read(
         &self,
         arguments: &[u8],
-    ) -> Result<impl Iterator<Item = u8> + 'a> {
+    ) -> GreatResult<impl Iterator<Item = u8> + 'a> {
         let iter = [].into_iter();
         Ok(iter)
     }
@@ -273,7 +273,7 @@ impl<'a> Greatdancer<'a> {
     pub fn get_nonblocking_data_length(
         &self,
         arguments: &[u8],
-    ) -> Result<impl Iterator<Item = u8> + 'a> {
+    ) -> GreatResult<impl Iterator<Item = u8> + 'a> {
         let iter = [].into_iter();
         Ok(iter)
     }
@@ -291,7 +291,7 @@ impl<'a> Greatdancer<'a> {
         verb_number: u32,
         arguments: &[u8],
         response_buffer: [u8; GCP_MAX_RESPONSE_LENGTH],
-    ) -> Result<GcpResponse> {
+    ) -> GreatResult<GcpResponse> {
         match verb_number {
             0x0 => {
                 // greatdancer::connect
@@ -372,7 +372,7 @@ impl<'a> Greatdancer<'a> {
                 Ok(response)
             }
 
-            _ => Err(&GreatError::Message("class: greatdancer - verb not found")),
+            _ => Err(GreatError::Message("class: greatdancer - verb not found")),
         }
     }
 }

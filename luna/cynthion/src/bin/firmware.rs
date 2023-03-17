@@ -15,6 +15,7 @@ use smolusb::traits::{
     ControlRead, EndpointRead, EndpointWrite, EndpointWriteRef, UsbDriverOperations,
 };
 
+use libgreat::GreatError;
 use libgreat::gcp::{self, iter_to_response, GcpResponse, GCP_MAX_RESPONSE_LENGTH};
 
 use log::{debug, error, info, trace, warn};
@@ -218,7 +219,7 @@ impl<'a> Firmware<'a> {
         }
     }
 
-    fn initialize(&mut self) -> cynthion::Result<()> {
+    fn initialize(&mut self) -> cynthion::GreatResult<()> {
         // leds: starting up
         self.leds
             .output
@@ -253,7 +254,7 @@ impl<'a> Firmware<'a> {
     }
 
     #[inline(always)]
-    fn main_loop(&'a mut self) -> cynthion::Result<()> {
+    fn main_loop(&'a mut self) -> cynthion::GreatResult<()> {
         // leds: main loop
         self.leds
             .output
@@ -314,7 +315,7 @@ impl<'a> Firmware<'a> {
     fn handle_usb1_receive_setup_packet(
         &mut self,
         setup_packet: SetupPacket,
-    ) -> cynthion::Result<()> {
+    ) -> cynthion::GreatResult<()> {
         let request_type = setup_packet.request_type();
         let vendor_request = VendorRequest::from(setup_packet.request);
 
@@ -343,7 +344,7 @@ impl<'a> Firmware<'a> {
     }
 
     /// Usb1: gcp vendor request handler
-    fn usb1_handle_vendor_request(&mut self, setup_packet: &SetupPacket) -> cynthion::Result<()> {
+    fn usb1_handle_vendor_request(&mut self, setup_packet: &SetupPacket) -> cynthion::GreatResult<()> {
         let direction = setup_packet.direction();
         let request = VendorRequest::from(setup_packet.request);
         let request_value = VendorRequestValue::from(setup_packet.value);
@@ -433,7 +434,7 @@ impl<'a> Firmware<'a> {
         &mut self,
         bytes_read: usize,
         buffer: [u8; cynthion::EP_MAX_RECEIVE_LENGTH],
-    ) -> cynthion::Result<()> {
+    ) -> cynthion::GreatResult<()> {
         // TODO state == Command::Send
 
         debug!(
@@ -484,7 +485,7 @@ impl<'a> Firmware<'a> {
         endpoint: u8,
         bytes_read: usize,
         buffer: [u8; cynthion::EP_MAX_RECEIVE_LENGTH],
-    ) -> cynthion::Result<()> {
+    ) -> cynthion::GreatResult<()> {
         Ok(())
     }
 
@@ -494,7 +495,7 @@ impl<'a> Firmware<'a> {
         verb_id: u32,
         arguments: &[u8],
         response_buffer: [u8; GCP_MAX_RESPONSE_LENGTH],
-    ) -> cynthion::Result<GcpResponse> {
+    ) -> cynthion::GreatResult<GcpResponse> {
         let no_context: Option<u8> = None;
 
         match (class_id, verb_id) {
@@ -512,7 +513,7 @@ impl<'a> Firmware<'a> {
                     .dispatch(verb_id, arguments, response_buffer)
             }
 
-            _ => Err(&libgreat::error::GreatError::Message(
+            _ => Err(GreatError::Message(
                 "class or verb not found",
             )),
         }

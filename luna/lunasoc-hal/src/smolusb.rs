@@ -6,4 +6,6 @@ pub mod descriptor;
 pub mod device;
 pub mod error;
 pub mod traits;
-pub use error::ErrorKind;
+
+pub use error::SmolError;
+pub use error::SmolResult;

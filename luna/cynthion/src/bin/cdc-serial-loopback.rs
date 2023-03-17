@@ -1,5 +1,3 @@
-#![feature(error_in_core)]
-#![feature(panic_info_message)]
 #![no_std]
 #![no_main]
 

@@ -1,5 +1,5 @@
-#![feature(error_in_core)]
-#![feature(panic_info_message)]
+#![cfg_attr(feature = "nightly", feature(error_in_core))]
+#![cfg_attr(feature = "nightly", feature(panic_info_message))]
 #![no_std]
 
 // TODO move to libgreat when it's done
@@ -16,7 +16,7 @@ pub use timer::Timer;
 pub use usb::{Usb0, Usb1, Usb2};
 
 // re-export dependencies
-pub use libgreat::Result;
+pub use libgreat::GreatResult;
 
 pub use lunasoc_pac as pac;
 

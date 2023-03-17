@@ -1,7 +1,7 @@
 #![allow(dead_code, unused_imports, unused_variables, unused_mut)] // TODO
 
 use crate::smolusb::traits::AsByteSliceIterator;
-use crate::smolusb::ErrorKind;
+use crate::smolusb::SmolError;
 
 use heapless::Vec;
 use zerocopy::{AsBytes, FromBytes};
@@ -39,7 +39,7 @@ pub enum DescriptorType {
 }
 
 impl TryFrom<u8> for DescriptorType {
-    type Error = ErrorKind;
+    type Error = SmolError;
 
     fn try_from(value: u8) -> core::result::Result<Self, Self::Error> {
         let result = match value {
@@ -61,7 +61,7 @@ impl TryFrom<u8> for DescriptorType {
             16 => DescriptorType::DeviceCapability,
             17 => DescriptorType::WirelessEndpointCompanion,
             48 => DescriptorType::SuperSpeedEndpointCompanion,
-            _ => return Err(ErrorKind::FailedConversion),
+            _ => return Err(SmolError::FailedConversion),
         };
         Ok(result)
     }

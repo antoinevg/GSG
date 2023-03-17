@@ -2,13 +2,12 @@
 
 use crate::smolusb::control::{Feature, Recipient, Request, RequestType, SetupPacket};
 use crate::smolusb::descriptor::*;
-//use crate::smolusb::error::{ErrorKind};
+use crate::smolusb::error::{SmolResult, SmolError};
 use crate::smolusb::traits::AsByteSliceIterator;
 use crate::smolusb::traits::{
     ControlRead, EndpointRead, EndpointWrite, EndpointWriteRef, UsbDriverOperations,
 };
 
-use libgreat::error::Result;
 use log::{debug, error, info, trace, warn};
 
 use core::cell::RefCell;
@@ -146,7 +145,7 @@ impl<'a, D> UsbDevice<'a, D>
 where
     D: ControlRead + EndpointRead + EndpointWrite + EndpointWriteRef + UsbDriverOperations,
 {
-    pub fn handle_setup_request(&self, setup_packet: &SetupPacket) -> Result<()> {
+    pub fn handle_setup_request(&self, setup_packet: &SetupPacket) -> SmolResult<()> {
         debug!("# handle_setup_request()",);
 
         let request_type = setup_packet.request_type();
@@ -216,7 +215,7 @@ where
         Ok(())
     }
 
-    fn handle_set_address(&self, setup_packet: &SetupPacket) -> Result<()> {
+    fn handle_set_address(&self, setup_packet: &SetupPacket) -> SmolResult<()> {
         self.hal_driver.ack_status_stage(setup_packet);
 
         let address: u8 = (setup_packet.value & 0x7f) as u8;
@@ -228,7 +227,7 @@ where
         Ok(())
     }
 
-    fn handle_get_descriptor(&self, setup_packet: &SetupPacket) -> Result<()> {
+    fn handle_get_descriptor(&self, setup_packet: &SetupPacket) -> SmolResult<()> {
         // extract the descriptor type and number from our SETUP request
         let [descriptor_number, descriptor_type_bits] = setup_packet.value.to_le_bytes();
         let descriptor_type = match DescriptorType::try_from(descriptor_type_bits) {
@@ -305,7 +304,7 @@ where
         Ok(())
     }
 
-    fn handle_set_configuration(&self, setup_packet: &SetupPacket) -> Result<()> {
+    fn handle_set_configuration(&self, setup_packet: &SetupPacket) -> SmolResult<()> {
         self.hal_driver.ack_status_stage(setup_packet);
 
         debug!("  -> handle_set_configuration()");
@@ -321,7 +320,7 @@ where
         Ok(())
     }
 
-    fn handle_get_configuration(&self, setup_packet: &SetupPacket) -> Result<()> {
+    fn handle_get_configuration(&self, setup_packet: &SetupPacket) -> SmolResult<()> {
         debug!("  -> handle_get_configuration()");
 
         let requested_length = setup_packet.length as usize;
@@ -333,7 +332,7 @@ where
         Ok(())
     }
 
-    fn handle_clear_feature(&self, setup_packet: &SetupPacket) -> Result<()> {
+    fn handle_clear_feature(&self, setup_packet: &SetupPacket) -> SmolResult<()> {
         debug!("  -> handle_clear_feature()");
 
         // parse request
@@ -370,7 +369,7 @@ where
         Ok(())
     }
 
-    fn handle_set_feature(&self, setup_packet: &SetupPacket) -> Result<()> {
+    fn handle_set_feature(&self, setup_packet: &SetupPacket) -> SmolResult<()> {
         debug!("  -> handle_set_feature()");
 
         // parse request
@@ -413,7 +412,7 @@ impl<'a, D> UsbDevice<'a, D>
 where
     D: ControlRead + EndpointRead + EndpointWrite + EndpointWriteRef,
 {
-    pub fn _handle_interrupt_ep_control(hal_driver: &D) -> Result<SetupPacket> {
+    pub fn _handle_interrupt_ep_control(hal_driver: &D) -> SmolResult<SetupPacket> {
         let mut buffer = [0_u8; 8];
         hal_driver.read_control(&mut buffer);
         SetupPacket::try_from(buffer)

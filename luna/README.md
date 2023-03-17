@@ -7,10 +7,13 @@
 
 ## Setup
 
-### Dependencies
+### OS Dependencies
 
     # gtkwave
     brew install gtkwave
+
+    # rust
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 
     # pyenv
     curl https://pyenv.run | bash
@@ -18,6 +21,17 @@
     # riscv-gnu-toolchain - https://github.com/riscv-software-src/homebrew-riscv
     brew tap riscv-software-src/riscv
     brew install riscv-gnu-toolchain
+
+### Rust Dependencies
+
+    rustup target add riscv32i-unknown-none-elf
+    rustup target add riscv32i-unknown-none-elf --toolchain nightly
+
+    rustup component add llvm-tools-preview
+    rustup component add llvm-tools-preview --toolchain nightly
+
+    cargo install cargo-binutils
+    cargo +nightly install cargo-binutils
 
 ### Python Environments
 
@@ -40,7 +54,6 @@
 
     # install wheel
     pip install wheel
-
 
 ---
 

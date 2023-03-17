@@ -114,7 +114,7 @@ fn entry() -> ! {
 // - main loop ----------------------------------------------------------------
 
 #[inline(always)]
-fn main_loop(mut state: State, leds: &pac::LEDS) -> cynthion::Result<State> {
+fn main_loop(mut state: State, leds: &pac::LEDS) -> cynthion::GreatResult<State> {
     leds.output.write(|w| unsafe { w.output().bits(1 << 0) });
 
     let mut while_counter = 0;

@@ -1,6 +1,6 @@
 use super::{ClassId, Command, Verb, VerbDescriptor};
 
-use crate::error::{GreatError, Result};
+use crate::error::{GreatError, GreatResult};
 use crate::firmware::BoardInformation;
 use crate::gcp::{self, Classes};
 
@@ -132,25 +132,25 @@ impl Core {
 // - verb implementations: board ----------------------------------------------
 
 impl Core {
-    pub fn read_board_id(&self, _arguments: &[u8]) -> Result<impl Iterator<Item = u8>> {
+    pub fn read_board_id(&self, _arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8>> {
         let board_id = self.board_information.board_id;
         trace!("  sending board id: {:?}", board_id);
         Ok(board_id.into_iter())
     }
 
-    pub fn read_version_string(&self, _arguments: &[u8]) -> Result<impl Iterator<Item = u8>> {
+    pub fn read_version_string(&self, _arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8>> {
         let version_string = self.board_information.version_string;
         trace!("  sending version string: {:?}", version_string);
         Ok(version_string.as_bytes().into_iter().copied())
     }
 
-    pub fn read_part_id(&self, _arguments: &[u8]) -> Result<impl Iterator<Item = u8>> {
+    pub fn read_part_id(&self, _arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8>> {
         let part_id = self.board_information.part_id;
         trace!("  sending part id: {:?}", part_id);
         Ok(part_id.into_iter())
     }
 
-    pub fn read_serial_number(&self, _arguments: &[u8]) -> Result<impl Iterator<Item = u8>> {
+    pub fn read_serial_number(&self, _arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8>> {
         let serial_number = self.board_information.serial_number;
         trace!("  sending serial number: {:?}", serial_number);
         Ok(serial_number.into_iter())
@@ -160,7 +160,7 @@ impl Core {
 // - verb implementations: introspection --------------------------------------
 
 impl Core {
-    pub fn get_available_classes(&self, _arguments: &[u8]) -> Result<impl Iterator<Item = u8>> {
+    pub fn get_available_classes(&self, _arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8>> {
         let classes = self
             .classes
             .iter()
@@ -168,40 +168,40 @@ impl Core {
         Ok(classes)
     }
 
-    pub fn get_available_verbs(&self, arguments: &[u8]) -> Result<impl Iterator<Item = u8>> {
+    pub fn get_available_verbs(&self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8>> {
         #[repr(C)]
         #[derive(FromBytes, Unaligned)]
         struct Args {
             class_number: U32<LittleEndian>,
         }
-        let args = Args::read_from(arguments).ok_or(&GreatError::GcpInvalidArguments)?;
+        let args = Args::read_from(arguments).ok_or(GreatError::GcpInvalidArguments)?;
         let class = self
             .classes
             .class(args.class_number.into())
-            .ok_or(&GreatError::GcpClassNotFound)?;
+            .ok_or(GreatError::GcpClassNotFound)?;
         let verbs = class.verbs.iter().flat_map(|verb| verb.id.to_le_bytes());
         Ok(verbs)
     }
 
-    pub fn get_verb_name(&self, arguments: &[u8]) -> Result<impl Iterator<Item = u8>> {
+    pub fn get_verb_name(&self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8>> {
         #[repr(C)]
         #[derive(FromBytes, Unaligned)]
         struct Args {
             class_number: U32<LittleEndian>,
             verb_number: U32<LittleEndian>,
         }
-        let args = Args::read_from(arguments).ok_or(&GreatError::GcpInvalidArguments)?;
+        let args = Args::read_from(arguments).ok_or(GreatError::GcpInvalidArguments)?;
         let class = self
             .classes
             .class(args.class_number.into())
-            .ok_or(&GreatError::GcpClassNotFound)?;
+            .ok_or(GreatError::GcpClassNotFound)?;
         let verb = class
             .verb(args.verb_number.into())
-            .ok_or(&GreatError::GcpVerbNotFound)?;
+            .ok_or(GreatError::GcpVerbNotFound)?;
         Ok(verb.name.as_bytes().into_iter().copied())
     }
 
-    pub fn get_verb_descriptor(&self, arguments: &[u8]) -> Result<impl Iterator<Item = u8>> {
+    pub fn get_verb_descriptor(&self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8>> {
         #[repr(C)]
         #[derive(Debug, FromBytes, Unaligned)]
         struct Args {
@@ -209,14 +209,14 @@ impl Core {
             verb_number: U32<LittleEndian>,
             descriptor: u8,
         }
-        let args = Args::read_from(arguments).ok_or(&GreatError::GcpInvalidArguments)?;
+        let args = Args::read_from(arguments).ok_or(GreatError::GcpInvalidArguments)?;
         let class = self
             .classes
             .class(args.class_number.into())
-            .ok_or(&GreatError::GcpClassNotFound)?;
+            .ok_or(GreatError::GcpClassNotFound)?;
         let verb = class
             .verb(args.verb_number.into())
-            .ok_or(&GreatError::GcpVerbNotFound)?;
+            .ok_or(GreatError::GcpVerbNotFound)?;
         match args.descriptor.into() {
             VerbDescriptor::InSignature => Ok(verb.in_signature.as_bytes().into_iter().copied()),
             VerbDescriptor::InParamNames => Ok(verb.in_param_names.as_bytes().into_iter().copied()),
@@ -225,36 +225,36 @@ impl Core {
                 Ok(verb.out_param_names.as_bytes().into_iter().copied())
             }
             VerbDescriptor::Doc => Ok(verb.doc.as_bytes().into_iter().copied()),
-            VerbDescriptor::Unknown(_value) => Err(&GreatError::GcpUnknownVerbDescriptor),
+            VerbDescriptor::Unknown(_value) => Err(GreatError::GcpUnknownVerbDescriptor),
         }
     }
 
-    pub fn get_class_name(&self, arguments: &[u8]) -> Result<impl Iterator<Item = u8>> {
+    pub fn get_class_name(&self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8>> {
         trace!("  get_class_name: {:?}", arguments);
         #[repr(C)]
         #[derive(FromBytes, Unaligned)]
         struct Args {
             class_number: U32<LittleEndian>,
         }
-        let args = Args::read_from(arguments).ok_or(&GreatError::GcpInvalidArguments)?;
+        let args = Args::read_from(arguments).ok_or(GreatError::GcpInvalidArguments)?;
         let class = self
             .classes
             .class(args.class_number.into())
-            .ok_or(&GreatError::GcpClassNotFound)?;
+            .ok_or(GreatError::GcpClassNotFound)?;
         Ok(class.name.as_bytes().iter().copied())
     }
 
-    pub fn get_class_docs(&self, arguments: &[u8]) -> Result<impl Iterator<Item = u8>> {
+    pub fn get_class_docs(&self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8>> {
         #[repr(C)]
         #[derive(FromBytes, Unaligned)]
         struct Args {
             class_number: U32<LittleEndian>,
         }
-        let args = Args::read_from(arguments).ok_or(&GreatError::GcpInvalidArguments)?;
+        let args = Args::read_from(arguments).ok_or(GreatError::GcpInvalidArguments)?;
         let class = self
             .classes
             .class(args.class_number.into())
-            .ok_or(&GreatError::GcpClassNotFound)?;
+            .ok_or(GreatError::GcpClassNotFound)?;
         Ok(class.docs.as_bytes().into_iter().copied())
     }
 }
@@ -271,7 +271,7 @@ impl Core {
         verb_number: u32,
         arguments: &[u8],
         response_buffer: [u8; GCP_MAX_RESPONSE_LENGTH],
-    ) -> Result<GcpResponse> {
+    ) -> GreatResult<GcpResponse> {
         match verb_number {
             0x0 => {
                 // core::read_board_id
@@ -334,7 +334,7 @@ impl Core {
                 Ok(response)
             }
 
-            _ => Err(&GreatError::Message("class: core - verb not found")),
+            _ => Err(GreatError::Message("class: core - verb not found")),
         }
     }
 }

@@ -1,6 +1,6 @@
 #![allow(dead_code, unused_imports, unused_variables)] // TODO
 
-use libgreat::error::{GreatError, Result};
+use libgreat::error::{GreatError, GreatResult};
 use libgreat::gcp::{self, Verb};
 
 use log::{debug, error};
@@ -71,7 +71,7 @@ pub static VERBS: [Verb; 1] = [
 pub fn initialize<'a>(
     arguments: &[u8],
     _context: &'a dyn Any,
-) -> Result<impl Iterator<Item = u8> + 'a> {
+) -> GreatResult<impl Iterator<Item = u8> + 'a> {
     let page_size: u32 = 8;
     let total_size: u32 = 1;
     let response = page_size
@@ -84,33 +84,33 @@ pub fn initialize<'a>(
 pub fn full_erase<'a>(
     arguments: &[u8],
     _context: &'a dyn Any,
-) -> Result<impl Iterator<Item = u8> + 'a> {
+) -> GreatResult<impl Iterator<Item = u8> + 'a> {
     Ok([].into_iter())
 }
 
 pub fn page_erase<'a>(
     arguments: &[u8],
     _context: &'a dyn Any,
-) -> Result<impl Iterator<Item = u8> + 'a> {
+) -> GreatResult<impl Iterator<Item = u8> + 'a> {
     #[repr(C)]
     #[derive(FromBytes, Unaligned)]
     struct Args {
         address: U32<LittleEndian>,
     }
-    let _args = Args::read_from(arguments).ok_or(&GreatError::GcpInvalidArguments)?;
+    let _args = Args::read_from(arguments).ok_or(GreatError::GcpInvalidArguments)?;
     Ok([].into_iter())
 }
 
 pub fn write_page<'a>(
     arguments: &[u8],
     _context: &'a dyn Any,
-) -> Result<impl Iterator<Item = u8> + 'a> {
+) -> GreatResult<impl Iterator<Item = u8> + 'a> {
     struct Args<B: zerocopy::ByteSlice> {
         address: zerocopy::LayoutVerified<B, U32<LittleEndian>>,
         data: B,
     }
     let (address, data) = zerocopy::LayoutVerified::new_unaligned_from_prefix(arguments)
-        .ok_or(&GreatError::GcpInvalidArguments)?;
+        .ok_or(GreatError::GcpInvalidArguments)?;
     let _args = Args { address, data };
     Ok([].into_iter())
 }
@@ -118,13 +118,13 @@ pub fn write_page<'a>(
 pub fn read_page<'a>(
     arguments: &[u8],
     _context: &'a dyn Any,
-) -> Result<impl Iterator<Item = u8> + 'a> {
+) -> GreatResult<impl Iterator<Item = u8> + 'a> {
     #[repr(C)]
     #[derive(FromBytes, Unaligned)]
     struct Args {
         address: U32<LittleEndian>,
     }
-    let _args = Args::read_from(arguments).ok_or(&GreatError::GcpInvalidArguments)?;
+    let _args = Args::read_from(arguments).ok_or(GreatError::GcpInvalidArguments)?;
     let data: [u8; 8] = [0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0];
     Ok(data.into_iter())
 }
@@ -139,7 +139,7 @@ pub fn dispatch(
     verb_number: u32,
     arguments: &[u8],
     response_buffer: [u8; GCP_MAX_RESPONSE_LENGTH],
-) -> Result<GcpResponse> {
+) -> GreatResult<GcpResponse> {
     let no_context: Option<u8> = None;
 
     match verb_number {
@@ -174,6 +174,6 @@ pub fn dispatch(
             Ok(response)
         }
 
-        _ => Err(&GreatError::Message("class: firmware - verb not found")),
+        _ => Err(GreatError::Message("class: firmware - verb not found")),
     }
 }

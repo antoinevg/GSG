@@ -1,5 +1,3 @@
-#![feature(error_in_core)]
-#![feature(panic_info_message)]
 #![allow(
     dead_code,
     unused_imports,
