@@ -249,7 +249,10 @@ impl<'a> Greatdancer<'a> {
         Ok(iter)
     }
 
-    pub fn clean_up_transfer(&self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8> + 'a> {
+    pub fn clean_up_transfer(
+        &self,
+        arguments: &[u8],
+    ) -> GreatResult<impl Iterator<Item = u8> + 'a> {
         let iter = [].into_iter();
         Ok(iter)
     }

@@ -244,7 +244,7 @@ mod tests {
             .expect("failed dispatch");
         println!("  -> {:?}", response);
 
-        let expected: [u8; 5] = [ 60, 73, 73, 73, 0 ];
+        let expected: [u8; 5] = [60, 73, 73, 73, 0];
 
         assert_eq!(response.len(), expected.len());
         assert!(response.eq(expected.iter().copied()));

@@ -105,7 +105,6 @@ mod tests {
         Unknown,
     }
 
-
     #[cfg(not(feature = "nightly"))]
     // trait: core::fmt::Display
     impl core::fmt::Display for CustomErrorKind {

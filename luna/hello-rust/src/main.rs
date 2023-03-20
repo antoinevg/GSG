@@ -11,7 +11,7 @@ pub unsafe extern "C" fn main() -> ! {
     loop {
         for n in 0..64 {
             core::ptr::write_volatile(io_leds, n);
-            timer_delay(100_000);
+            timer_delay(500_000);
         }
         uart_tx("boink\n");
     }
@@ -29,14 +29,16 @@ fn panic(_info: &PanicInfo) -> ! {
 
 // - libnotquitegreatyet ------------------------------------------------------
 
-const IO_LEDS: usize = 0x4000_2000;
-
 const IO_BASE: usize = 0x8000_0000;
+
 const IO_UART_TX_DATA: usize = IO_BASE + 0x0010;
 const IO_UART_TX_RDY: usize = IO_BASE + 0x0014;
+
 const IO_TIMER_RELOAD: usize = IO_BASE + 0x1000;
 const IO_TIMER_EN: usize = IO_BASE + 0x1004;
 const IO_TIMER_CTR: usize = IO_BASE + 0x1008;
+
+const IO_LEDS: usize = IO_BASE + 0x4180;
 
 pub unsafe fn timer_delay(cycles: u32) {
     let reload = IO_TIMER_RELOAD as *mut u32;

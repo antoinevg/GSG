@@ -2,13 +2,19 @@
 
 #![no_std]
 
+#[cfg(all(feature = "minerva", feature = "vexriscv"))]
+compile_error!(r#"Only one of the "minerva" or "vexriscv" features can be selected"#);
+
 #[macro_use]
 mod macros;
 
 pub mod cpu;
 pub mod csr;
 pub mod register {
-    pub use crate::cpu::minerva;
+    #[cfg(feature = "minerva")]
+    pub use crate::cpu::minerva::*;
+    #[cfg(feature = "vexriscv")]
+    pub use crate::cpu::vexriscv::*;
 }
 
 pub mod clock {

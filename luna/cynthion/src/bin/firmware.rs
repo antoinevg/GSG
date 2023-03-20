@@ -15,8 +15,8 @@ use smolusb::traits::{
     ControlRead, EndpointRead, EndpointWrite, EndpointWriteRef, UsbDriverOperations,
 };
 
-use libgreat::GreatError;
 use libgreat::gcp::{self, iter_to_response, GcpResponse, GCP_MAX_RESPONSE_LENGTH};
+use libgreat::GreatError;
 
 use log::{debug, error, info, trace, warn};
 use riscv_rt::entry;
@@ -136,7 +136,7 @@ fn main() -> ! {
         Err(e) => {
             error!("Firmware panicked during initialization: {}", e);
             panic!("Firmware panicked during initialization: {}", e)
-        },
+        }
     }
 
     // enter main loop
@@ -144,11 +144,11 @@ fn main() -> ! {
         Ok(()) => {
             error!("Firmware exited unexpectedly in main loop");
             panic!("Firmware exited unexpectedly in main loop")
-        },
+        }
         Err(e) => {
             error!("Firmware panicked in main loop: {}", e);
             panic!("Firmware panicked in main loop: {}", e)
-        },
+        }
     }
 }
 
@@ -337,14 +337,17 @@ impl<'a> Firmware<'a> {
                 Err(e) => {
                     error!("  handle_setup_request: {:?}: {:?}", e, setup_packet);
                     panic!("  handle_setup_request: {:?}: {:?}", e, setup_packet)
-                },
+                }
             },
         }
         Ok(())
     }
 
     /// Usb1: gcp vendor request handler
-    fn usb1_handle_vendor_request(&mut self, setup_packet: &SetupPacket) -> cynthion::GreatResult<()> {
+    fn usb1_handle_vendor_request(
+        &mut self,
+        setup_packet: &SetupPacket,
+    ) -> cynthion::GreatResult<()> {
         let direction = setup_packet.direction();
         let request = VendorRequest::from(setup_packet.request);
         let request_value = VendorRequestValue::from(setup_packet.value);
@@ -513,9 +516,7 @@ impl<'a> Firmware<'a> {
                     .dispatch(verb_id, arguments, response_buffer)
             }
 
-            _ => Err(GreatError::Message(
-                "class or verb not found",
-            )),
+            _ => Err(GreatError::Message("class or verb not found")),
         }
     }
 }

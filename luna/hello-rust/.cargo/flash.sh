@@ -1,15 +1,13 @@
 #!/usr/bin/env zsh
 
-#set -ex
+# configuration
+UART=/dev/cu.usbmodem22401
+BASE_MEM=0x40000000
 
-UART=/dev/cu.usbmodem22301
-
+# create bin file
 NAME=$(basename $1)
-
-# Create bin file
 cargo objcopy --release -- -Obinary $1.bin
 
+# flash to soc
 echo "Flashing: $1.bin"
-
-# Program vexriscv
-lxterm --kernel $1.bin --kernel-adr 0x40000000 --speed 115200 $UART
+lxterm --kernel $1.bin --kernel-adr $BASE_MEM --speed 115200 $UART

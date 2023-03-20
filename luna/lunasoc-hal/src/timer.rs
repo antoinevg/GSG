@@ -123,8 +123,15 @@ macro_rules! impl_timer {
                     // start timer
                     self.registers.en.write(|w| w.en().bit(true));
                     self.registers.reload.write(|w| unsafe { w.reload().bits(ticks) });
-                    while self.registers.ctr.read().ctr().bits() > 0 {
-                        unsafe { riscv::asm::nop(); }
+
+                    // wait for timer to roll over
+                    let mut last: u32 = u32::MAX;
+                    loop {
+                        let ctr = self.registers.ctr.read().ctr().bits();
+                        if ctr == 0 || ctr > last {
+                            break;
+                        }
+                        last = ctr;
                     }
 
                     // reset timer

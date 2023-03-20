@@ -2,7 +2,7 @@
 
 use crate::smolusb::control::{Feature, Recipient, Request, RequestType, SetupPacket};
 use crate::smolusb::descriptor::*;
-use crate::smolusb::error::{SmolResult, SmolError};
+use crate::smolusb::error::{SmolError, SmolResult};
 use crate::smolusb::traits::AsByteSliceIterator;
 use crate::smolusb::traits::{
     ControlRead, EndpointRead, EndpointWrite, EndpointWriteRef, UsbDriverOperations,

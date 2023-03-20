@@ -1,5 +1,3 @@
-pub struct CSR;
-
 pub mod interrupt {
     //! CSR access methods.
 
@@ -7,21 +5,21 @@ pub mod interrupt {
     use crate::Interrupt;
 
     pub unsafe fn enable(interrupt: Interrupt) {
-        let mask = register::minerva::mim::read();
+        let mask = register::mim::read();
         let mask = mask | (1 << interrupt as usize);
-        register::minerva::mim::write(mask);
-        while register::minerva::mim::read() != mask {}
+        register::mim::write(mask);
+        while register::mim::read() != mask {}
     }
 
     pub unsafe fn disable(interrupt: Interrupt) {
-        let mask = register::minerva::mim::read();
+        let mask = register::mim::read();
         let mask = mask & !(1 << interrupt as usize);
-        register::minerva::mim::write(mask);
-        while register::minerva::mim::read() != mask {}
+        register::mim::write(mask);
+        while register::mim::read() != mask {}
     }
 
     pub fn reg_mask() -> usize {
-        register::minerva::mim::read()
+        register::mim::read()
     }
 
     // TODO decide on params - basically what we need to know is
@@ -31,11 +29,11 @@ pub mod interrupt {
     //    (pending & (1 << interrupt as usize)) != 0
     //}
     pub fn pending(interrupt: Interrupt) -> bool {
-        let pending = register::minerva::mip::read();
+        let pending = register::mip::read();
         (pending & (1 << interrupt as usize)) != 0
     }
 
     pub fn reg_pending() -> usize {
-        register::minerva::mip::read()
+        register::mip::read()
     }
 }

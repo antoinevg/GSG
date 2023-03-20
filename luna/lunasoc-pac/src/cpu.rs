@@ -24,3 +24,22 @@ pub mod minerva {
         crate::macros::read_csr_as_usize!(0x360);
     }
 }
+
+pub mod vexriscv {
+
+    //! Micro-architecture specific CSR extensions for the VexRiscv RISC-V
+    //! soft processor.
+    //!
+    //! See: [ExternalInterruptArrayPlugin.scala](https://github.com/SpinalHDL/VexRiscv/blob/master/src/main/scala/vexriscv/plugin/ExternalInterruptArrayPlugin.scala)
+
+    /// Machine IRQ Mask
+    pub mod mim {
+        crate::macros::read_csr_as_usize!(0xBC0);
+        crate::macros::write_csr_as_usize!(0xBC0);
+    }
+
+    // Machine IRQ Pending
+    pub mod mip {
+        crate::macros::read_csr_as_usize!(0xFC0);
+    }
+}

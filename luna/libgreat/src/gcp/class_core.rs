@@ -160,7 +160,10 @@ impl Core {
 // - verb implementations: introspection --------------------------------------
 
 impl Core {
-    pub fn get_available_classes(&self, _arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8>> {
+    pub fn get_available_classes(
+        &self,
+        _arguments: &[u8],
+    ) -> GreatResult<impl Iterator<Item = u8>> {
         let classes = self
             .classes
             .iter()

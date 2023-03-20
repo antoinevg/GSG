@@ -4,22 +4,22 @@ ENTRY(_start)
 
 SECTIONS
 {
-    . = ORIGIN(ram);
+    . = ORIGIN(internal_sram);
 
     /* Start of day code. */
     .init :
     {
         *(.init) *(.init.*)
-    } > ram
+    } > internal_sram
     .text :
     {
         *(.text) *(.text.*)
-    } > ram
+    } > internal_sram
 
     .rodata :
     {
         *(.rodata) *(.rodata.*)
-    } > ram
+    } > internal_sram
     .sdata :
     {
         PROVIDE(__global_pointer$ = .);
@@ -28,12 +28,12 @@ SECTIONS
     .data :
     {
         *(.data) *(.data.*)
-    } > ram
+    } > internal_sram
     .bss :
     {
         *(.bss) *(.bss.*)
-    } > ram
+    } > internal_sram
 
 }
 
-PROVIDE(__stack_top = ORIGIN(ram) + LENGTH(ram));
+PROVIDE(__stack_top = ORIGIN(internal_sram) + LENGTH(internal_sram));

@@ -16,6 +16,8 @@ include = ["examples/**/*", "src/**/*", "README.md", "memory.x"]
 default-target = "riscv32i-unknown-none-elf"
 targets = [
     "riscv32i-unknown-none-elf",
+    "riscv32im-unknown-none-elf",
+    "riscv32imac-unknown-none-elf",
 ]
 
 [lib]
