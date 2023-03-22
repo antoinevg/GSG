@@ -97,7 +97,7 @@ pub fn page_erase<'a>(
     struct Args {
         address: U32<LittleEndian>,
     }
-    let _args = Args::read_from(arguments).ok_or(GreatError::GcpInvalidArguments)?;
+    let _args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
     Ok([].into_iter())
 }
 
@@ -110,7 +110,7 @@ pub fn write_page<'a>(
         data: B,
     }
     let (address, data) = zerocopy::LayoutVerified::new_unaligned_from_prefix(arguments)
-        .ok_or(GreatError::GcpInvalidArguments)?;
+        .ok_or(GreatError::BadMessage)?;
     let _args = Args { address, data };
     Ok([].into_iter())
 }
@@ -124,7 +124,7 @@ pub fn read_page<'a>(
     struct Args {
         address: U32<LittleEndian>,
     }
-    let _args = Args::read_from(arguments).ok_or(GreatError::GcpInvalidArguments)?;
+    let _args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
     let data: [u8; 8] = [0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0];
     Ok(data.into_iter())
 }
@@ -174,6 +174,9 @@ pub fn dispatch(
             Ok(response)
         }
 
-        _ => Err(GreatError::Message("class: firmware - verb not found")),
+        verb_number => Err(GreatError::GcpVerbNotFound(
+            gcp::class::ClassId::firmware,
+            verb_number,
+        )),
     }
 }

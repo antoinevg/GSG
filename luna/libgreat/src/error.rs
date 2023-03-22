@@ -41,18 +41,29 @@ pub type GreatResult<T> = core::result::Result<T, GreatError>;
 
 /// GreatError
 #[allow(dead_code)]
+#[repr(u32)]
 #[derive(Debug, Copy, Clone)]
 pub enum GreatError {
-    Message(&'static str),
+    // from libgreat/errno.h
+    NotOwner = 1,              // EPERM
+    NoSuchFileOrDirectory = 2, // ENOENT
+    InterruptedSystemCall = 4, // EINTR
+    ArgumentListTooLong = 7,   // E2BIG
+    BadAddress = 14,           // EFAULT
+    InvalidArgument = 22,      // EINVAL
+    NoSpaceLeftOnDevice = 28,  // ENOSPC
+    BadMessage = 77,           // EBADMSG
 
-    // TODO - this is an option
-    // DynError(&'static (dyn core::error::Error)),
+    // TODO consider just using libgreat/errno.h errors above
+    GcpClassNotFound(crate::gcp::class::ClassId) = 0xf000,
+    GcpVerbNotFound(crate::gcp::class::ClassId, u32) = 0xf001,
+    GcpUnknownVerbDescriptor(u8) = 0xf002,
 
-    // TODO - move these to gcp errors
-    GcpInvalidArguments,
-    GcpClassNotFound,         // TODO (u32)
-    GcpVerbNotFound,          // TODO (u32, u32)
-    GcpUnknownVerbDescriptor, // TODO (u32)
+    // handy
+    Message(&'static str) = 0xffff,
+
+    #[cfg(feature = "nightly")]
+    DynError(&'static (dyn core::error::Error)),
 }
 
 // impl<'a> From<&'a GreatError> for &'a dyn core::error::Error {

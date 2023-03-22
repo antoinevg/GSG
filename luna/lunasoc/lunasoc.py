@@ -69,11 +69,10 @@ class CoreSoC(CPUSoC, Elaboratable):
         )
 
         # create system bus
-        bus_address_width = 30
-        self._bus_decoder = wishbone.Decoder(addr_width=bus_address_width, data_width=32, granularity=8,
-                                             features={"cti", "bte", "err"})
-        self._bus_arbiter = wishbone.Arbiter(addr_width=bus_address_width, data_width=32, granularity=8,
-                                             features={"cti", "bte", "err"})
+        self._bus_decoder = wishbone.Decoder(addr_width=30, data_width=32, granularity=8,
+                                             features={"cti", "bte"})
+        self._bus_arbiter = wishbone.Arbiter(addr_width=30, data_width=32, granularity=8,
+                                             features={"cti", "bte"})
         self._bus_arbiter.add(cpu.ibus)
         self._bus_arbiter.add(cpu.dbus)
 

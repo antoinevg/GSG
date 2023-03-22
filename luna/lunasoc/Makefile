@@ -21,17 +21,15 @@ blinky_verilog:
 
 top:
 	rm -rf build
-	@#PATH=$(PATH):$(YOSYS_BIN) AR=$(AR) AMARANTH_verbose=1 python top.py
 	PATH=$(PATH):$(YOSYS_BIN) AR=$(AR) python top.py
+
+top_verbose:
+	rm -rf build
+	PATH=$(PATH):$(YOSYS_BIN) AR=$(AR) AMARANTH_verbose=1 python top.py
 
 top_vexriscv:
 	rm -rf build
-	@#PATH=$(PATH):$(YOSYS_BIN) AR=$(AR) AMARANTH_verbose=1 python top_vexriscv.py
 	PATH=$(PATH):$(YOSYS_BIN) AR=$(AR) python top_vexriscv.py
-
-top_femtorv:
-	rm -rf build
-	PATH=$(PATH):$(YOSYS_BIN) AR=$(AR) python femtorv/top_femtorv.py
 
 load:
 	@#apollo configure build/top.bit

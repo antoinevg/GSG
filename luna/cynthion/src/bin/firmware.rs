@@ -202,8 +202,11 @@ impl<'a> Firmware<'a> {
         );
 
         // initialize class registry
-        static CLASSES: [gcp::Class; 2] =
-            [gcp::class_core::CLASS, cynthion::class::firmware::CLASS];
+        static CLASSES: [gcp::Class; 3] = [
+            gcp::class_core::CLASS,
+            cynthion::class::firmware::CLASS,
+            cynthion::class::greatdancer::CLASS,
+        ];
         let classes = gcp::Classes(&CLASSES);
 
         // initialize classes
@@ -493,7 +496,7 @@ impl<'a> Firmware<'a> {
     }
 
     fn dispatch_gcp_command(
-        &self,
+        &mut self,
         class_id: gcp::ClassId,
         verb_id: u32,
         arguments: &[u8],

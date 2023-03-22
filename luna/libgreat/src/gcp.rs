@@ -7,7 +7,7 @@ pub use class::*;
 
 use zerocopy::{
     AsBytes, BigEndian, ByteSlice, ByteSliceMut, FromBytes, LayoutVerified, LittleEndian,
-    Unaligned, U32,
+    Unaligned, U16, U32,
 };
 
 /// CommandPrelude
@@ -121,7 +121,17 @@ mod tests {
         0x07, 0x00, 0x00, 0x00, // verb  = 7 (get_verb_descriptor)
         0x00, 0x00, 0x00, 0x00, // arg0: class_number = 0
         0x07, 0x00, 0x00, 0x00, // arg1: verb_number  = 7
-        0x01, // arg2: descriptor = 1 (in_signature)
+        0x01, //                   arg2: descriptor = 1 (in_signature)
+    ];
+    const COMMAND_SET_UP_ENDPOINTS: [u8; 16] = [
+        0x04, 0x01, 0x00, 0x00, // class = 0x0104 (greatdancer)
+        0x04, 0x00, 0x00, 0x00, // verb  = 4 (set_up_endpoints)
+        0x00, //                   arg0: address = 0x00,
+        0x40, 0x00, //                   max_packet_size = 64,
+        0x00, //                         transfer_type   = 0 (USB_TRANSFER_TYPE_CONTROL)
+        0x82, //                   arg1: address = 0x82
+        0x00, 0x02, //                   max_packet_size = 512,
+        0x02, //                         transfer_type   = 2 (USB_TRANSFER_TYPE_BULK)
     ];
 
     static CLASS_CORE: Class = Class {
@@ -199,12 +209,72 @@ mod tests {
 
     #[test]
     fn test_parse_get_verb_descriptor() {
+        #[repr(C)]
+        #[derive(Debug, FromBytes, Unaligned)]
+        struct Args {
+            class_number: U32<LittleEndian>,
+            verb_number: U32<LittleEndian>,
+            descriptor: u8,
+        }
+
         let command =
             Command::parse(&COMMAND_GET_VERB_DESCRIPTOR[..]).expect("failed parsing command");
         println!("test_parse_get_verb_descriptor: {:?}", command);
 
-        assert_eq!(command.prelude.class.get(), 0);
-        assert_eq!(command.prelude.verb.get(), 7);
+        let args = Args::read_from(command.arguments).unwrap();
+        println!("  args: {:?}", args);
+
+        assert_eq!(command.class_id(), ClassId::core);
+        assert_eq!(command.verb_number(), 7);
+        assert_eq!(args.class_number.get(), 0);
+        assert_eq!(args.verb_number.get(), 7);
+        assert_eq!(args.descriptor, 1);
+    }
+
+    #[test]
+    fn test_parse_complex_arguments() {
+        #[repr(C)]
+        #[derive(Debug, FromBytes, Unaligned)]
+        struct Endpoint {
+            address: u8,
+            max_packet_size: U16<LittleEndian>,
+            transfer_type: u8,
+        }
+        #[repr(C)]
+        #[derive(Debug, FromBytes, Unaligned)]
+        struct Args {
+            endpoint: Endpoint,
+        }
+
+        let command =
+            Command::parse(&COMMAND_SET_UP_ENDPOINTS[..]).expect("failed parsing command");
+        println!("test_parse_complex_arguments: {:?}", command);
+
+        assert_eq!(command.class_id(), ClassId::greatdancer);
+        assert_eq!(command.verb_number(), 4);
+
+        let mut byte_slice = command.arguments;
+        while let Some((arg, next)) =
+            zerocopy::LayoutVerified::<&[u8], Args>::new_from_prefix(byte_slice)
+        {
+            byte_slice = next;
+            println!("  arg: {:?}", arg);
+        }
+
+        let (arg0, next) =
+            zerocopy::LayoutVerified::<&[u8], Args>::new_from_prefix(command.arguments)
+                .expect("failed parsing argument");
+        assert_eq!(arg0.endpoint.address, 0);
+        assert_eq!(arg0.endpoint.max_packet_size.get(), 64);
+        assert_eq!(arg0.endpoint.transfer_type, 0);
+
+        let (arg1, next) = zerocopy::LayoutVerified::<&[u8], Args>::new_from_prefix(next)
+            .expect("failed parsing argument");
+        assert_eq!(arg1.endpoint.address, 0x82);
+        assert_eq!(arg1.endpoint.max_packet_size.get(), 512);
+        assert_eq!(arg1.endpoint.transfer_type, 2);
+
+        assert_eq!(next, []);
     }
 
     // - test_dispatch_* --

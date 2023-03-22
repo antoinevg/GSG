@@ -3,8 +3,8 @@
 use libgreat::error::{GreatError, GreatResult};
 use libgreat::gcp::{self, Verb};
 
-use log::{debug, error};
-use zerocopy::{AsBytes, BigEndian, FromBytes, LittleEndian, Unaligned, U32};
+use log::{debug, error, warn};
+use zerocopy::{AsBytes, BigEndian, FromBytes, LittleEndian, Unaligned, U16, U32};
 
 use core::any::Any;
 use core::slice;
@@ -28,7 +28,6 @@ pub static VERBS: [Verb; 13] = [
         in_param_names: "\0",
         out_signature: "ep0_max_packet_size, quirk_flags\0",
         out_param_names: "\0",
-        //command_handler: dummy_handler, // connect
     },
     Verb {
         id: 0x1,
@@ -38,7 +37,6 @@ pub static VERBS: [Verb; 13] = [
         in_param_names: "\0",
         out_signature: "\0",
         out_param_names: "\0",
-        //command_handler: dummy_handler, // disconnect
     },
     Verb {
         id: 0x2,
@@ -48,7 +46,6 @@ pub static VERBS: [Verb; 13] = [
         in_param_names: "\0",
         out_signature: "\0",
         out_param_names: "\0",
-        //command_handler: dummy_handler, // bus_reset
     },
 
     // - enumeration / setup --
@@ -60,7 +57,6 @@ pub static VERBS: [Verb; 13] = [
         in_param_names: "address, deferred\0",
         out_signature: "\0",
         out_param_names: "\0",
-        //command_handler: dummy_handler, // set_address
     },
     Verb {
         id: 0x4,
@@ -70,7 +66,6 @@ pub static VERBS: [Verb; 13] = [
         in_param_names: "endpoint_descriptors\0",
         out_signature: "\0",
         out_param_names: "\0",
-        //command_handler: dummy_handler, // set_up_endpoints
     },
 
     // - status & control --
@@ -82,7 +77,6 @@ pub static VERBS: [Verb; 13] = [
         in_param_names: "register_type\0",
         out_signature: "<I\0",
         out_param_names: "register_value\0",
-        //command_handler: dummy_handler, // get_status
     },
     Verb {
         id: 0x6,
@@ -92,7 +86,6 @@ pub static VERBS: [Verb; 13] = [
         in_param_names: "endpoint_number\0",
         out_signature: "<8X\0",
         out_param_names: "raw_setup_packet\0",
-        //command_handler: dummy_handler, // read_setup
     },
     Verb {
         id: 0x7,
@@ -102,7 +95,6 @@ pub static VERBS: [Verb; 13] = [
         in_param_names: "endpoint_address\0",
         out_signature: "\0",
         out_param_names: "\0",
-        //command_handler: dummy_handler, // stall_endpoint
     },
 
     // - data transfer --
@@ -114,7 +106,6 @@ pub static VERBS: [Verb; 13] = [
         in_param_names: "endpoint_number, data_to_send\0",
         out_signature: "\0",
         out_param_names: "\0",
-        //command_handler: dummy_handler, // send_on_endpoint
     },
     Verb {
         id: 0x9,
@@ -124,7 +115,6 @@ pub static VERBS: [Verb; 13] = [
         in_param_names: "endpoint_address\0",
         out_signature: "\0",
         out_param_names: "\0",
-        //command_handler: dummy_handler, // clean_up_transfer
     },
     Verb {
         id: 0xa,
@@ -134,7 +124,6 @@ pub static VERBS: [Verb; 13] = [
         in_param_names: "endpoint_number\0",
         out_signature: "\0",
         out_param_names: "\0",
-        //command_handler: dummy_handler, // start_nonblocking_read
     },
     Verb {
         id: 0xb,
@@ -144,7 +133,6 @@ pub static VERBS: [Verb; 13] = [
         in_param_names: "endpoint_number\0",
         out_signature: "<*X\0",
         out_param_names: "read_data\0",
-        //command_handler: dummy_handler, // finish_nonblocking_read
     },
     Verb {
         id: 0xc,
@@ -154,13 +142,8 @@ pub static VERBS: [Verb; 13] = [
         in_param_names: "endpoint_number\0",
         out_signature: "<I\0",
         out_param_names: "length\0",
-        //command_handler: dummy_handler, // get_nonblocking_data_length
     },
 ];
-
-fn dummy_handler<'a>(_arguments: &[u8], _context: &'a dyn Any) -> slice::Iter<'a, u8> {
-    [].iter()
-}
 
 // - Greatdancer --------------------------------------------------------------
 
@@ -168,8 +151,12 @@ use crate::hal;
 use core::cell::RefCell;
 use hal::smolusb::device::UsbDevice;
 
+// TODO unify with GCP_MAX_RESPONSE_LENGTH
+const MAX_PACKET_BUFFER_LENGTH: usize = 128;
+
 pub struct Greatdancer<'a> {
     usb0: UsbDevice<'a, hal::Usb0>,
+    packet_buffer: [u8; MAX_PACKET_BUFFER_LENGTH],
     state: RefCell<State>,
     _marker: core::marker::PhantomData<&'a ()>,
 }
@@ -178,6 +165,7 @@ impl<'a> Greatdancer<'a> {
     pub fn new(usb0: UsbDevice<'a, hal::Usb0>) -> Self {
         Self {
             usb0,
+            packet_buffer: [0; MAX_PACKET_BUFFER_LENGTH],
             state: State::default().into(),
             _marker: core::marker::PhantomData,
         }
@@ -192,16 +180,26 @@ struct State {
 // - verb implementations: connection / disconnection -------------------------
 
 impl<'a> Greatdancer<'a> {
+    /// Connect the USB interface.
     pub fn connect(&self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8> + 'a> {
+        #[repr(C)]
+        #[derive(FromBytes, Unaligned)]
+        struct Args {
+            ep0_max_packet_size: U16<LittleEndian>,
+            quirk_flags: U16<LittleEndian>,
+        }
+        let _args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
         let iter = [].into_iter();
         Ok(iter)
     }
 
+    /// Terminate all existing communication and disconnects the USB interface.
     pub fn disconnect(&self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8> + 'a> {
         let iter = [].into_iter();
         Ok(iter)
     }
 
+    /// Perform a USB bus reset.
     pub fn bus_reset(&self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8> + 'a> {
         self.usb0.reset();
         Ok([].into_iter())
@@ -212,11 +210,55 @@ impl<'a> Greatdancer<'a> {
 
 impl<'a> Greatdancer<'a> {
     pub fn set_address(&self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8> + 'a> {
+        #[repr(C)]
+        #[derive(FromBytes, Unaligned)]
+        struct Args {
+            address: u8,
+            deferred: u8,
+        }
+        let _args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
         let iter = [].into_iter();
         Ok(iter)
     }
 
-    pub fn set_up_endpoints(&self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8> + 'a> {
+    pub fn set_up_endpoints(
+        &mut self,
+        arguments: &[u8],
+    ) -> GreatResult<impl Iterator<Item = u8> + 'a> {
+        #[repr(C)]
+        #[derive(FromBytes, Unaligned)]
+        struct ArgEndpoint {
+            address: u8,
+            max_packet_size: U16<LittleEndian>,
+            transfer_type: u8,
+        }
+
+        // while we have endpoint triplets to handle
+        let mut byte_slice = arguments;
+        while let Some((endpoint, next)) =
+            zerocopy::LayoutVerified::<_, ArgEndpoint>::new_from_prefix(byte_slice)
+        {
+            byte_slice = next;
+
+            // endpoint zero is always the control endpoint, and can't be configured
+            if endpoint.address & 0x7f == 0x00 {
+                warn!("greatdancer: ignoring request to reconfigure control endpoint");
+                continue;
+            }
+
+            // ignore endpoint configurations we won't be able to handle
+            if endpoint.max_packet_size.get() as usize > self.packet_buffer.len() {
+                error!(
+                    "greatdancer: failed to setup endpoint with max packet size {} > {}",
+                    endpoint.max_packet_size,
+                    self.packet_buffer.len()
+                );
+                return Err(GreatError::InvalidArgument);
+            }
+
+            // TODO configure endpoint
+        }
+
         let iter = [].into_iter();
         Ok(iter)
     }
@@ -225,17 +267,53 @@ impl<'a> Greatdancer<'a> {
 // - verb implementations: status & control -----------------------------------
 
 impl<'a> Greatdancer<'a> {
+    /// Query the GreatDancer for any events that need to be processed.
+    /// FIXME: should this actually use an interrupt pipe?
+    ///
+    /// The index value is used to select which status section we're looking for:
+    ///
+    ///	0 = pending interrupts (USBSTS register)
+    ///	1 = setup status for all endpoints (ENDPTSETUPSTAT)
+    ///	2 = endpoint completion status (ENDPTCOMPLETE)
+    ///	3 = endpoint primed status (ENDPTSTATUS)
+    ///
+    ///	Always transmits a 4-byte word back to the host.
     pub fn get_status(&self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8> + 'a> {
+        #[repr(C)]
+        #[derive(FromBytes, Unaligned)]
+        struct Args {
+            register_type: u8,
+        }
+        let _args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
         let iter = [].into_iter();
         Ok(iter)
     }
 
+    /// Read a setup packet from the GreatDancer port and relays it to the host.
+    ///
+    /// The endpoint_number parameter specifies which endpoint we should be reading from.
+    ///
+    /// Always transmits an 8-byte setup packet back to the host. If no setup packet
+    /// is waiting, the results of this vendor request are unspecified.
     pub fn read_setup(&self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8> + 'a> {
+        #[repr(C)]
+        #[derive(FromBytes, Unaligned)]
+        struct Args {
+            endpoint_number: u8,
+        }
+        let _args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
         let iter = [].into_iter();
         Ok(iter)
     }
 
+    /// Temporarily stalls the given USB endpoint.
     pub fn stall_endpoint(&self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8> + 'a> {
+        #[repr(C)]
+        #[derive(FromBytes, Unaligned)]
+        struct Args {
+            endpoint_number: u8,
+        }
+        let _args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
         let iter = [].into_iter();
         Ok(iter)
     }
@@ -244,39 +322,99 @@ impl<'a> Greatdancer<'a> {
 // - verb implementations: data transfer --------------------------------------
 
 impl<'a> Greatdancer<'a> {
+    /// Read data from the GreatFET host and sends on the provided GreatDancer endpoint.
+    ///
+    /// The OUT request should contain a data stage containing all data to be sent.
     pub fn send_on_endpoint(&self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8> + 'a> {
+        struct Args<B: zerocopy::ByteSlice> {
+            endpoint_number: zerocopy::LayoutVerified<B, u8>,
+            data_to_send: B,
+        }
+        let (endpoint_number, data_to_send) =
+            zerocopy::LayoutVerified::new_unaligned_from_prefix(arguments)
+                .ok_or(GreatError::BadMessage)?;
+        let _args = Args {
+            endpoint_number,
+            data_to_send,
+        };
         let iter = [].into_iter();
         Ok(iter)
     }
 
+    /// Should be called whenever a transfer is complete; cleans up any transfer
+    /// descriptors associated with that transfer.
     pub fn clean_up_transfer(
         &self,
         arguments: &[u8],
     ) -> GreatResult<impl Iterator<Item = u8> + 'a> {
+        #[repr(C)]
+        #[derive(FromBytes, Unaligned)]
+        struct Args {
+            endpoint_address: u8,
+        }
+        let args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
+        let endpoint_number = args.endpoint_address & 0x7f;
+
         let iter = [].into_iter();
         Ok(iter)
     }
 
+    /// Prime the USB controller to recieve data on a particular endpoint.
+    ///
+    /// Does not wait for a transfer to complete. The transfer's
+    /// status can be checked with `get_transfer_status` and then read
+    /// with `finish_nonblocking_read`.
     pub fn start_nonblocking_read(
         &self,
         arguments: &[u8],
     ) -> GreatResult<impl Iterator<Item = u8> + 'a> {
+        #[repr(C)]
+        #[derive(FromBytes, Unaligned)]
+        struct Args {
+            endpoint_number: u8,
+        }
+        let _args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
         let iter = [].into_iter();
         Ok(iter)
     }
 
+    /// Finish a non-blocking read by returning the read data back to the host.
+    ///
+    /// This should only be used after determining that a transfer is
+    /// complete with the `get_transfer_status` request and reading
+    /// the relevant length with `get_nonblocking_data_length`.
     pub fn finish_nonblocking_read(
         &self,
         arguments: &[u8],
     ) -> GreatResult<impl Iterator<Item = u8> + 'a> {
+        #[repr(C)]
+        #[derive(FromBytes, Unaligned)]
+        struct Args {
+            endpoint_number: u8,
+        }
+        let _args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
         let iter = [].into_iter();
         Ok(iter)
     }
 
+    /// Query an endpoint to determine how much data is available.
+    ///
+    /// This should only be used after a nonblocking read was primed
+    /// with `start_nonblocking_read` and completed by the USB
+    /// hardware.
+    ///
+    /// Response is invalid unless a transfer has been initiated with
+    /// `start_nonblocking_read` and completed.
     pub fn get_nonblocking_data_length(
         &self,
         arguments: &[u8],
     ) -> GreatResult<impl Iterator<Item = u8> + 'a> {
+        #[repr(C)]
+        #[derive(FromBytes, Unaligned)]
+        struct Args {
+            endpoint_number: u8,
+        }
+        let _args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
         let iter = [].into_iter();
         Ok(iter)
     }
@@ -290,7 +428,7 @@ use core::{array, iter};
 
 impl<'a> Greatdancer<'a> {
     pub fn dispatch(
-        &self,
+        &mut self,
         verb_number: u32,
         arguments: &[u8],
         response_buffer: [u8; GCP_MAX_RESPONSE_LENGTH],
@@ -375,7 +513,10 @@ impl<'a> Greatdancer<'a> {
                 Ok(response)
             }
 
-            _ => Err(GreatError::Message("class: greatdancer - verb not found")),
+            verb_number => Err(GreatError::GcpVerbNotFound(
+                gcp::class::ClassId::greatdancer,
+                verb_number,
+            )),
         }
     }
 }
