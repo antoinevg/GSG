@@ -78,8 +78,6 @@ macro_rules! impl_usb {
             }
 
             impl $USBX {
-                // TODO &mut self
-                // TODO pass event to listen for
                 pub fn enable_interrupts(&self) {
                     // clear all event handlers
                     self.clear_pending(Interrupt::$USBX_CONTROLLER);
@@ -87,18 +85,31 @@ macro_rules! impl_usb {
                     self.clear_pending(Interrupt::$USBX_EP_IN);
                     self.clear_pending(Interrupt::$USBX_EP_OUT);
 
-                    // enable device controller events for bus reset signal
+                    // enable all device controller events
                     self.enable_interrupt(Interrupt::$USBX_CONTROLLER);
                     self.enable_interrupt(Interrupt::$USBX_EP_CONTROL);
                     self.enable_interrupt(Interrupt::$USBX_EP_IN);
                     self.enable_interrupt(Interrupt::$USBX_EP_OUT);
                 }
 
+                pub fn disable_interrupts(&self) {
+                    // clear all event handlers
+                    self.clear_pending(Interrupt::$USBX_CONTROLLER);
+                    self.clear_pending(Interrupt::$USBX_EP_CONTROL);
+                    self.clear_pending(Interrupt::$USBX_EP_IN);
+                    self.clear_pending(Interrupt::$USBX_EP_OUT);
+
+                    // disable all device controller events
+                    self.disable_interrupt(Interrupt::$USBX_CONTROLLER);
+                    self.disable_interrupt(Interrupt::$USBX_EP_CONTROL);
+                    self.disable_interrupt(Interrupt::$USBX_EP_IN);
+                    self.disable_interrupt(Interrupt::$USBX_EP_OUT);
+                }
+
                 pub fn is_pending(&self, interrupt: Interrupt) -> bool {
                     pac::csr::interrupt::pending(interrupt)
                 }
 
-                // TODO &mut self
                 pub fn clear_pending(&self, interrupt: Interrupt) {
                     match interrupt {
                         Interrupt::$USBX_CONTROLLER => self
@@ -123,7 +134,6 @@ macro_rules! impl_usb {
                     }
                 }
 
-                // TODO &mut self
                 pub fn enable_interrupt(&self, interrupt: Interrupt) {
                     match interrupt {
                         Interrupt::$USBX_CONTROLLER => self
@@ -148,7 +158,6 @@ macro_rules! impl_usb {
                     }
                 }
 
-                // TODO &mut self
                 pub fn disable_interrupt(&self, interrupt: Interrupt) {
                     match interrupt {
                         Interrupt::$USBX_CONTROLLER => self

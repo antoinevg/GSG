@@ -16,7 +16,7 @@ use smolusb::traits::{
 };
 
 use libgreat::gcp::{self, iter_to_response, GcpResponse, GCP_MAX_RESPONSE_LENGTH};
-use libgreat::GreatError;
+use libgreat::{GreatError, GreatResult};
 
 use log::{debug, error, info, trace, warn};
 use riscv_rt::entry;
@@ -41,17 +41,18 @@ static MESSAGE_QUEUE: Queue<Message, 32> = Queue::new();
 fn MachineExternal() {
     // peripherals
     let peripherals = unsafe { pac::Peripherals::steal() };
-    let usb0 = unsafe { hal::Usb1::summon() };
+    let usb0 = unsafe { hal::Usb0::summon() };
     let usb1 = unsafe { hal::Usb1::summon() };
 
     let pending = interrupt::reg_pending();
 
     // - usb1 interrupts - "host_phy" --
 
-    // USB1 HandleInterrupt
+    // USB1 UsbBusReset
     let message = if usb1.is_pending(pac::Interrupt::USB1) {
         usb1.clear_pending(pac::Interrupt::USB1);
-        Message::HandleInterrupt(pac::Interrupt::USB1)
+
+        Message::UsbBusReset(1)
 
     // USB1_EP_CONTROL UsbReceiveSetupPacket
     } else if usb1.is_pending(pac::Interrupt::USB1_EP_CONTROL) {
@@ -65,12 +66,8 @@ fn MachineExternal() {
             }
         };
         usb1.clear_pending(pac::Interrupt::USB1_EP_CONTROL);
-        Message::UsbReceiveSetupPacket(1, setup_packet)
 
-    // USB1_EP_IN transfer complete
-    } else if usb1.is_pending(pac::Interrupt::USB1_EP_IN) {
-        usb1.clear_pending(pac::Interrupt::USB1_EP_IN);
-        Message::HandleInterrupt(pac::Interrupt::USB1_EP_IN)
+        Message::UsbReceiveSetupPacket(1, setup_packet)
 
     // USB1_EP_OUT UsbReceiveData
     } else if usb1.is_pending(pac::Interrupt::USB1_EP_OUT) {
@@ -78,14 +75,23 @@ fn MachineExternal() {
         let mut buffer = [0_u8; cynthion::EP_MAX_RECEIVE_LENGTH];
         let bytes_read = usb1.read(endpoint, &mut buffer);
         usb1.clear_pending(pac::Interrupt::USB1_EP_OUT);
+
         Message::UsbReceiveData(1, endpoint, bytes_read, buffer)
+
+    // USB1_EP_IN UsbTransferComplete
+    } else if usb1.is_pending(pac::Interrupt::USB1_EP_IN) {
+        usb1.clear_pending(pac::Interrupt::USB1_EP_IN);
+        let endpoint = usb1.ep_in.epno.read().bits() as u8;
+
+        Message::UsbTransferComplete(1, endpoint)
 
     // - usb0 interrupts - "target_phy" --
 
-    // USB0 HandleInterrupt
+    // USB0 UsbBusReset
     } else if usb0.is_pending(pac::Interrupt::USB0) {
         usb0.clear_pending(pac::Interrupt::USB0);
-        Message::HandleInterrupt(pac::Interrupt::USB0)
+
+        Message::UsbBusReset(0)
 
     // USB0_EP_CONTROL UsbReceiveSetupPacket
     } else if usb0.is_pending(pac::Interrupt::USB0_EP_CONTROL) {
@@ -99,12 +105,8 @@ fn MachineExternal() {
             }
         };
         usb0.clear_pending(pac::Interrupt::USB0_EP_CONTROL);
-        Message::UsbReceiveSetupPacket(0, setup_packet)
 
-    // USB0_EP_IN transfer complete
-    } else if usb0.is_pending(pac::Interrupt::USB0_EP_IN) {
-        usb0.clear_pending(pac::Interrupt::USB0_EP_IN);
-        Message::HandleInterrupt(pac::Interrupt::USB0_EP_IN)
+        Message::UsbReceiveSetupPacket(0, setup_packet)
 
     // USB0_EP_OUT UsbReceiveData
     } else if usb0.is_pending(pac::Interrupt::USB0_EP_OUT) {
@@ -112,7 +114,15 @@ fn MachineExternal() {
         let mut buffer = [0_u8; cynthion::EP_MAX_RECEIVE_LENGTH];
         let bytes_read = usb0.read(endpoint, &mut buffer);
         usb0.clear_pending(pac::Interrupt::USB0_EP_OUT);
+
         Message::UsbReceiveData(0, endpoint, bytes_read, buffer)
+
+    // USB0_EP_IN UsbTransferComplete
+    } else if usb0.is_pending(pac::Interrupt::USB0_EP_IN) {
+        usb0.clear_pending(pac::Interrupt::USB0_EP_IN);
+        let endpoint = usb0.ep_in.epno.read().bits() as u8;
+
+        Message::UsbTransferComplete(0, endpoint)
 
     // - Unknown Interrupt --
     } else {
@@ -202,10 +212,10 @@ impl<'a> Firmware<'a> {
         );
 
         // initialize class registry
-        static CLASSES: [gcp::Class; 3] = [
+        static CLASSES: [gcp::Class; 2] = [
             gcp::class_core::CLASS,
             cynthion::class::firmware::CLASS,
-            cynthion::class::greatdancer::CLASS,
+            //cynthion::class::greatdancer::CLASS,
         ];
         let classes = gcp::Classes(&CLASSES);
 
@@ -222,7 +232,7 @@ impl<'a> Firmware<'a> {
         }
     }
 
-    fn initialize(&mut self) -> cynthion::GreatResult<()> {
+    fn initialize(&mut self) -> GreatResult<()> {
         // leds: starting up
         self.leds
             .output
@@ -230,10 +240,9 @@ impl<'a> Firmware<'a> {
 
         // connect usb1
         let speed = self.usb1.hal_driver.connect();
-        trace!("Connected usb1 device: {:?}", Speed::from(speed));
+        debug!("Connected usb1 device: {:?}", Speed::from(speed));
 
         // enable interrupts
-        self.usb1.hal_driver.enable_interrupts();
         unsafe {
             // set mstatus register: interrupt enable
             riscv::interrupt::enable();
@@ -241,11 +250,8 @@ impl<'a> Firmware<'a> {
             // set mie register: machine external interrupts enable
             riscv::register::mie::set_mext();
 
-            // write csr: enable interrupts
-            interrupt::enable(pac::Interrupt::USB1);
-            interrupt::enable(pac::Interrupt::USB1_EP_CONTROL);
-            interrupt::enable(pac::Interrupt::USB1_EP_IN);
-            interrupt::enable(pac::Interrupt::USB1_EP_OUT);
+            // write csr: enable usb1 interrupts and events
+            self.enable_usb1_interrupts();
         }
 
         // leds: ready
@@ -257,7 +263,7 @@ impl<'a> Firmware<'a> {
     }
 
     #[inline(always)]
-    fn main_loop(&'a mut self) -> cynthion::GreatResult<()> {
+    fn main_loop(&'a mut self) -> GreatResult<()> {
         // leds: main loop
         self.leds
             .output
@@ -267,6 +273,12 @@ impl<'a> Firmware<'a> {
             while let Some(message) = MESSAGE_QUEUE.dequeue() {
                 match message {
                     // - usb1 message handlers --
+
+                    // Usb1 received bus reset
+                    Message::UsbBusReset(1) => {
+                        self.handle_usb1_bus_reset()?;
+                        trace!("MachineExternal - USB1\n");
+                    }
 
                     // Usb1 received setup packet
                     Message::UsbReceiveSetupPacket(1, packet) => {
@@ -282,26 +294,55 @@ impl<'a> Firmware<'a> {
                     Message::UsbReceiveData(1, endpoint, bytes_read, buffer) => {
                         self.handle_usb1_receive_data(endpoint, bytes_read, buffer)?;
                         debug!(
-                            "Received {} bytes on usb1 endpoint: {} - {:?}",
+                            "Usb1 received {} bytes on usb1 endpoint: {} - {:?}",
                             endpoint,
                             bytes_read,
                             &buffer[0..bytes_read]
                         );
                     }
 
-                    // Usb1 interrupts
-                    Message::HandleInterrupt(pac::Interrupt::USB1) => {
-                        self.usb1.reset();
-                        trace!("MachineExternal - USB1\n");
-                    }
-                    Message::HandleInterrupt(pac::Interrupt::USB1_EP_IN) => {
-                        // TODO
-                        trace!("MachineExternal - USB1_EP_IN\n");
+                    // Usb1 transfer complete
+                    Message::UsbTransferComplete(1, endpoint) => {
+                        self.handle_usb1_transfer_complete(endpoint)?;
+                        trace!("MachineExternal - USB1_EP_IN {}\n", endpoint);
                     }
 
                     // - usb0 message handlers --
 
-                    // TODO
+                    // Usb0 received bus reset
+                    Message::UsbBusReset(0) => {
+                        self.greatdancer.handle_usb_bus_reset()?;
+                        trace!("MachineExternal - USB0\n");
+                    }
+
+                    // Usb0 received setup packet
+                    Message::UsbReceiveSetupPacket(0, packet) => {
+                        self.greatdancer.handle_usb_receive_setup_packet(packet)?;
+                    }
+
+                    // Usb0 received data on control endpoint
+                    Message::UsbReceiveData(0, 0, bytes_read, buffer) => {
+                        self.greatdancer
+                            .handle_usb_receive_control_data(bytes_read, buffer)?;
+                    }
+
+                    // Usb0 received data on endpoint
+                    Message::UsbReceiveData(0, endpoint, bytes_read, buffer) => {
+                        self.greatdancer
+                            .handle_usb_receive_data(endpoint, bytes_read, buffer)?;
+                        debug!(
+                            "Usb0 received {} bytes on usb0 endpoint: {} - {:?}",
+                            endpoint,
+                            bytes_read,
+                            &buffer[0..bytes_read]
+                        );
+                    }
+
+                    // Usb0 transfer complete
+                    Message::UsbTransferComplete(0, endpoint) => {
+                        self.greatdancer.handle_usb_transfer_complete(endpoint)?;
+                        trace!("MachineExternal - USB0_EP_IN {}\n", endpoint);
+                    }
 
                     // Unhandled message
                     _ => {
@@ -315,10 +356,24 @@ impl<'a> Firmware<'a> {
         Ok(())
     }
 
-    fn handle_usb1_receive_setup_packet(
-        &mut self,
-        setup_packet: SetupPacket,
-    ) -> cynthion::GreatResult<()> {
+    // - usb1 interrupt handlers ----------------------------------------------
+
+    unsafe fn enable_usb1_interrupts(&self) {
+        interrupt::enable(pac::Interrupt::USB1);
+        interrupt::enable(pac::Interrupt::USB1_EP_CONTROL);
+        interrupt::enable(pac::Interrupt::USB1_EP_IN);
+        interrupt::enable(pac::Interrupt::USB1_EP_OUT);
+
+        // enable all usb events
+        self.usb1.hal_driver.enable_interrupts();
+    }
+
+    fn handle_usb1_bus_reset(&mut self) -> GreatResult<()> {
+        self.usb1.reset();
+        Ok(())
+    }
+
+    fn handle_usb1_receive_setup_packet(&mut self, setup_packet: SetupPacket) -> GreatResult<()> {
         let request_type = setup_packet.request_type();
         let vendor_request = VendorRequest::from(setup_packet.request);
 
@@ -347,10 +402,7 @@ impl<'a> Firmware<'a> {
     }
 
     /// Usb1: gcp vendor request handler
-    fn usb1_handle_vendor_request(
-        &mut self,
-        setup_packet: &SetupPacket,
-    ) -> cynthion::GreatResult<()> {
+    fn usb1_handle_vendor_request(&mut self, setup_packet: &SetupPacket) -> GreatResult<()> {
         let direction = setup_packet.direction();
         let request = VendorRequest::from(setup_packet.request);
         let request_value = VendorRequestValue::from(setup_packet.value);
@@ -440,7 +492,7 @@ impl<'a> Firmware<'a> {
         &mut self,
         bytes_read: usize,
         buffer: [u8; cynthion::EP_MAX_RECEIVE_LENGTH],
-    ) -> cynthion::GreatResult<()> {
+    ) -> GreatResult<()> {
         // TODO state == Command::Send
 
         debug!(
@@ -491,7 +543,11 @@ impl<'a> Firmware<'a> {
         endpoint: u8,
         bytes_read: usize,
         buffer: [u8; cynthion::EP_MAX_RECEIVE_LENGTH],
-    ) -> cynthion::GreatResult<()> {
+    ) -> GreatResult<()> {
+        Ok(())
+    }
+
+    pub fn handle_usb1_transfer_complete(&mut self, endpoint: u8) -> GreatResult<()> {
         Ok(())
     }
 
@@ -501,7 +557,7 @@ impl<'a> Firmware<'a> {
         verb_id: u32,
         arguments: &[u8],
         response_buffer: [u8; GCP_MAX_RESPONSE_LENGTH],
-    ) -> cynthion::GreatResult<GcpResponse> {
+    ) -> GreatResult<GcpResponse> {
         let no_context: Option<u8> = None;
 
         match (class_id, verb_id) {

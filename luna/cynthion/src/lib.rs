@@ -43,6 +43,11 @@ pub enum Message {
     HandleUnknownInterrupt(usize),
 
     // usb events
+    /// Receives a USB bus reset
+    ///
+    /// Contents is (interface)
+    UsbBusReset(u8),
+
     /// Received a SETUP packet on USBx_EP_CONTROL
     ///
     /// Contents is (interface, setup_packet)
@@ -52,6 +57,11 @@ pub enum Message {
     ///
     /// Contents is (interface, endpoint, bytes_read, buffer)
     UsbReceiveData(u8, u8, usize, [u8; EP_MAX_RECEIVE_LENGTH]),
+
+    /// Transfer is complete on USBx_EP_IN
+    ///
+    /// Contents is (interface, endpoint)
+    UsbTransferComplete(u8, u8),
 
     // TODO
     TimerEvent(usize),
@@ -64,6 +74,9 @@ impl core::fmt::Debug for Message {
             Message::HandleUnknownInterrupt(interrupt) => {
                 write!(f, "HandleUnknownInterrupt({})", interrupt)
             }
+            Message::UsbBusReset(interface) => {
+                write!(f, "UsbBusReset({})", interface)
+            }
             Message::UsbReceiveSetupPacket(interface, _setup_packet) => {
                 write!(f, "UsbReceiveSetupPacket({})", interface)
             }
@@ -72,6 +85,9 @@ impl core::fmt::Debug for Message {
                 "UsbReceiveData({}, {}, {})",
                 interface, endpoint, bytes_read
             ),
+            Message::UsbTransferComplete(interface, endpoint) => {
+                write!(f, "UsbTransferComplete({}, {})", interface, endpoint)
+            }
             Message::TimerEvent(n) => write!(f, "TimerEvent({})", n),
         }
     }

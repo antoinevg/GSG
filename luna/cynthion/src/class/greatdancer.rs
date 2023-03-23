@@ -1,5 +1,15 @@
 #![allow(dead_code, unused_imports, unused_variables)] // TODO
 
+use crate::{hal, pac};
+use pac::csr::interrupt;
+
+use hal::smolusb;
+use smolusb::control::{Direction, RequestType, SetupPacket};
+use smolusb::device::{Speed, UsbDevice};
+use smolusb::traits::{
+    ControlRead, EndpointRead, EndpointWrite, EndpointWriteRef, UsbDriverOperations,
+};
+
 use libgreat::error::{GreatError, GreatResult};
 use libgreat::gcp::{self, Verb};
 
@@ -7,7 +17,10 @@ use log::{debug, error, warn};
 use zerocopy::{AsBytes, BigEndian, FromBytes, LittleEndian, Unaligned, U16, U32};
 
 use core::any::Any;
+use core::cell::RefCell;
 use core::slice;
+
+// - class information --------------------------------------------------------
 
 pub static CLASS: gcp::Class = gcp::Class {
     id: gcp::ClassId::greatdancer,
@@ -23,7 +36,7 @@ pub static VERBS: [Verb; 13] = [
     Verb {
         id: 0x0,
         name: "connect\0",
-        doc: "Set up the target port to connect to a host.\nEnables the target port's USB pull-ups.\0",
+        doc: "Setup the target port to connect to a host.\nEnables the target port's USB pull-ups.\0",
         in_signature: "<HH\0",
         in_param_names: "\0",
         out_signature: "ep0_max_packet_size, quirk_flags\0",
@@ -147,12 +160,13 @@ pub static VERBS: [Verb; 13] = [
 
 // - Greatdancer --------------------------------------------------------------
 
-use crate::hal;
-use core::cell::RefCell;
-use hal::smolusb::device::UsbDevice;
-
 // TODO unify with GCP_MAX_RESPONSE_LENGTH
 const MAX_PACKET_BUFFER_LENGTH: usize = 128;
+
+#[derive(Default)]
+struct State {
+    foo: u32,
+}
 
 pub struct Greatdancer<'a> {
     usb0: UsbDevice<'a, hal::Usb0>,
@@ -170,11 +184,62 @@ impl<'a> Greatdancer<'a> {
             _marker: core::marker::PhantomData,
         }
     }
+
+    pub unsafe fn enable_usb_interrupts(&self) {
+        interrupt::enable(pac::Interrupt::USB0);
+        interrupt::enable(pac::Interrupt::USB0_EP_CONTROL);
+        interrupt::enable(pac::Interrupt::USB0_EP_IN);
+        interrupt::enable(pac::Interrupt::USB0_EP_OUT);
+
+        // enable all usb events
+        self.usb0.hal_driver.enable_interrupts();
+    }
+
+    pub unsafe fn disable_usb_interrupts(&self) {
+        // disable all usb events
+        self.usb0.hal_driver.disable_interrupts();
+
+        interrupt::enable(pac::Interrupt::USB0);
+        interrupt::enable(pac::Interrupt::USB0_EP_CONTROL);
+        interrupt::enable(pac::Interrupt::USB0_EP_IN);
+        interrupt::enable(pac::Interrupt::USB0_EP_OUT);
+    }
 }
 
-#[derive(Default)]
-struct State {
-    foo: u32,
+// - interrupt handlers -------------------------------------------------------
+
+impl<'a> Greatdancer<'a> {
+    pub fn handle_usb_bus_reset(&mut self) -> GreatResult<()> {
+        Ok(())
+    }
+
+    pub fn handle_usb_receive_setup_packet(
+        &mut self,
+        setup_packet: SetupPacket,
+    ) -> GreatResult<()> {
+        Ok(())
+    }
+
+    pub fn handle_usb_receive_control_data(
+        &mut self,
+        bytes_read: usize,
+        buffer: [u8; crate::EP_MAX_RECEIVE_LENGTH],
+    ) -> GreatResult<()> {
+        Ok(())
+    }
+
+    pub fn handle_usb_receive_data(
+        &mut self,
+        endpoint: u8,
+        bytes_read: usize,
+        buffer: [u8; crate::EP_MAX_RECEIVE_LENGTH],
+    ) -> GreatResult<()> {
+        Ok(())
+    }
+
+    pub fn handle_usb_transfer_complete(&mut self, endpoint: u8) -> GreatResult<()> {
+        Ok(())
+    }
 }
 
 // - verb implementations: connection / disconnection -------------------------
