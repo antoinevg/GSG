@@ -31,6 +31,8 @@ pub static CLASS: gcp::Class = gcp::Class {
 
 pub static CLASS_DOCS: &str = "Common API for updating firmware on a libgreat device.\0";
 
+/// Fields are `"\0"`  where C implementation has `""`
+/// Fields are `"*\0"` where C implementation has `NULL`
 pub static VERBS: [Verb; 13] = [
     // - connection / disconnection
     Verb {
@@ -38,27 +40,27 @@ pub static VERBS: [Verb; 13] = [
         name: "connect\0",
         doc: "Setup the target port to connect to a host.\nEnables the target port's USB pull-ups.\0",
         in_signature: "<HH\0",
-        in_param_names: "\0",
-        out_signature: "ep0_max_packet_size, quirk_flags\0",
-        out_param_names: "\0",
+        in_param_names: "ep0_max_packet_size, quirk_flags\0",
+        out_signature: "\0",
+        out_param_names: "*\0",
     },
     Verb {
         id: 0x1,
         name: "disconnect\0",
         doc: "Disconnect the target port from the host.\0",
         in_signature: "\0",
-        in_param_names: "\0",
+        in_param_names: "*\0",
         out_signature: "\0",
-        out_param_names: "\0",
+        out_param_names: "*\0",
     },
     Verb {
         id: 0x2,
         name: "bus_reset\0",
         doc: "Cause the target device to handle a bus reset.\0",
         in_signature: "\0",
-        in_param_names: "\0",
+        in_param_names: "*\0",
         out_signature: "\0",
-        out_param_names: "\0",
+        out_param_names: "*\0",
     },
 
     // - enumeration / setup --
@@ -69,7 +71,7 @@ pub static VERBS: [Verb; 13] = [
         in_signature: "<BB\0",
         in_param_names: "address, deferred\0",
         out_signature: "\0",
-        out_param_names: "\0",
+        out_param_names: "*\0",
     },
     Verb {
         id: 0x4,
@@ -78,7 +80,7 @@ pub static VERBS: [Verb; 13] = [
         in_signature: "<*(BHB)\0",
         in_param_names: "endpoint_descriptors\0",
         out_signature: "\0",
-        out_param_names: "\0",
+        out_param_names: "*\0",
     },
 
     // - status & control --
@@ -107,7 +109,7 @@ pub static VERBS: [Verb; 13] = [
         in_signature: "<B\0",
         in_param_names: "endpoint_address\0",
         out_signature: "\0",
-        out_param_names: "\0",
+        out_param_names: "*\0",
     },
 
     // - data transfer --
@@ -118,7 +120,7 @@ pub static VERBS: [Verb; 13] = [
         in_signature: "<B*X\0",
         in_param_names: "endpoint_number, data_to_send\0",
         out_signature: "\0",
-        out_param_names: "\0",
+        out_param_names: "*\0",
     },
     Verb {
         id: 0x9,
@@ -127,7 +129,7 @@ pub static VERBS: [Verb; 13] = [
         in_signature: "<B\0",
         in_param_names: "endpoint_address\0",
         out_signature: "\0",
-        out_param_names: "\0",
+        out_param_names: "*\0",
     },
     Verb {
         id: 0xa,
@@ -136,7 +138,7 @@ pub static VERBS: [Verb; 13] = [
         in_signature: "<B\0",
         in_param_names: "endpoint_number\0",
         out_signature: "\0",
-        out_param_names: "\0",
+        out_param_names: "*\0",
     },
     Verb {
         id: 0xb,

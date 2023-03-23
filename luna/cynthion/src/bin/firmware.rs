@@ -212,10 +212,10 @@ impl<'a> Firmware<'a> {
         );
 
         // initialize class registry
-        static CLASSES: [gcp::Class; 2] = [
+        static CLASSES: [gcp::Class; 3] = [
             gcp::class_core::CLASS,
             cynthion::class::firmware::CLASS,
-            //cynthion::class::greatdancer::CLASS,
+            cynthion::class::greatdancer::CLASS,
         ];
         let classes = gcp::Classes(&CLASSES);
 
@@ -423,7 +423,7 @@ impl<'a> Firmware<'a> {
                 self.usb1.hal_driver.ack_status_stage(setup_packet);
                 debug!("ORDER: #1");
                 debug!("  gcp: TODO state = Command::Begin");
-                debug!("  gcp: ack {}", length);
+                //debug!("  gcp: ack {}", length);
             }
 
             // host is ready to receive a response
@@ -527,6 +527,8 @@ impl<'a> Firmware<'a> {
                     //      vendor_request telling us we can send it ???
                     debug!("  gcp: queueing next response");
                     self.active_response = Some(response);
+                    //self.usb1.hal_driver.ep_out_prime_receive(0);
+                    //self.usb1.hal_driver.write(0, [].into_iter());
                 }
                 Err(e) => {
                     error!("  gcp: stall: failed to dispatch command {}", e);

@@ -19,98 +19,109 @@ pub static CLASS: gcp::Class = gcp::Class {
 
 pub static CLASS_DOCS: &str = "Core API\0"; // used to query information about the device, and perform a few standard functions.\0";
 
+/// Fields are `"\0"`  where C implementation has `""`
+/// Fields are `"*\0"` where C implementation has `NULL`
 pub static VERBS: [Verb; 10] = [
     Verb {
         id: 0x0,
         name: "read_board_id\0",
-        doc: "Return the board id.\0",
-        in_signature: "\0",
-        in_param_names: "\0",
-        out_signature: "\0",
-        out_param_names: "\0",
+        doc: "*\0",
+        in_signature: "*\0",
+        in_param_names: "*\0",
+        out_signature: "*\0",
+        out_param_names: "*\0",
     },
     Verb {
         id: 0x1,
         name: "read_version_string\0",
-        doc: "Return the board version string.\0",
-        in_signature: "\0",
-        in_param_names: "\0",
-        out_signature: "\0",
-        out_param_names: "\0",
+        doc: "*\0",
+        in_signature: "*\0",
+        in_param_names: "*\0",
+        out_signature: "*\0",
+        out_param_names: "*\0",
     },
     Verb {
         id: 0x2,
         name: "read_part_id\0",
-        doc: "Return the board part id.\0",
-        in_signature: "\0",
-        in_param_names: "\0",
-        out_signature: "\0",
-        out_param_names: "\0",
+        doc: "*\0",
+        in_signature: "*\0",
+        in_param_names: "*\0",
+        out_signature: "*\0",
+        out_param_names: "*\0",
     },
     Verb {
         id: 0x3,
         name: "read_serial_number\0",
-        doc: "Return the board serial number.\0",
-        in_signature: "\0",
-        in_param_names: "\0",
-        out_signature: "\0",
-        out_param_names: "\0",
+        doc: "*\0",
+        in_signature: "*\0",
+        in_param_names: "*\0",
+        out_signature: "*\0",
+        out_param_names: "*\0",
     },
     // - api introspection --
     Verb {
         id: 0x4,
         name: "get_available_classes\0",
-        doc: "Return the classes supported by the board.\0",
-        in_signature: "\0",
-        in_param_names: "\0",
-        out_signature: "\0",
-        out_param_names: "\0",
+        doc: "*\0",
+        in_signature: "*\0",
+        in_param_names: "*\0",
+        out_signature: "*\0",
+        out_param_names: "*\0",
     },
     Verb {
         id: 0x5,
         name: "get_available_verbs\0",
-        doc: "Return the verbs supported by the given class.\0",
+        doc: "*\0",
         in_signature: "<I\0",
         in_param_names: "class_number\0",
-        out_signature: "\0",
-        out_param_names: "\0",
+        out_signature: "*\0",
+        out_param_names: "*\0",
     },
     Verb {
         id: 0x6,
         name: "get_verb_name\0",
-        doc: "Return the name of the given class and verb.\0",
+        doc: "*\0",
         in_signature: "<II\0",
         in_param_names: "class_number, verb_number\0",
-        out_signature: "\0",
-        out_param_names: "\0",
+        out_signature: "*\0",
+        out_param_names: "*\0",
     },
     Verb {
         id: 0x7,
         name: "get_verb_descriptor\0",
-        doc: "Returns the descriptor of the given class, verb and descriptor.\0",
+        doc: "*\0",
         in_signature: "<III\0",
         in_param_names: "class_number, verb_number, descriptor_number\0",
-        out_signature: "\0",
-        out_param_names: "\0",
+        out_signature: "*\0",
+        out_param_names: "*\0",
     },
     Verb {
         id: 0x8,
         name: "get_class_name\0",
-        doc: "Return the name of the given class.\0",
+        doc: "*\0",
         in_signature: "<I\0",
         in_param_names: "class_number\0",
-        out_signature: "\0",
-        out_param_names: "\0",
+        out_signature: "*\0",
+        out_param_names: "*\0",
     },
     Verb {
         id: 0x9,
         name: "get_class_docs\0",
-        doc: "Return the documentation for the given class.\0",
+        doc: "*\0",
         in_signature: "<I\0",
         in_param_names: "class_number\0",
-        out_signature: "\0",
-        out_param_names: "\0",
+        out_signature: "*\0",
+        out_param_names: "*\0",
     },
+    /*Verb {
+        id: 0x20,
+        name: "*\0", // request_reset
+        doc: "*\0",
+        in_signature: "*\0",
+        in_param_names: "*\0",
+        out_signature: "*\0",
+        out_param_names: "*\0",
+    },*/
 ];
 
 // - Core ---------------------------------------------------------------------
@@ -331,7 +342,7 @@ impl Core {
             }
             0x7 => {
                 // core::get_verb_descriptor
-                let iter = self.get_verb_descriptor(arguments)?;
+                let iter = self.get_verb_descriptor(arguments)?.take(48); // TODO fix overflow error
                 let response = unsafe { iter_to_response(iter, response_buffer) };
                 Ok(response)
             }
@@ -343,7 +354,7 @@ impl Core {
             }
             0x9 => {
                 // core::get_class_docs
-                let iter = self.get_class_docs(arguments)?;
+                let iter = self.get_class_docs(arguments)?.take(48); // TODO fix overflow error
                 let response = unsafe { iter_to_response(iter, response_buffer) };
                 Ok(response)
             }

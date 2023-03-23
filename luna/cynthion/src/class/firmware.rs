@@ -18,24 +18,26 @@ pub static CLASS: gcp::Class = gcp::Class {
 
 pub static CLASS_DOCS: &str = "Common API for updating firmware on a libgreat device.\0";
 
-pub static VERBS: [Verb; 1] = [
+/// Fields are `"\0"`  where C implementation has `""`
+/// Fields are `"*\0"` where C implementation has `NULL`
+pub static VERBS: [Verb; 5] = [
     Verb {
         id: 0x0,
         name: "initialize\0",
         doc: "Prepare the board to have its firmware programmed.\0",
         in_signature: "\0",
-        in_param_names: "\0",
+        in_param_names: "*\0",
         out_signature: "<II\0",
         out_param_names: "page_size, total_size\0",
     },
-    /*Verb {
+    Verb {
         id: 0x1,
         name: "full_erase\0",
         doc: "Erase the entire firmware flash chip.\0",
         in_signature: "\0",
-        in_param_names: "\0",
+        in_param_names: "*\0",
         out_signature: "\0",
-        out_param_names: "\0",
+        out_param_names: "*\0",
     },
     Verb {
         id: 0x2,
@@ -44,7 +46,7 @@ pub static VERBS: [Verb; 1] = [
         in_signature: "<I\0",
         in_param_names: "address\0",
         out_signature: "\0",
-        out_param_names: "\0",
+        out_param_names: "*\0",
     },
     Verb {
         id: 0x3,
@@ -53,7 +55,7 @@ pub static VERBS: [Verb; 1] = [
         in_signature: "<I*X\0",
         in_param_names: "address, data\0",
         out_signature: "\0",
-        out_param_names: "\0",
+        out_param_names: "*\0",
     },
     Verb {
         id: 0x4,
@@ -63,7 +65,7 @@ pub static VERBS: [Verb; 1] = [
         in_param_names: "address\0",
         out_signature: "<*X\0",
         out_param_names: "data\0",
-    },*/
+    },
 ];
 
 // - verb implementations -----------------------------------------------------
