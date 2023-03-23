@@ -64,12 +64,11 @@ pub enum DeviceState {
 pub struct UsbDevice<'a, D> {
     pub hal_driver: D,
     device_descriptor: &'a DeviceDescriptor,
-    //configuration_descriptor: &'a ConfigurationDescriptor<'a>,
     configuration_descriptor: ConfigurationDescriptor<'a>,
+    pub device_qualifier_descriptor: Option<&'a DeviceQualifierDescriptor>,
+    pub other_speed_configuration_descriptor: Option<ConfigurationDescriptor<'a>>,
     string_descriptor_zero: &'a StringDescriptorZero<'a>,
     string_descriptors: &'a [&'a StringDescriptor<'a>],
-    // TODO DeviceQualifierDescriptor
-    // TODO OtherSpeedConfiguration
     pub state: RefCell<DeviceState>,
     pub reset_count: usize,
     pub feature_remote_wakeup: bool,
@@ -97,15 +96,13 @@ where
         // TODO this ain't great but it will do for now
         let mut configuration_descriptor = configuration_descriptor.clone();
         let total_length = configuration_descriptor.set_total_length();
-        debug!(
-            "  ConfigurationDescriptor total length: {} bytes",
-            total_length
-        );
 
         Self {
             hal_driver,
             device_descriptor,
             configuration_descriptor,
+            device_qualifier_descriptor: None,
+            other_speed_configuration_descriptor: None,
             string_descriptor_zero,
             string_descriptors,
             state: DeviceState::Reset.into(),
@@ -254,13 +251,24 @@ where
                 0,
                 self.configuration_descriptor.iter().take(requested_length),
             ),
-            // TODO
-            //(DescriptorType::DeviceQualifier, 0) => {
-            //    self.hal_driver.ep_in_write(0, self.device_qualifier_descriptor.into_iter().take(requested_length))
-            //}
-            //(DescriptorType::OtherSpeedConfiguration, 0) => {
-            //    self.hal_driver.ep_in_write(0, self.other_speed_config_descriptor.iter().take(requested_length))
-            //}
+            (DescriptorType::DeviceQualifier, 0) => {
+                if let Some(descriptor) = &self.device_qualifier_descriptor {
+                    self.hal_driver
+                        .write_ref(0, descriptor.as_iter().take(requested_length));
+                } else {
+                    warn!("  stall: no device qualifier descriptor configured");
+                    // TODO stall?
+                }
+            }
+            (DescriptorType::OtherSpeedConfiguration, 0) => {
+                if let Some(descriptor) = self.other_speed_configuration_descriptor {
+                    self.hal_driver
+                        .write_ref(0, descriptor.iter().take(requested_length));
+                } else {
+                    warn!("  stall: no other speed configuration descriptor configured");
+                    // TODO stall?
+                }
+            }
             (DescriptorType::String, 0) => self
                 .hal_driver
                 .write_ref(0, self.string_descriptor_zero.iter().take(requested_length)),
@@ -404,27 +412,6 @@ where
         };
 
         Ok(())
-    }
-}
-
-// TODO I'm not convinced about any of this
-impl<'a, D> UsbDevice<'a, D>
-where
-    D: ControlRead + EndpointRead + EndpointWrite + EndpointWriteRef,
-{
-    pub fn _handle_interrupt_ep_control(hal_driver: &D) -> SmolResult<SetupPacket> {
-        let mut buffer = [0_u8; 8];
-        hal_driver.read_control(&mut buffer);
-        SetupPacket::try_from(buffer)
-    }
-
-    pub fn _handle_interrupt_ep_out(
-        &self,
-        hal_driver: &D,
-        endpoint: u8,
-        buffer: &mut [u8],
-    ) -> usize {
-        hal_driver.read(endpoint, buffer)
     }
 }
 

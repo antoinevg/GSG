@@ -70,13 +70,25 @@ where
         #[cfg(not(target_has_atomic))]
         riscv::interrupt::free(|| match self.writer.borrow_mut().as_mut() {
             Some(writer) => {
-                writeln!(writer, "{} - {}", record.level(), record.args())
+                writeln!(writer, "{}\t{}", record.level(), record.args())
                     .expect("Logger failed to write to device");
             }
             None => {
                 panic!("Logger has not been initialized");
             }
         });
+
+        /*unsafe { riscv::register::mie::clear_mext() };
+        match self.writer.borrow_mut().as_mut() {
+            Some(writer) => {
+                writeln!(writer, "{}\t{}", record.level(), record.args())
+                    .expect("Logger failed to write to device");
+            }
+            None => {
+                panic!("Logger has not been initialized");
+            }
+        }
+        unsafe { riscv::register::mie::set_mext() };*/
     }
 
     fn flush(&self) {}

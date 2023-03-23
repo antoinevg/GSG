@@ -58,16 +58,16 @@ fn MachineExternal() {
     } else if usb1.is_pending(pac::Interrupt::USB1_EP_CONTROL) {
         let mut setup_packet_buffer = [0_u8; 8];
         usb1.read_control(&mut setup_packet_buffer);
-        let setup_packet = match SetupPacket::try_from(setup_packet_buffer) {
-            Ok(packet) => packet,
-            Err(e) => {
-                error!("MachineExternal USB1_EP_CONTROL - {:?}", e);
-                return;
-            }
-        };
         usb1.clear_pending(pac::Interrupt::USB1_EP_CONTROL);
-
-        Message::UsbReceiveSetupPacket(1, setup_packet)
+        match SetupPacket::try_from(setup_packet_buffer) {
+            Ok(setup_packet) => {
+                Message::UsbReceiveSetupPacket(1, setup_packet)
+            },
+            Err(e) => {
+                //error!("MachineExternal USB1_EP_CONTROL - {:?}", e);
+                Message::ErrorMessage("USB1_EP_CONTROL failed to read setup packet")
+            }
+        }
 
     // USB1_EP_OUT UsbReceiveData
     } else if usb1.is_pending(pac::Interrupt::USB1_EP_OUT) {
@@ -97,16 +97,16 @@ fn MachineExternal() {
     } else if usb0.is_pending(pac::Interrupt::USB0_EP_CONTROL) {
         let mut setup_packet_buffer = [0_u8; 8];
         usb0.read_control(&mut setup_packet_buffer);
-        let setup_packet = match SetupPacket::try_from(setup_packet_buffer) {
-            Ok(packet) => packet,
-            Err(e) => {
-                error!("MachineExternal USB0_EP_CONTROL - {:?}", e);
-                return;
-            }
-        };
         usb0.clear_pending(pac::Interrupt::USB0_EP_CONTROL);
-
-        Message::UsbReceiveSetupPacket(0, setup_packet)
+        match SetupPacket::try_from(setup_packet_buffer) {
+            Ok(setup_packet) => {
+                Message::UsbReceiveSetupPacket(0, setup_packet)
+            },
+            Err(e) => {
+                //error!("MachineExternal USB0_EP_CONTROL - {:?}", e);
+                Message::ErrorMessage("USB0_EP_CONTROL failed to read setup packet")
+            }
+        }
 
     // USB0_EP_OUT UsbReceiveData
     } else if usb0.is_pending(pac::Interrupt::USB0_EP_OUT) {
@@ -129,10 +129,12 @@ fn MachineExternal() {
         Message::HandleUnknownInterrupt(pending)
     };
 
+    //unsafe { riscv::register::mie::clear_mext() };
     match MESSAGE_QUEUE.enqueue(message) {
         Ok(()) => (),
         Err(_) => error!("MachineExternal - message queue overflow"),
     }
+    //unsafe { riscv::register::mie::set_mext() };
 }
 
 // - main entry point ---------------------------------------------------------
@@ -184,7 +186,7 @@ impl<'a> Firmware<'a> {
         trace!("logging initialized");
 
         // usb1: host
-        let usb1 = UsbDevice::new(
+        let mut usb1 = UsbDevice::new(
             hal::Usb1::new(
                 peripherals.USB1,
                 peripherals.USB1_EP_CONTROL,
@@ -196,6 +198,9 @@ impl<'a> Firmware<'a> {
             &class::cynthion::USB_STRING_DESCRIPTOR_0,
             &class::cynthion::USB_STRING_DESCRIPTORS,
         );
+        usb1.device_qualifier_descriptor = Some(&class::cynthion::DEVICE_QUALIFIER_DESCRIPTOR);
+        usb1.other_speed_configuration_descriptor =
+            Some(class::cynthion::OTHER_SPEED_CONFIGURATION_DESCRIPTOR_0);
 
         // usb0: target
         let usb0 = UsbDevice::new(
@@ -342,6 +347,11 @@ impl<'a> Firmware<'a> {
                     Message::UsbTransferComplete(0, endpoint) => {
                         self.greatdancer.handle_usb_transfer_complete(endpoint)?;
                         trace!("MachineExternal - USB0_EP_IN {}\n", endpoint);
+                    }
+
+                    // Error Message
+                    Message::ErrorMessage(message) => {
+                        error!("MachineExternal - {}\n", message);
                     }
 
                     // Unhandled message

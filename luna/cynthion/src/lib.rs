@@ -42,6 +42,9 @@ pub enum Message {
     HandleInterrupt(pac::Interrupt),
     HandleUnknownInterrupt(usize),
 
+    // timer events
+    TimerEvent(usize),
+
     // usb events
     /// Receives a USB bus reset
     ///
@@ -63,8 +66,8 @@ pub enum Message {
     /// Contents is (interface, endpoint)
     UsbTransferComplete(u8, u8),
 
-    // TODO
-    TimerEvent(usize),
+    // misc
+    ErrorMessage(&'static str),
 }
 
 impl core::fmt::Debug for Message {
@@ -74,6 +77,7 @@ impl core::fmt::Debug for Message {
             Message::HandleUnknownInterrupt(interrupt) => {
                 write!(f, "HandleUnknownInterrupt({})", interrupt)
             }
+            Message::TimerEvent(n) => write!(f, "TimerEvent({})", n),
             Message::UsbBusReset(interface) => {
                 write!(f, "UsbBusReset({})", interface)
             }
@@ -88,7 +92,9 @@ impl core::fmt::Debug for Message {
             Message::UsbTransferComplete(interface, endpoint) => {
                 write!(f, "UsbTransferComplete({}, {})", interface, endpoint)
             }
-            Message::TimerEvent(n) => write!(f, "TimerEvent({})", n),
+            Message::ErrorMessage(message) => {
+                write!(f, "ErrorMessage({})", message)
+            }
         }
     }
 }

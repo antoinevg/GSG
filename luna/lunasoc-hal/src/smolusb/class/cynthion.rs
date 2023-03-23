@@ -42,15 +42,12 @@ pub mod vendor {
     }
 }
 
-// TODO DeviceQualifierDescriptor
-// TODO OtherSpeedConfigurationDescriptor
-
 pub static DEVICE_DESCRIPTOR: DeviceDescriptor = DeviceDescriptor {
     descriptor_version: 0x0200,
     device_class: 0x00,    // Composite
     device_subclass: 0x00, // Composite
     device_protocol: 0x00, // Composite
-    max_packet_size: 8,
+    max_packet_size: 64,
     vendor_id: 0x1d50,             // OpenMoko, Inc.
     product_id: 0x60e6,            // replacement for GoodFET/FaceDancer - GreatFet
     device_version_number: 0x0040, // Cynthion r04
@@ -59,6 +56,16 @@ pub static DEVICE_DESCRIPTOR: DeviceDescriptor = DeviceDescriptor {
     serial_string_index: 3,
     num_configurations: 1,
     ..DeviceDescriptor::new()
+};
+
+pub static DEVICE_QUALIFIER_DESCRIPTOR: DeviceQualifierDescriptor = DeviceQualifierDescriptor {
+    descriptor_version: 0x0200,
+    device_class: 0x00,    // Composite
+    device_subclass: 0x00, // Composite
+    device_protocol: 0x00, // Composite
+    max_packet_size: 64,
+    num_configurations: 1,
+    ..DeviceQualifierDescriptor::new()
 };
 
 pub static CONFIGURATION_DESCRIPTOR_0: ConfigurationDescriptor = ConfigurationDescriptor::new(
@@ -105,6 +112,58 @@ pub static CONFIGURATION_DESCRIPTOR_0: ConfigurationDescriptor = ConfigurationDe
                     endpoint_address: 0x02, // OUT
                     attributes: 0x02,       // Bulk
                     max_packet_size: 512,
+                    interval: 0,
+                    ..EndpointDescriptor::new()
+                },
+            ],
+        ),
+    ],
+);
+
+pub static OTHER_SPEED_CONFIGURATION_DESCRIPTOR_0: ConfigurationDescriptor = ConfigurationDescriptor::new(
+    ConfigurationDescriptorHeader {
+        descriptor_type: DescriptorType::OtherSpeedConfiguration as u8,
+        configuration_value: 1,
+        configuration_string_index: 1,
+        attributes: 0x80, // 0b1000_0000 = bus-powered
+        max_power: 250,   // 250 * 2 mA = 500 mA ?
+        ..ConfigurationDescriptorHeader::new()
+    },
+    &[
+        InterfaceDescriptor::new(
+            InterfaceDescriptorHeader {
+                interface_number: 0,
+                alternate_setting: 0,
+                interface_class: 0xff,    // Vendor-specific
+                interface_subclass: 0xff, // Vendor-specific
+                interface_protocol: 0xff, // Vendor-specific
+                interface_string_index: 2,
+                ..InterfaceDescriptorHeader::new()
+            },
+            &[],
+        ),
+        InterfaceDescriptor::new(
+            InterfaceDescriptorHeader {
+                interface_number: 1,
+                alternate_setting: 0,
+                interface_class: 0xff,    // Vendor-specific
+                interface_subclass: 0xff, // Vendor-specific
+                interface_protocol: 0xff, // Vendor-specific
+                interface_string_index: 2,
+                ..InterfaceDescriptorHeader::new()
+            },
+            &[
+                EndpointDescriptor {
+                    endpoint_address: 0x81, // IN
+                    attributes: 0x02,       // Bulk
+                    max_packet_size: 64,
+                    interval: 0,
+                    ..EndpointDescriptor::new()
+                },
+                EndpointDescriptor {
+                    endpoint_address: 0x02, // OUT
+                    attributes: 0x02,       // Bulk
+                    max_packet_size: 64,
                     interval: 0,
                     ..EndpointDescriptor::new()
                 },
