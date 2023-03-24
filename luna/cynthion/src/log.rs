@@ -77,18 +77,6 @@ where
                 panic!("Logger has not been initialized");
             }
         });
-
-        /*unsafe { riscv::register::mie::clear_mext() };
-        match self.writer.borrow_mut().as_mut() {
-            Some(writer) => {
-                writeln!(writer, "{}\t{}", record.level(), record.args())
-                    .expect("Logger failed to write to device");
-            }
-            None => {
-                panic!("Logger has not been initialized");
-            }
-        }
-        unsafe { riscv::register::mie::set_mext() };*/
     }
 
     fn flush(&self) {}

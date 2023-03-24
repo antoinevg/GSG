@@ -46,25 +46,20 @@ pub enum Message {
     TimerEvent(usize),
 
     // usb events
-    /// Receives a USB bus reset
-    ///
-    /// Contents is (interface)
-    UsbBusReset(u8),
-
     /// Received a SETUP packet on USBx_EP_CONTROL
     ///
     /// Contents is (interface, setup_packet)
     UsbReceiveSetupPacket(u8, hal::smolusb::control::SetupPacket),
 
-    /// Received data on USBx_EP_OUT
-    ///
-    /// Contents is (interface, endpoint, bytes_read, buffer)
-    UsbReceiveData(u8, u8, usize, [u8; EP_MAX_RECEIVE_LENGTH]),
-
     /// Transfer is complete on USBx_EP_IN
     ///
     /// Contents is (interface, endpoint)
     UsbTransferComplete(u8, u8),
+
+    /// Received data on USBx_EP_OUT
+    ///
+    /// Contents is (interface, endpoint, bytes_read, buffer)
+    UsbReceiveData(u8, u8, usize, [u8; EP_MAX_RECEIVE_LENGTH]),
 
     // misc
     ErrorMessage(&'static str),
@@ -73,14 +68,16 @@ pub enum Message {
 impl core::fmt::Debug for Message {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         match self {
+            // interrupts
             Message::HandleInterrupt(interrupt) => write!(f, "HandleInterrupt({:?})", interrupt),
             Message::HandleUnknownInterrupt(interrupt) => {
                 write!(f, "HandleUnknownInterrupt({})", interrupt)
             }
+
+            // timer events
             Message::TimerEvent(n) => write!(f, "TimerEvent({})", n),
-            Message::UsbBusReset(interface) => {
-                write!(f, "UsbBusReset({})", interface)
-            }
+
+            // usb events
             Message::UsbReceiveSetupPacket(interface, _setup_packet) => {
                 write!(f, "UsbReceiveSetupPacket({})", interface)
             }
@@ -92,6 +89,8 @@ impl core::fmt::Debug for Message {
             Message::UsbTransferComplete(interface, endpoint) => {
                 write!(f, "UsbTransferComplete({}, {})", interface, endpoint)
             }
+
+            // misc
             Message::ErrorMessage(message) => {
                 write!(f, "ErrorMessage({})", message)
             }

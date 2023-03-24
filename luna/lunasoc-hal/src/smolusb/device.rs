@@ -53,6 +53,15 @@ pub enum DeviceState {
     Suspend,
 }
 
+// These are being used to work around the behaviour where we can only
+// set the device address after we have transmitted our STATUS ACK
+// response.
+//
+// TODO get rid of this global static state
+pub static mut USB0_TX_ACK_ACTIVE: bool = false;
+pub static mut USB1_TX_ACK_ACTIVE: bool = false;
+pub static mut USB2_TX_ACK_ACTIVE: bool = false;
+
 /// A USB device
 ///
 /// `UsbDevice` implements the control portion of the USB
@@ -137,6 +146,13 @@ where
         self.state.replace(DeviceState::Reset.into());
         speed
     }
+
+    pub fn bus_reset(&self) -> Speed {
+        let speed = self.hal_driver.bus_reset().into();
+        // TODO self.reset_count += 1;
+        self.state.replace(DeviceState::Reset.into());
+        speed
+    }
 }
 
 // Handle SETUP packet
@@ -147,17 +163,6 @@ where
     pub fn handle_setup_request(&self, setup_packet: &SetupPacket) -> SmolResult<()> {
         let request_type = setup_packet.request_type();
         let request = setup_packet.request();
-
-        debug!(
-            "  SETUP {:?} {:?} {:?} {:?} val:{} idx:{} len:{}",
-            setup_packet.recipient(),
-            setup_packet.direction(),
-            request_type,
-            request,
-            setup_packet.value,
-            setup_packet.index,
-            setup_packet.length
-        );
 
         match (&request_type, &request) {
             (RequestType::Standard, Request::SetAddress) => {
@@ -209,17 +214,45 @@ where
             }
         }
 
+        debug!(
+            "SETUP {:?} {:?} {:?} {:?} 0x{:x} 0x{:x} {}",
+            setup_packet.recipient(),
+            setup_packet.direction(),
+            request_type,
+            request,
+            setup_packet.value,
+            setup_packet.index,
+            setup_packet.length
+        );
+
         Ok(())
     }
 
     fn handle_set_address(&self, setup_packet: &SetupPacket) -> SmolResult<()> {
+        unsafe {
+            USB1_TX_ACK_ACTIVE = true;
+        }
+
+        // respond with ack status first before changing device address
         self.hal_driver.ack_status_stage(setup_packet);
 
+        // TODO wait for the response packet to get sent
+        // TODO consider integrating this into ack_status_stage
+        unsafe {
+            loop {
+                riscv::register::mie::clear_mext();
+                let active = USB1_TX_ACK_ACTIVE;
+                riscv::register::mie::set_mext();
+                if active == false {
+                    break;
+                }
+            }
+        }
+
+        // activate new address
         let address: u8 = (setup_packet.value & 0x7f) as u8;
         self.hal_driver.set_address(address);
         self.state.replace(DeviceState::Address.into());
-
-        trace!("  -> handle_set_address({})", address);
 
         Ok(())
     }
@@ -306,7 +339,10 @@ where
 
         trace!(
             "  -> handle_get_descriptor({:?}({}), {}, {})",
-            descriptor_type, descriptor_type_bits, descriptor_number, requested_length
+            descriptor_type,
+            descriptor_type_bits,
+            descriptor_number,
+            requested_length
         );
 
         Ok(())

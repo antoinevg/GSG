@@ -41,6 +41,7 @@ static MESSAGE_QUEUE: Queue<Message, 32> = Queue::new();
 fn MachineExternal() {
     // peripherals
     let peripherals = unsafe { pac::Peripherals::steal() };
+    let timer = unsafe { hal::Timer::summon() };
     let usb0 = unsafe { hal::Usb0::summon() };
     let usb1 = unsafe { hal::Usb1::summon() };
 
@@ -51,9 +52,30 @@ fn MachineExternal() {
     // USB1 UsbBusReset
     let message = if usb1.is_pending(pac::Interrupt::USB1) {
         usb1.clear_pending(pac::Interrupt::USB1);
-        usb1.reset();
+        usb1.bus_reset();
+        return;
 
-        Message::UsbBusReset(1)
+    // USB1_EP_CONTROL UsbReceiveSetupPacket
+    } else if usb1.is_pending(pac::Interrupt::USB1_EP_CONTROL) {
+        let mut setup_packet_buffer = [0_u8; 8];
+        usb1.read_control(&mut setup_packet_buffer);
+        usb1.clear_pending(pac::Interrupt::USB1_EP_CONTROL);
+        match SetupPacket::try_from(setup_packet_buffer) {
+            Ok(setup_packet) => Message::UsbReceiveSetupPacket(1, setup_packet),
+            Err(e) => Message::ErrorMessage("USB1_EP_CONTROL failed to read setup packet"),
+        }
+
+    // USB1_EP_IN UsbTransferComplete
+    } else if usb1.is_pending(pac::Interrupt::USB1_EP_IN) {
+        usb1.clear_pending(pac::Interrupt::USB1_EP_IN);
+        let endpoint = usb1.ep_in.epno.read().bits() as u8;
+
+        // TODO something a little bit safer would be nice
+        unsafe {
+            smolusb::device::USB1_TX_ACK_ACTIVE = false;
+        }
+
+        Message::UsbTransferComplete(1, endpoint)
 
     // USB1_EP_OUT UsbReceiveData
     } else if usb1.is_pending(pac::Interrupt::USB1_EP_OUT) {
@@ -64,36 +86,35 @@ fn MachineExternal() {
 
         Message::UsbReceiveData(1, endpoint, bytes_read, buffer)
 
-    // USB1_EP_CONTROL UsbReceiveSetupPacket
-    } else if usb1.is_pending(pac::Interrupt::USB1_EP_CONTROL) {
-        let mut setup_packet_buffer = [0_u8; 8];
-        usb1.read_control(&mut setup_packet_buffer);
-        usb1.clear_pending(pac::Interrupt::USB1_EP_CONTROL);
-        match SetupPacket::try_from(setup_packet_buffer) {
-            Ok(setup_packet) => {
-                Message::UsbReceiveSetupPacket(1, setup_packet)
-            },
-            Err(e) => {
-                //error!("MachineExternal USB1_EP_CONTROL - {:?}", e);
-                Message::ErrorMessage("USB1_EP_CONTROL failed to read setup packet")
-            }
-        }
-
-    // USB1_EP_IN UsbTransferComplete
-    } else if usb1.is_pending(pac::Interrupt::USB1_EP_IN) {
-        let endpoint = usb1.ep_in.epno.read().bits() as u8;
-        usb1.clear_pending(pac::Interrupt::USB1_EP_IN);
-
-        Message::UsbTransferComplete(1, endpoint)
-
     // - usb0 interrupts - "target_phy" --
 
     // USB0 UsbBusReset
     } else if usb0.is_pending(pac::Interrupt::USB0) {
         usb0.clear_pending(pac::Interrupt::USB0);
-        usb0.reset();
+        usb0.bus_reset();
+        return;
 
-        Message::UsbBusReset(0)
+    // USB0_EP_CONTROL UsbReceiveSetupPacket
+    } else if usb0.is_pending(pac::Interrupt::USB0_EP_CONTROL) {
+        let mut setup_packet_buffer = [0_u8; 8];
+        usb0.read_control(&mut setup_packet_buffer);
+        usb0.clear_pending(pac::Interrupt::USB0_EP_CONTROL);
+        match SetupPacket::try_from(setup_packet_buffer) {
+            Ok(setup_packet) => Message::UsbReceiveSetupPacket(0, setup_packet),
+            Err(e) => Message::ErrorMessage("USB0_EP_CONTROL failed to read setup packet"),
+        }
+
+    // USB0_EP_IN UsbTransferComplete
+    } else if usb0.is_pending(pac::Interrupt::USB0_EP_IN) {
+        let endpoint = usb0.ep_in.epno.read().bits() as u8;
+        usb0.clear_pending(pac::Interrupt::USB0_EP_IN);
+
+        // TODO something a little bit safer would be nice
+        unsafe {
+            smolusb::device::USB0_TX_ACK_ACTIVE = false;
+        }
+
+        Message::UsbTransferComplete(0, endpoint)
 
     // USB0_EP_OUT UsbReceiveData
     } else if usb0.is_pending(pac::Interrupt::USB0_EP_OUT) {
@@ -103,48 +124,22 @@ fn MachineExternal() {
         usb0.clear_pending(pac::Interrupt::USB0_EP_OUT);
 
         Message::UsbReceiveData(0, endpoint, bytes_read, buffer)
-
-    // USB0_EP_CONTROL UsbReceiveSetupPacket
-    } else if usb0.is_pending(pac::Interrupt::USB0_EP_CONTROL) {
-        let mut setup_packet_buffer = [0_u8; 8];
-        usb0.read_control(&mut setup_packet_buffer);
-        usb0.clear_pending(pac::Interrupt::USB0_EP_CONTROL);
-        match SetupPacket::try_from(setup_packet_buffer) {
-            Ok(setup_packet) => {
-                Message::UsbReceiveSetupPacket(0, setup_packet)
-            },
-            Err(e) => {
-                //error!("MachineExternal USB0_EP_CONTROL - {:?}", e);
-                Message::ErrorMessage("USB0_EP_CONTROL failed to read setup packet")
-            }
-        }
-
-    // USB0_EP_IN UsbTransferComplete
-    } else if usb0.is_pending(pac::Interrupt::USB0_EP_IN) {
-        let endpoint = usb0.ep_in.epno.read().bits() as u8;
-        usb0.clear_pending(pac::Interrupt::USB0_EP_IN);
-
-        Message::UsbTransferComplete(0, endpoint)
+    } else if timer.is_pending() {
+        timer.clear_pending();
+        Message::TimerEvent(0)
 
     // - Unknown Interrupt --
     } else {
         Message::HandleUnknownInterrupt(pending)
     };
 
-    //unsafe { riscv::register::mie::clear_mext() };
-    // leds: start enqueue
-    //let leds = peripherals.LEDS;
-    //leds.output.write(|w| unsafe { w.output().bits(1 << 5) });
     match MESSAGE_QUEUE.enqueue(message) {
         Ok(()) => (),
         Err(_) => {
             error!("MachineExternal - message queue overflow");
             panic!("MachineExternal - message queue overflow");
-        },
+        }
     }
-    // leds: end enqueue
-    //leds.output.write(|w| unsafe { w.output().bits(1 << 4) });
-    //unsafe { riscv::register::mie::set_mext() };
 }
 
 // - main entry point ---------------------------------------------------------
@@ -179,6 +174,7 @@ fn main() -> ! {
 struct Firmware<'a> {
     // peripherals
     leds: pac::LEDS,
+    timer: hal::Timer,
     usb1: UsbDevice<'a, hal::Usb1>,
 
     // state
@@ -194,6 +190,9 @@ impl<'a> Firmware<'a> {
         // initialize logging
         cynthion::log::init(hal::Serial::new(peripherals.UART));
         trace!("logging initialized");
+
+        // timer
+        let timer = hal::Timer::new(peripherals.TIMER, pac::clock::sysclk());
 
         // usb1: host
         let mut usb1 = UsbDevice::new(
@@ -240,6 +239,7 @@ impl<'a> Firmware<'a> {
 
         Self {
             leds: peripherals.LEDS,
+            timer,
             usb1,
             active_response: None,
             core,
@@ -253,6 +253,12 @@ impl<'a> Firmware<'a> {
             .output
             .write(|w| unsafe { w.output().bits(1 << 2) });
 
+        // configure and enable timer
+        let one_second = pac::clock::sysclk();
+        self.timer.set_timeout_ticks(one_second / 10);
+        //self.timer.enable();
+        //self.timer.listen(hal::timer::Event::TimeOut);
+
         // connect usb1
         let speed = self.usb1.connect();
         debug!("Connected usb1 device: {:?}", speed);
@@ -264,6 +270,9 @@ impl<'a> Firmware<'a> {
 
             // set mie register: machine external interrupts enable
             riscv::register::mie::set_mext();
+
+            // write csr: enable timer interrupt
+            //interrupt::enable(pac::Interrupt::TIMER);
 
             // write csr: enable usb1 interrupts and events
             self.enable_usb1_interrupts();
@@ -279,35 +288,32 @@ impl<'a> Firmware<'a> {
 
     #[inline(always)]
     fn main_loop(&'a mut self) -> GreatResult<()> {
+        let mut max_queue_length = 0;
+        let mut queue_length = 0;
+
         loop {
-            // leds: start dequeue
-            self.leds.output.write(|w| unsafe { w.output().bits(1 << 4) });
-
-            let mut queue_length = 0;
-
-            //unsafe { riscv::register::mie::clear_mext() };
-            //let message = MESSAGE_QUEUE.dequeue();
-            //unsafe { riscv::register::mie::set_mext() };
-            //if let Some(message) = message {
+            if queue_length > max_queue_length {
+                max_queue_length = queue_length;
+                debug!("max_queue_length: {}", max_queue_length);
+            }
+            queue_length = 0;
 
             while let Some(message) = MESSAGE_QUEUE.dequeue() {
-                debug!("MachineExternal: {:?}", message);
                 queue_length += 1;
-                // leds: got dequeue
-                self.leds.output.write(|w| unsafe { w.output().bits(1 << 3) });
 
+                trace!("MachineExternal: {:?}", message);
                 match message {
                     // - usb1 message handlers --
-
-                    // Usb1 received bus reset
-                    Message::UsbBusReset(1) => {
-                        //self.handle_usb1_bus_reset()?;
-                        //trace!("MachineExternal - USB1\n");
-                    }
 
                     // Usb1 received setup packet
                     Message::UsbReceiveSetupPacket(1, packet) => {
                         self.handle_usb1_receive_setup_packet(packet)?;
+                    }
+
+                    // Usb1 transfer complete
+                    Message::UsbTransferComplete(1, endpoint) => {
+                        self.handle_usb1_transfer_complete(endpoint)?;
+                        trace!("MachineExternal - USB1_EP_IN {}\n", endpoint);
                     }
 
                     // Usb1 received data on control endpoint
@@ -326,23 +332,17 @@ impl<'a> Firmware<'a> {
                         );
                     }
 
-                    // Usb1 transfer complete
-                    Message::UsbTransferComplete(1, endpoint) => {
-                        self.handle_usb1_transfer_complete(endpoint)?;
-                        trace!("MachineExternal - USB1_EP_IN {}\n", endpoint);
-                    }
-
                     // - usb0 message handlers --
-
-                    // Usb0 received bus reset
-                    Message::UsbBusReset(0) => {
-                        //self.greatdancer.handle_usb_bus_reset()?;
-                        //trace!("MachineExternal - USB0\n");
-                    }
 
                     // Usb0 received setup packet
                     Message::UsbReceiveSetupPacket(0, packet) => {
                         self.greatdancer.handle_usb_receive_setup_packet(packet)?;
+                    }
+
+                    // Usb0 transfer complete
+                    Message::UsbTransferComplete(0, endpoint) => {
+                        self.greatdancer.handle_usb_transfer_complete(endpoint)?;
+                        trace!("MachineExternal - USB0_EP_IN {}\n", endpoint);
                     }
 
                     // Usb0 received data on control endpoint
@@ -363,16 +363,13 @@ impl<'a> Firmware<'a> {
                         );
                     }
 
-                    // Usb0 transfer complete
-                    Message::UsbTransferComplete(0, endpoint) => {
-                        self.greatdancer.handle_usb_transfer_complete(endpoint)?;
-                        trace!("MachineExternal - USB0_EP_IN {}\n", endpoint);
-                    }
-
                     // Error Message
                     Message::ErrorMessage(message) => {
-                        error!("MachineExternal - {}\n", message);
+                        error!("MachineExternal Error - {}\n", message);
                     }
+
+                    // Timer
+                    Message::TimerEvent(_n) => {}
 
                     // Unhandled message
                     _ => {
@@ -380,11 +377,6 @@ impl<'a> Firmware<'a> {
                     }
                 }
             }
-            if queue_length > 5 {
-                info!("queue_length: {}", queue_length);
-            }
-            // leds: end dequeue
-            self.leds.output.write(|w| unsafe { w.output().bits(1 << 2) });
         }
 
         #[allow(unreachable_code)] // TODO
@@ -401,11 +393,6 @@ impl<'a> Firmware<'a> {
 
         // enable all usb events
         self.usb1.hal_driver.enable_interrupts();
-    }
-
-    fn handle_usb1_bus_reset(&mut self) -> GreatResult<()> {
-        self.usb1.reset();
-        Ok(())
     }
 
     fn handle_usb1_receive_setup_packet(&mut self, setup_packet: SetupPacket) -> GreatResult<()> {
@@ -426,7 +413,7 @@ impl<'a> Firmware<'a> {
                 self.usb1.hal_driver.write(0, [0].into_iter());
             }
             _ => match self.usb1.handle_setup_request(&setup_packet) {
-                Ok(()) => debug!("OK\n"),
+                Ok(()) => (),
                 Err(e) => {
                     error!("  handle_setup_request: {:?}: {:?}", e, setup_packet);
                     panic!("  handle_setup_request: {:?}: {:?}", e, setup_packet)
@@ -443,9 +430,13 @@ impl<'a> Firmware<'a> {
         let request_value = VendorRequestValue::from(setup_packet.value);
         let length = setup_packet.length as usize;
 
-        debug!(
-            "  gcp: CYNTHION vendor_request: {:?} dir:{:?} value:{:?} length:{} index:{}",
-            request, direction, request_value, length, setup_packet.index
+        trace!(
+            "GCP  vendor_request: {:?} dir:{:?} value:{:?} length:{} index:{}",
+            request,
+            direction,
+            request_value,
+            length,
+            setup_packet.index
         );
 
         match (&direction, &request, &request_value) {
@@ -456,9 +447,9 @@ impl<'a> Firmware<'a> {
                 VendorRequestValue::Start,
             ) => {
                 self.usb1.hal_driver.ack_status_stage(setup_packet);
-                debug!("ORDER: #1");
-                debug!("  gcp: TODO state = Command::Begin");
-                //debug!("  gcp: ack {}", length);
+                trace!("ORDER: #1");
+                trace!("GCP   TODO state = Command::Begin");
+                //trace!("GCP   ack {}", length);
             }
 
             // host is ready to receive a response
@@ -467,25 +458,22 @@ impl<'a> Firmware<'a> {
                 VendorRequest::UsbCommandRequest,
                 VendorRequestValue::Start,
             ) => {
-                debug!("ORDER: #3");
-                debug!("  gcp: TODO state = Command::Send");
+                trace!("ORDER: #3");
+                trace!("GCP   TODO state = Command::Send");
                 // do we have a response ready? should we wait if we don't?
                 if let Some(response) = &mut self.active_response {
                     // send it
-                    debug!(
-                        "  gcp: sending command response of {} bytes",
-                        response.len()
-                    );
+                    trace!("GCP   sending command response of {} bytes", response.len());
                     self.usb1
                         .hal_driver
                         .write(0, response.take(setup_packet.length as usize));
                     self.active_response = None;
                 } else {
                     // TODO something has gone wrong
-                    error!("  gcp: stall: gcp response requested but no response queued");
+                    error!("GCP   stall: gcp response requested but no response queued");
                     self.usb1.hal_driver.stall_request();
                 }
-                debug!("ORDER: fin");
+                trace!("ORDER: fin");
             }
 
             // host would like to abort the current command sequence
@@ -505,15 +493,15 @@ impl<'a> Firmware<'a> {
                 //self.usb1.hal_driver.stall_request();
 
                 // TODO cancel
-                debug!("  gcp: TODO state = Command::Cancel");
+                trace!("GCP   TODO state = Command::Cancel");
                 debug!(
-                    "  gcp: TODO cancel cynthion vendor request sequence: {}",
+                    "GCP   TODO cancel cynthion vendor request sequence: {}",
                     length
                 );
             }
             _ => {
                 error!(
-                    "  gcp: stall: unknown vendor request and/or value: {:?} {:?} {:?}",
+                    "GCP   stall: unknown vendor request and/or value: {:?} {:?} {:?}",
                     direction, request, request_value
                 );
                 self.usb1.hal_driver.stall_request();
@@ -530,22 +518,22 @@ impl<'a> Firmware<'a> {
     ) -> GreatResult<()> {
         // TODO state == Command::Send
 
-        debug!(
-            "  gcp: Received {} bytes on usb1 control endpoint: {:?}",
+        trace!(
+            "GCP   Received {} bytes on usb1 control endpoint: {:?}",
             bytes_read,
             &buffer[0..bytes_read]
         );
 
         if bytes_read < 8 {
             // short read
-            //warn!("  gcp: short read of {} bytes\n", bytes_read);
+            //warn!("GCP   short read of {} bytes\n", bytes_read);
             return Ok(());
         }
 
         // parse & dispatch command
         if let Some(command) = gcp::Command::parse(&buffer[0..bytes_read]) {
-            debug!("ORDER: #2");
-            debug!("  gcp: dispatching command: {:?}", command);
+            trace!("ORDER: #2");
+            trace!("GCP   dispatching command: {:?}", command);
             // let response = self.classes.dispatch(command, &self.some_state);
             let response_buffer: [u8; GCP_MAX_RESPONSE_LENGTH] = [0; GCP_MAX_RESPONSE_LENGTH];
             let response = self.dispatch_gcp_command(
@@ -560,17 +548,17 @@ impl<'a> Firmware<'a> {
                     // NEXT so what's happening with greatfet info is that we queue
                     //      the response but the host errors out before we get the
                     //      vendor_request telling us we can send it ???
-                    debug!("  gcp: queueing next response");
+                    trace!("GCP   queueing next response");
                     self.active_response = Some(response);
                     //self.usb1.hal_driver.ep_out_prime_receive(0);
                     //self.usb1.hal_driver.write(0, [].into_iter());
                 }
                 Err(e) => {
-                    error!("  gcp: stall: failed to dispatch command {}", e);
+                    error!("GCP   stall: failed to dispatch command {}", e);
                     self.usb1.hal_driver.stall_request();
                 }
             }
-            debug!("\n");
+            trace!("\n");
         }
         Ok(())
     }

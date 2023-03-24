@@ -104,10 +104,11 @@ macro_rules! impl_timer {
                 /// Check if the interrupt flag is pending
                 pub fn is_pending(&self) -> bool {
                     self.registers.ev_pending.read().pending().bit_is_set()
+                    //$crate::pac::csr::interrupt::pending($crate::pac::Interrupt::TIMER)
                 }
 
                 /// Clear the interrupt flag
-                pub fn clear_pending(&mut self) {
+                pub fn clear_pending(&self) {
                     let pending = self.registers.ev_pending.read().pending().bit();
                     self.registers.ev_pending.write(|w| w.pending().bit(pending));
                 }

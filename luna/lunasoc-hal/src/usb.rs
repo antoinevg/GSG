@@ -254,6 +254,37 @@ macro_rules! impl_usb {
                     speed
                 }
 
+                fn bus_reset(&self) -> u8 {
+                    // disable events
+                    self.ep_control.ev_enable.write(|w| w.enable().bit(false));
+                    self.ep_in.ev_enable.write(|w| w.enable().bit(false));
+                    self.ep_out.ev_enable.write(|w| w.enable().bit(false));
+
+                    // reset device address to 0
+                    self.ep_control.address.write(|w| unsafe { w.address().bits(0) });
+                    self.ep_out.address.write(|w| unsafe { w.address().bits(0) });
+
+                    // reset fifo handlers
+                    self.ep_control.reset.write(|w| w.reset().bit(true));
+                    self.ep_in.reset.write(|w| w.reset().bit(true));
+                    self.ep_out.reset.write(|w| w.reset().bit(true));
+
+                    // enable events
+                    self.controller.ev_pending.write(|w| w.pending().bit(true));
+                    self.ep_control.ev_pending.write(|w| w.pending().bit(true));
+                    self.ep_in.ev_pending.write(|w| w.pending().bit(true));
+                    self.ep_out.ev_pending.write(|w| w.pending().bit(true));
+                    self.ep_control.ev_enable.write(|w| w.enable().bit(true));
+                    self.ep_in.ev_enable.write(|w| w.enable().bit(true));
+                    self.ep_out.ev_enable.write(|w| w.enable().bit(true));
+                    self.controller.ev_enable.write(|w| w.enable().bit(true));
+
+                    // 0: High, 1: Full, 2: Low, 3:SuperSpeed (incl SuperSpeed+)
+                    let speed = self.controller.speed.read().speed().bits();
+                    trace!("UsbInterface0::reset() -> {}", speed);
+                    speed
+                }
+
                 /// Acknowledge the status stage of an incoming control request.
                 fn ack_status_stage(&self, packet: &SetupPacket) {
                     match Direction::from(packet.request_type) {
