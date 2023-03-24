@@ -248,7 +248,6 @@ macro_rules! impl_usb {
 
                     self.enable_interrupts();
 
-                    // TODO handle speed
                     // 0: High, 1: Full, 2: Low, 3:SuperSpeed (incl SuperSpeed+)
                     let speed = self.controller.speed.read().speed().bits();
                     trace!("UsbInterface0::reset() -> {}", speed);

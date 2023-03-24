@@ -30,7 +30,7 @@ pub fn init(writer: hal::Serial) {
 
     #[cfg(not(target_has_atomic))]
     unsafe { log::set_logger_racy(&LOGGER) }
-        .map(|()| log::set_max_level(LevelFilter::Trace))
+        .map(|()| log::set_max_level(LevelFilter::Debug))
         .expect("panic setting logger");
 }
 

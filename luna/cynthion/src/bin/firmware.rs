@@ -51,8 +51,18 @@ fn MachineExternal() {
     // USB1 UsbBusReset
     let message = if usb1.is_pending(pac::Interrupt::USB1) {
         usb1.clear_pending(pac::Interrupt::USB1);
+        usb1.reset();
 
         Message::UsbBusReset(1)
+
+    // USB1_EP_OUT UsbReceiveData
+    } else if usb1.is_pending(pac::Interrupt::USB1_EP_OUT) {
+        let endpoint = usb1.ep_out.data_ep.read().bits() as u8;
+        let mut buffer = [0_u8; cynthion::EP_MAX_RECEIVE_LENGTH];
+        let bytes_read = usb1.read(endpoint, &mut buffer);
+        usb1.clear_pending(pac::Interrupt::USB1_EP_OUT);
+
+        Message::UsbReceiveData(1, endpoint, bytes_read, buffer)
 
     // USB1_EP_CONTROL UsbReceiveSetupPacket
     } else if usb1.is_pending(pac::Interrupt::USB1_EP_CONTROL) {
@@ -69,19 +79,10 @@ fn MachineExternal() {
             }
         }
 
-    // USB1_EP_OUT UsbReceiveData
-    } else if usb1.is_pending(pac::Interrupt::USB1_EP_OUT) {
-        let endpoint = usb1.ep_out.data_ep.read().bits() as u8;
-        let mut buffer = [0_u8; cynthion::EP_MAX_RECEIVE_LENGTH];
-        let bytes_read = usb1.read(endpoint, &mut buffer);
-        usb1.clear_pending(pac::Interrupt::USB1_EP_OUT);
-
-        Message::UsbReceiveData(1, endpoint, bytes_read, buffer)
-
     // USB1_EP_IN UsbTransferComplete
     } else if usb1.is_pending(pac::Interrupt::USB1_EP_IN) {
-        usb1.clear_pending(pac::Interrupt::USB1_EP_IN);
         let endpoint = usb1.ep_in.epno.read().bits() as u8;
+        usb1.clear_pending(pac::Interrupt::USB1_EP_IN);
 
         Message::UsbTransferComplete(1, endpoint)
 
@@ -90,8 +91,18 @@ fn MachineExternal() {
     // USB0 UsbBusReset
     } else if usb0.is_pending(pac::Interrupt::USB0) {
         usb0.clear_pending(pac::Interrupt::USB0);
+        usb0.reset();
 
         Message::UsbBusReset(0)
+
+    // USB0_EP_OUT UsbReceiveData
+    } else if usb0.is_pending(pac::Interrupt::USB0_EP_OUT) {
+        let endpoint = usb0.ep_out.data_ep.read().bits() as u8;
+        let mut buffer = [0_u8; cynthion::EP_MAX_RECEIVE_LENGTH];
+        let bytes_read = usb0.read(endpoint, &mut buffer);
+        usb0.clear_pending(pac::Interrupt::USB0_EP_OUT);
+
+        Message::UsbReceiveData(0, endpoint, bytes_read, buffer)
 
     // USB0_EP_CONTROL UsbReceiveSetupPacket
     } else if usb0.is_pending(pac::Interrupt::USB0_EP_CONTROL) {
@@ -108,19 +119,10 @@ fn MachineExternal() {
             }
         }
 
-    // USB0_EP_OUT UsbReceiveData
-    } else if usb0.is_pending(pac::Interrupt::USB0_EP_OUT) {
-        let endpoint = usb0.ep_out.data_ep.read().bits() as u8;
-        let mut buffer = [0_u8; cynthion::EP_MAX_RECEIVE_LENGTH];
-        let bytes_read = usb0.read(endpoint, &mut buffer);
-        usb0.clear_pending(pac::Interrupt::USB0_EP_OUT);
-
-        Message::UsbReceiveData(0, endpoint, bytes_read, buffer)
-
     // USB0_EP_IN UsbTransferComplete
     } else if usb0.is_pending(pac::Interrupt::USB0_EP_IN) {
-        usb0.clear_pending(pac::Interrupt::USB0_EP_IN);
         let endpoint = usb0.ep_in.epno.read().bits() as u8;
+        usb0.clear_pending(pac::Interrupt::USB0_EP_IN);
 
         Message::UsbTransferComplete(0, endpoint)
 
@@ -130,10 +132,18 @@ fn MachineExternal() {
     };
 
     //unsafe { riscv::register::mie::clear_mext() };
+    // leds: start enqueue
+    //let leds = peripherals.LEDS;
+    //leds.output.write(|w| unsafe { w.output().bits(1 << 5) });
     match MESSAGE_QUEUE.enqueue(message) {
         Ok(()) => (),
-        Err(_) => error!("MachineExternal - message queue overflow"),
+        Err(_) => {
+            error!("MachineExternal - message queue overflow");
+            panic!("MachineExternal - message queue overflow");
+        },
     }
+    // leds: end enqueue
+    //leds.output.write(|w| unsafe { w.output().bits(1 << 4) });
     //unsafe { riscv::register::mie::set_mext() };
 }
 
@@ -244,8 +254,8 @@ impl<'a> Firmware<'a> {
             .write(|w| unsafe { w.output().bits(1 << 2) });
 
         // connect usb1
-        let speed = self.usb1.hal_driver.connect();
-        debug!("Connected usb1 device: {:?}", Speed::from(speed));
+        let speed = self.usb1.connect();
+        debug!("Connected usb1 device: {:?}", speed);
 
         // enable interrupts
         unsafe {
@@ -269,20 +279,30 @@ impl<'a> Firmware<'a> {
 
     #[inline(always)]
     fn main_loop(&'a mut self) -> GreatResult<()> {
-        // leds: main loop
-        self.leds
-            .output
-            .write(|w| unsafe { w.output().bits(1 << 0) });
-
         loop {
+            // leds: start dequeue
+            self.leds.output.write(|w| unsafe { w.output().bits(1 << 4) });
+
+            let mut queue_length = 0;
+
+            //unsafe { riscv::register::mie::clear_mext() };
+            //let message = MESSAGE_QUEUE.dequeue();
+            //unsafe { riscv::register::mie::set_mext() };
+            //if let Some(message) = message {
+
             while let Some(message) = MESSAGE_QUEUE.dequeue() {
+                debug!("MachineExternal: {:?}", message);
+                queue_length += 1;
+                // leds: got dequeue
+                self.leds.output.write(|w| unsafe { w.output().bits(1 << 3) });
+
                 match message {
                     // - usb1 message handlers --
 
                     // Usb1 received bus reset
                     Message::UsbBusReset(1) => {
-                        self.handle_usb1_bus_reset()?;
-                        trace!("MachineExternal - USB1\n");
+                        //self.handle_usb1_bus_reset()?;
+                        //trace!("MachineExternal - USB1\n");
                     }
 
                     // Usb1 received setup packet
@@ -316,8 +336,8 @@ impl<'a> Firmware<'a> {
 
                     // Usb0 received bus reset
                     Message::UsbBusReset(0) => {
-                        self.greatdancer.handle_usb_bus_reset()?;
-                        trace!("MachineExternal - USB0\n");
+                        //self.greatdancer.handle_usb_bus_reset()?;
+                        //trace!("MachineExternal - USB0\n");
                     }
 
                     // Usb0 received setup packet
@@ -360,6 +380,11 @@ impl<'a> Firmware<'a> {
                     }
                 }
             }
+            if queue_length > 5 {
+                info!("queue_length: {}", queue_length);
+            }
+            // leds: end dequeue
+            self.leds.output.write(|w| unsafe { w.output().bits(1 << 2) });
         }
 
         #[allow(unreachable_code)] // TODO
@@ -513,7 +538,7 @@ impl<'a> Firmware<'a> {
 
         if bytes_read < 8 {
             // short read
-            warn!("  gcp: short read of {} bytes\n", bytes_read);
+            //warn!("  gcp: short read of {} bytes\n", bytes_read);
             return Ok(());
         }
 

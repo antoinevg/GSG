@@ -21,6 +21,8 @@ use core::cell::RefCell;
 /// USB Speed
 ///
 /// Note: These match the gateware peripheral so the mapping isn't particularly meaningful in other contexts.
+///
+/// TODO also, these don't match what I'm seeing from the host side ???
 #[derive(Debug, PartialEq)]
 #[repr(u8)]
 pub enum Speed {
@@ -143,13 +145,11 @@ where
     D: ControlRead + EndpointRead + EndpointWrite + EndpointWriteRef + UsbDriverOperations,
 {
     pub fn handle_setup_request(&self, setup_packet: &SetupPacket) -> SmolResult<()> {
-        debug!("# handle_setup_request()",);
-
         let request_type = setup_packet.request_type();
         let request = setup_packet.request();
 
         debug!(
-            "  SETUP {:?} {:?} {:?} {:?} value:{} index:{} length:{}",
+            "  SETUP {:?} {:?} {:?} {:?} val:{} idx:{} len:{}",
             setup_packet.recipient(),
             setup_packet.direction(),
             request_type,
@@ -219,7 +219,7 @@ where
         self.hal_driver.set_address(address);
         self.state.replace(DeviceState::Address.into());
 
-        debug!("  -> handle_set_address({})", address);
+        trace!("  -> handle_set_address({})", address);
 
         Ok(())
     }
@@ -304,7 +304,7 @@ where
 
         self.hal_driver.ack_status_stage(setup_packet);
 
-        debug!(
+        trace!(
             "  -> handle_get_descriptor({:?}({}), {}, {})",
             descriptor_type, descriptor_type_bits, descriptor_number, requested_length
         );
@@ -315,7 +315,7 @@ where
     fn handle_set_configuration(&self, setup_packet: &SetupPacket) -> SmolResult<()> {
         self.hal_driver.ack_status_stage(setup_packet);
 
-        debug!("  -> handle_set_configuration()");
+        trace!("  -> handle_set_configuration()");
 
         let configuration = setup_packet.value;
         if configuration > 1 {
@@ -329,7 +329,7 @@ where
     }
 
     fn handle_get_configuration(&self, setup_packet: &SetupPacket) -> SmolResult<()> {
-        debug!("  -> handle_get_configuration()");
+        trace!("  -> handle_get_configuration()");
 
         let requested_length = setup_packet.length as usize;
 
@@ -341,7 +341,7 @@ where
     }
 
     fn handle_clear_feature(&self, setup_packet: &SetupPacket) -> SmolResult<()> {
-        debug!("  -> handle_clear_feature()");
+        trace!("  -> handle_clear_feature()");
 
         // parse request
         let recipient = setup_packet.recipient();
@@ -362,7 +362,7 @@ where
             (Recipient::Endpoint, Feature::EndpointHalt) => {
                 let endpoint = setup_packet.index as u8;
                 self.hal_driver.stall_endpoint(endpoint, false);
-                //debug!("  clear stall: 0x{:x}", endpoint);
+                //trace!("  clear stall: 0x{:x}", endpoint);
             }
             _ => {
                 warn!(
@@ -378,7 +378,7 @@ where
     }
 
     fn handle_set_feature(&self, setup_packet: &SetupPacket) -> SmolResult<()> {
-        debug!("  -> handle_set_feature()");
+        trace!("  -> handle_set_feature()");
 
         // parse request
         let recipient = setup_packet.recipient();
@@ -399,7 +399,7 @@ where
             (Recipient::Endpoint, Feature::EndpointHalt) => {
                 let endpoint = setup_packet.index as u8;
                 self.hal_driver.stall_endpoint(endpoint, true);
-                debug!("  set stall: 0x{:x}", endpoint);
+                trace!("  set stall: 0x{:x}", endpoint);
             }
             _ => {
                 warn!(
