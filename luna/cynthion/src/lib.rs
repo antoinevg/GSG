@@ -46,6 +46,11 @@ pub enum Message {
     TimerEvent(usize),
 
     // usb events
+    /// Receives a USB bus reset
+    ///
+    /// Contents is (interface)
+    UsbBusReset(u8),
+
     /// Received a SETUP packet on USBx_EP_CONTROL
     ///
     /// Contents is (interface, setup_packet)
@@ -78,6 +83,9 @@ impl core::fmt::Debug for Message {
             Message::TimerEvent(n) => write!(f, "TimerEvent({})", n),
 
             // usb events
+            Message::UsbBusReset(interface) => {
+                write!(f, "UsbBusReset({})", interface)
+            }
             Message::UsbReceiveSetupPacket(interface, _setup_packet) => {
                 write!(f, "UsbReceiveSetupPacket({})", interface)
             }

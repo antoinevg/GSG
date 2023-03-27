@@ -230,6 +230,22 @@ macro_rules! impl_usb {
                     self.controller.speed.read().speed().bits()
                 }
 
+                fn disconnect(&self) {
+                    // disconnect device controller
+                    self.controller.connect.write(|w| w.connect().bit(false));
+
+                    // disable endpoint events
+                    self.disable_interrupt(Interrupt::$USBX_CONTROLLER);
+                    self.disable_interrupt(Interrupt::$USBX_EP_CONTROL);
+                    self.disable_interrupt(Interrupt::$USBX_EP_IN);
+                    self.disable_interrupt(Interrupt::$USBX_EP_OUT);
+
+                    // reset FIFOs
+                    self.ep_control.reset.write(|w| w.reset().bit(true));
+                    self.ep_in.reset.write(|w| w.reset().bit(true));
+                    self.ep_out.reset.write(|w| w.reset().bit(true));
+                }
+
                 fn reset(&self) -> u8 {
                     // disable endpoint events
                     self.disable_interrupt(Interrupt::$USBX_EP_CONTROL);
@@ -269,11 +285,13 @@ macro_rules! impl_usb {
                     self.ep_in.reset.write(|w| w.reset().bit(true));
                     self.ep_out.reset.write(|w| w.reset().bit(true));
 
-                    // enable events
+                    // clear any pending interrupts
                     self.controller.ev_pending.write(|w| w.pending().bit(true));
                     self.ep_control.ev_pending.write(|w| w.pending().bit(true));
                     self.ep_in.ev_pending.write(|w| w.pending().bit(true));
                     self.ep_out.ev_pending.write(|w| w.pending().bit(true));
+
+                    // re-enable events
                     self.ep_control.ev_enable.write(|w| w.enable().bit(true));
                     self.ep_in.ev_enable.write(|w| w.enable().bit(true));
                     self.ep_out.ev_enable.write(|w| w.enable().bit(true));

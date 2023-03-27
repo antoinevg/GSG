@@ -34,6 +34,8 @@ pub trait EndpointWriteRef {
 pub trait UsbDriverOperations {
     /// Connect
     fn connect(&self) -> u8;
+    /// Disconnect
+    fn disconnect(&self);
     /// Reset
     fn reset(&self) -> u8;
     /// Bus Reset

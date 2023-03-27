@@ -160,21 +160,80 @@ pub static VERBS: [Verb; 13] = [
     },
 ];
 
-// - Greatdancer --------------------------------------------------------------
+// - types --------------------------------------------------------------------
 
 // TODO unify with GCP_MAX_RESPONSE_LENGTH
 const MAX_PACKET_BUFFER_LENGTH: usize = 128;
 
+/// State
 #[derive(Default)]
 struct State {
     foo: u32,
 }
 
+/// QuirkFlags
+#[allow(non_snake_case, non_upper_case_globals)]
+pub mod QuirkFlag {
+    pub const SetAddressManually: u16 = 0x0001;
+}
+
+/// RegisterType for status requests
+#[derive(Debug)]
+#[repr(u8)]
+pub enum RegisterType {
+    UsbStatus = 0,
+    EndpointSetupStatus = 1,
+    EndpointComplete = 2,
+    EndpointStatus = 3,
+    EndpointNak = 4,
+}
+
+impl TryFrom<u8> for RegisterType {
+    type Error = GreatError;
+    fn try_from(value: u8) -> GreatResult<Self> {
+        use RegisterType::*;
+        match value {
+            0 => Ok(UsbStatus),
+            1 => Ok(EndpointSetupStatus),
+            2 => Ok(EndpointComplete),
+            3 => Ok(EndpointStatus),
+            4 => Ok(EndpointNak),
+            _ => Err(GreatError::InvalidArgument),
+        }
+    }
+}
+
+
+#[allow(non_snake_case, non_upper_case_globals)]
+pub mod UsbStatusFlag {
+    /// UI: USB interrupt
+    pub const USBSTS_D_UI: u32   = 1 << 0;
+    /// UEI: USB error interrupt
+    pub const USBSTS_D_UEI: u32  = 1 << 1;
+    /// PCI: Port change detect
+    pub const USBSTS_D_PCI: u32  = 1 << 2;
+    /// URI: USB reset received
+    pub const USBSTS_D_URI: u32  = 1 << 6;
+    /// SRRI: SOF received
+    pub const USBSTS_D_SRI: u32  = 1 << 7;
+    /// SLI: DCSuspend
+    pub const USBSTS_D_SLI: u32  = 1 << 8;
+    /// NAKI: NAK interrupt bit
+    pub const USBSTS_D_NAKI: u32 = 1 << 16;
+}
+
+
+
+// - Greatdancer --------------------------------------------------------------
+
+/// Greatdancer
 pub struct Greatdancer<'a> {
     usb0: UsbDevice<'a, hal::Usb0>,
     packet_buffer: [u8; MAX_PACKET_BUFFER_LENGTH],
     state: RefCell<State>,
-    _marker: core::marker::PhantomData<&'a ()>,
+    ep0_max_packet_size: u16,
+    quirk_flags: u16,
+    usb0_status_pending: u32,
 }
 
 impl<'a> Greatdancer<'a> {
@@ -183,7 +242,9 @@ impl<'a> Greatdancer<'a> {
             usb0,
             packet_buffer: [0; MAX_PACKET_BUFFER_LENGTH],
             state: State::default().into(),
-            _marker: core::marker::PhantomData,
+            ep0_max_packet_size: 0,
+            quirk_flags: 0,
+            usb0_status_pending: 0,
         }
     }
 
@@ -212,6 +273,8 @@ impl<'a> Greatdancer<'a> {
 
 impl<'a> Greatdancer<'a> {
     pub fn handle_usb_bus_reset(&mut self) -> GreatResult<()> {
+        self.usb0_status_pending |= UsbStatusFlag::USBSTS_D_URI; // URI: USB reset received
+        debug!("GD handle_usb_bus_reset() -> {}", self.usb0_status_pending);
         Ok(())
     }
 
@@ -219,6 +282,7 @@ impl<'a> Greatdancer<'a> {
         &mut self,
         setup_packet: SetupPacket,
     ) -> GreatResult<()> {
+        debug!("GD handle_usb_receive_setup_packet()");
         Ok(())
     }
 
@@ -227,6 +291,7 @@ impl<'a> Greatdancer<'a> {
         bytes_read: usize,
         buffer: [u8; crate::EP_MAX_RECEIVE_LENGTH],
     ) -> GreatResult<()> {
+        debug!("GD handle_usb_receive_control_data()");
         Ok(())
     }
 
@@ -236,10 +301,12 @@ impl<'a> Greatdancer<'a> {
         bytes_read: usize,
         buffer: [u8; crate::EP_MAX_RECEIVE_LENGTH],
     ) -> GreatResult<()> {
+        debug!("GD handle_usb_receive_data()");
         Ok(())
     }
 
     pub fn handle_usb_transfer_complete(&mut self, endpoint: u8) -> GreatResult<()> {
+        debug!("GD handle_usb_transfer_complete()");
         Ok(())
     }
 }
@@ -248,27 +315,41 @@ impl<'a> Greatdancer<'a> {
 
 impl<'a> Greatdancer<'a> {
     /// Connect the USB interface.
-    pub fn connect(&self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8> + 'a> {
+    pub fn connect(&mut self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8> + 'a> {
         #[repr(C)]
-        #[derive(FromBytes, Unaligned)]
+        #[derive(Debug, FromBytes, Unaligned)]
         struct Args {
             ep0_max_packet_size: U16<LittleEndian>,
             quirk_flags: U16<LittleEndian>,
         }
-        let _args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
-        let iter = [].into_iter();
-        Ok(iter)
+        let args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
+        debug!("GD connect({:?})", args);
+
+        self.ep0_max_packet_size = args.ep0_max_packet_size.into();
+        self.quirk_flags = args.quirk_flags.into();
+
+        let speed = self.usb0.connect();
+        debug!("GD connected usb0 device: {:?}", speed);
+
+        unsafe { self.enable_usb_interrupts() };
+
+        Ok([].into_iter())
     }
 
     /// Terminate all existing communication and disconnects the USB interface.
     pub fn disconnect(&self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8> + 'a> {
+        debug!("GD disconnect()");
+
+        self.usb0.disconnect();
+
         let iter = [].into_iter();
         Ok(iter)
     }
 
     /// Perform a USB bus reset.
     pub fn bus_reset(&self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8> + 'a> {
-        self.usb0.reset();
+        debug!("GD bus_reset()");
+        self.usb0.bus_reset();
         Ok([].into_iter())
     }
 }
@@ -278,12 +359,13 @@ impl<'a> Greatdancer<'a> {
 impl<'a> Greatdancer<'a> {
     pub fn set_address(&self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8> + 'a> {
         #[repr(C)]
-        #[derive(FromBytes, Unaligned)]
+        #[derive(Debug, FromBytes, Unaligned)]
         struct Args {
             address: u8,
             deferred: u8,
         }
-        let _args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
+        let args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
+        debug!("GD set_address({:?})", args);
         let iter = [].into_iter();
         Ok(iter)
     }
@@ -293,7 +375,7 @@ impl<'a> Greatdancer<'a> {
         arguments: &[u8],
     ) -> GreatResult<impl Iterator<Item = u8> + 'a> {
         #[repr(C)]
-        #[derive(FromBytes, Unaligned)]
+        #[derive(Debug, FromBytes, Unaligned)]
         struct ArgEndpoint {
             address: u8,
             max_packet_size: U16<LittleEndian>,
@@ -305,18 +387,19 @@ impl<'a> Greatdancer<'a> {
         while let Some((endpoint, next)) =
             zerocopy::LayoutVerified::<_, ArgEndpoint>::new_from_prefix(byte_slice)
         {
+            debug!("GD set_up_endpoint({:?})", endpoint);
             byte_slice = next;
 
             // endpoint zero is always the control endpoint, and can't be configured
             if endpoint.address & 0x7f == 0x00 {
-                warn!("greatdancer: ignoring request to reconfigure control endpoint");
+                warn!("GD ignoring request to reconfigure control endpoint");
                 continue;
             }
 
             // ignore endpoint configurations we won't be able to handle
             if endpoint.max_packet_size.get() as usize > self.packet_buffer.len() {
                 error!(
-                    "greatdancer: failed to setup endpoint with max packet size {} > {}",
+                    "GD failed to setup endpoint with max packet size {} > {}",
                     endpoint.max_packet_size,
                     self.packet_buffer.len()
                 );
@@ -345,15 +428,46 @@ impl<'a> Greatdancer<'a> {
     ///	3 = endpoint primed status (ENDPTSTATUS)
     ///
     ///	Always transmits a 4-byte word back to the host.
-    pub fn get_status(&self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8> + 'a> {
+    pub fn get_status(&mut self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8> + 'a> {
         #[repr(C)]
-        #[derive(FromBytes, Unaligned)]
+        #[derive(Debug, FromBytes, Unaligned)]
         struct Args {
             register_type: u8,
         }
-        let _args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
-        let iter = [].into_iter();
+        let args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
+        let register_type = RegisterType::try_from(args.register_type)?;
+
+        let status: u32 = match register_type {
+            RegisterType::UsbStatus => {
+                self.greatdancer_get_usb_status()
+            }
+            RegisterType::EndpointSetupStatus => {
+                0
+            }
+            RegisterType::EndpointComplete => {
+                0
+            }
+            RegisterType::EndpointStatus => {
+                0
+            }
+            RegisterType::EndpointNak => {
+                0
+            }
+        };
+
+        if status != 0 {
+            debug!("GD get_status(Args {{ register_type: {:?} }})", register_type);
+        }
+
+        let iter = status.to_le_bytes()
+            .into_iter();
         Ok(iter)
+    }
+
+    fn greatdancer_get_usb_status(&mut self) -> u32 {
+        let status_pending = self.usb0_status_pending;
+        self.usb0_status_pending = 0;
+        status_pending
     }
 
     /// Read a setup packet from the GreatDancer port and relays it to the host.
@@ -364,11 +478,12 @@ impl<'a> Greatdancer<'a> {
     /// is waiting, the results of this vendor request are unspecified.
     pub fn read_setup(&self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8> + 'a> {
         #[repr(C)]
-        #[derive(FromBytes, Unaligned)]
+        #[derive(Debug, FromBytes, Unaligned)]
         struct Args {
             endpoint_number: u8,
         }
-        let _args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
+        let args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
+        debug!("GD read_setup({:?})", args);
         let iter = [].into_iter();
         Ok(iter)
     }
@@ -376,11 +491,12 @@ impl<'a> Greatdancer<'a> {
     /// Temporarily stalls the given USB endpoint.
     pub fn stall_endpoint(&self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8> + 'a> {
         #[repr(C)]
-        #[derive(FromBytes, Unaligned)]
+        #[derive(Debug, FromBytes, Unaligned)]
         struct Args {
             endpoint_number: u8,
         }
-        let _args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
+        let args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
+        debug!("GD stall_endpoint({:?})", args);
         let iter = [].into_iter();
         Ok(iter)
     }
@@ -393,6 +509,7 @@ impl<'a> Greatdancer<'a> {
     ///
     /// The OUT request should contain a data stage containing all data to be sent.
     pub fn send_on_endpoint(&self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8> + 'a> {
+        #[derive(Debug)]
         struct Args<B: zerocopy::ByteSlice> {
             endpoint_number: zerocopy::LayoutVerified<B, u8>,
             data_to_send: B,
@@ -400,10 +517,11 @@ impl<'a> Greatdancer<'a> {
         let (endpoint_number, data_to_send) =
             zerocopy::LayoutVerified::new_unaligned_from_prefix(arguments)
                 .ok_or(GreatError::BadMessage)?;
-        let _args = Args {
+        let args = Args {
             endpoint_number,
             data_to_send,
         };
+        debug!("GD send_on_endpoint({:?})", args);
         let iter = [].into_iter();
         Ok(iter)
     }
@@ -415,11 +533,12 @@ impl<'a> Greatdancer<'a> {
         arguments: &[u8],
     ) -> GreatResult<impl Iterator<Item = u8> + 'a> {
         #[repr(C)]
-        #[derive(FromBytes, Unaligned)]
+        #[derive(Debug, FromBytes, Unaligned)]
         struct Args {
             endpoint_address: u8,
         }
         let args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
+        debug!("GD clean_up_transfer({:?})", args);
         let endpoint_number = args.endpoint_address & 0x7f;
 
         let iter = [].into_iter();
@@ -436,11 +555,12 @@ impl<'a> Greatdancer<'a> {
         arguments: &[u8],
     ) -> GreatResult<impl Iterator<Item = u8> + 'a> {
         #[repr(C)]
-        #[derive(FromBytes, Unaligned)]
+        #[derive(Debug, FromBytes, Unaligned)]
         struct Args {
             endpoint_number: u8,
         }
-        let _args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
+        let args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
+        debug!("GD start_nonblocking_read({:?})", args);
         let iter = [].into_iter();
         Ok(iter)
     }
@@ -455,11 +575,12 @@ impl<'a> Greatdancer<'a> {
         arguments: &[u8],
     ) -> GreatResult<impl Iterator<Item = u8> + 'a> {
         #[repr(C)]
-        #[derive(FromBytes, Unaligned)]
+        #[derive(Debug, FromBytes, Unaligned)]
         struct Args {
             endpoint_number: u8,
         }
-        let _args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
+        let args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
+        debug!("GD finish_nonblocking_read({:?})", args);
         let iter = [].into_iter();
         Ok(iter)
     }
@@ -477,11 +598,12 @@ impl<'a> Greatdancer<'a> {
         arguments: &[u8],
     ) -> GreatResult<impl Iterator<Item = u8> + 'a> {
         #[repr(C)]
-        #[derive(FromBytes, Unaligned)]
+        #[derive(Debug, FromBytes, Unaligned)]
         struct Args {
             endpoint_number: u8,
         }
-        let _args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
+        let args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
+        debug!("GD get_nonblocking_data_length({:?})", args);
         let iter = [].into_iter();
         Ok(iter)
     }

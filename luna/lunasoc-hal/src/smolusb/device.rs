@@ -136,8 +136,12 @@ impl<'a, D> UsbDevice<'a, D>
 where
     D: ControlRead + EndpointRead + EndpointWrite + EndpointWriteRef + UsbDriverOperations,
 {
-    pub fn connect(&mut self) -> Speed {
+    pub fn connect(&self) -> Speed {
         self.hal_driver.connect().into()
+    }
+
+    pub fn disconnect(&self) {
+        self.hal_driver.disconnect()
     }
 
     pub fn reset(&self) -> Speed {
@@ -188,7 +192,7 @@ where
                     cb(self, setup_packet, *request);
                 } else {
                     warn!(
-                        "   stall: unhandled class request {:?} {:?}",
+                        "SETUP stall: unhandled class request {:?} {:?}",
                         request_type, request
                     );
                     self.hal_driver.stall_request();
@@ -199,7 +203,7 @@ where
                     cb(self, setup_packet, *request);
                 } else {
                     warn!(
-                        "   stall: unhandled vendor request {:?} {:?}",
+                        "SETUP stall: unhandled vendor request {:?} {:?}",
                         request_type, request
                     );
                     self.hal_driver.stall_request();
@@ -207,7 +211,7 @@ where
             }
             _ => {
                 warn!(
-                    "   stall: unhandled request {:?} {:?}",
+                    "SETUP stall: unhandled request {:?} {:?}",
                     request_type, request
                 );
                 self.hal_driver.stall_request();
@@ -264,7 +268,7 @@ where
             Ok(descriptor_type) => descriptor_type,
             Err(e) => {
                 warn!(
-                    "   stall: invalid descriptor type: {} {}",
+                    "SETUP stall: invalid descriptor type: {} {}",
                     descriptor_type_bits, descriptor_number
                 );
                 self.hal_driver.stall_request();
@@ -289,7 +293,7 @@ where
                     self.hal_driver
                         .write_ref(0, descriptor.as_iter().take(requested_length));
                 } else {
-                    warn!("  stall: no device qualifier descriptor configured");
+                    warn!("SETUP stall: no device qualifier descriptor configured");
                     // TODO stall?
                 }
             }
@@ -298,7 +302,7 @@ where
                     self.hal_driver
                         .write_ref(0, descriptor.iter().take(requested_length));
                 } else {
-                    warn!("  stall: no other speed configuration descriptor configured");
+                    warn!("SETUP stall: no other speed configuration descriptor configured");
                     // TODO stall?
                 }
             }
@@ -312,7 +316,7 @@ where
                     if let Some(cb) = self.cb_string_request {
                         cb(self, setup_packet, index);
                     } else {
-                        warn!("   stall: unknown string descriptor {}", index);
+                        warn!("SETUP stall: unknown string descriptor {}", index);
                         self.hal_driver.stall_request();
                     }
                     return Ok(());
@@ -327,7 +331,7 @@ where
             }
             _ => {
                 warn!(
-                    "   stall: unhandled descriptor {:?}, {}",
+                    "SETUP stall: unhandled descriptor {:?}, {}",
                     descriptor_type, descriptor_number
                 );
                 self.hal_driver.stall_request();
@@ -338,7 +342,7 @@ where
         self.hal_driver.ack_status_stage(setup_packet);
 
         trace!(
-            "  -> handle_get_descriptor({:?}({}), {}, {})",
+            "SETUP handle_get_descriptor({:?}({}), {}, {})",
             descriptor_type,
             descriptor_type_bits,
             descriptor_number,
@@ -351,11 +355,11 @@ where
     fn handle_set_configuration(&self, setup_packet: &SetupPacket) -> SmolResult<()> {
         self.hal_driver.ack_status_stage(setup_packet);
 
-        trace!("  -> handle_set_configuration()");
+        trace!("SETUP handle_set_configuration()");
 
         let configuration = setup_packet.value;
         if configuration > 1 {
-            warn!("   stall: unknown configuration {}", configuration);
+            warn!("SETUP stall: unknown configuration {}", configuration);
             self.hal_driver.stall_request();
             return Ok(());
         }
@@ -365,7 +369,7 @@ where
     }
 
     fn handle_get_configuration(&self, setup_packet: &SetupPacket) -> SmolResult<()> {
-        trace!("  -> handle_get_configuration()");
+        trace!("SETUP handle_get_configuration()");
 
         let requested_length = setup_packet.length as usize;
 
@@ -377,7 +381,7 @@ where
     }
 
     fn handle_clear_feature(&self, setup_packet: &SetupPacket) -> SmolResult<()> {
-        trace!("  -> handle_clear_feature()");
+        trace!("SETUP handle_clear_feature()");
 
         // parse request
         let recipient = setup_packet.recipient();
@@ -385,7 +389,7 @@ where
         let feature = match Feature::try_from(feature_bits) {
             Ok(feature) => feature,
             Err(e) => {
-                warn!("   stall: invalid clear feature type: {}", feature_bits);
+                warn!("SETUP stall: invalid clear feature type: {}", feature_bits);
                 self.hal_driver.stall_request();
                 return Ok(());
             }
@@ -398,11 +402,11 @@ where
             (Recipient::Endpoint, Feature::EndpointHalt) => {
                 let endpoint = setup_packet.index as u8;
                 self.hal_driver.stall_endpoint(endpoint, false);
-                //trace!("  clear stall: 0x{:x}", endpoint);
+                trace!("SETUP clear stall: 0x{:x}", endpoint);
             }
             _ => {
                 warn!(
-                    "   stall: unhandled clear feature {:?}, {:?}",
+                    "SETUP stall: unhandled clear feature {:?}, {:?}",
                     recipient, feature
                 );
                 self.hal_driver.stall_request();
@@ -414,7 +418,7 @@ where
     }
 
     fn handle_set_feature(&self, setup_packet: &SetupPacket) -> SmolResult<()> {
-        trace!("  -> handle_set_feature()");
+        trace!("SETUP handle_set_feature()");
 
         // parse request
         let recipient = setup_packet.recipient();
@@ -422,7 +426,7 @@ where
         let feature = match Feature::try_from(feature_bits) {
             Ok(feature) => feature,
             Err(e) => {
-                warn!("   stall: invalid set feature type: {}", feature_bits);
+                warn!("SETUP stall: invalid set feature type: {}", feature_bits);
                 self.hal_driver.stall_request();
                 return Ok(());
             }
@@ -435,11 +439,11 @@ where
             (Recipient::Endpoint, Feature::EndpointHalt) => {
                 let endpoint = setup_packet.index as u8;
                 self.hal_driver.stall_endpoint(endpoint, true);
-                trace!("  set stall: 0x{:x}", endpoint);
+                trace!("SETUP set stall: 0x{:x}", endpoint);
             }
             _ => {
                 warn!(
-                    "   stall: unhandled set feature {:?}, {:?}",
+                    "SETUP stall: unhandled set feature {:?}, {:?}",
                     recipient, feature
                 );
                 self.hal_driver.stall_request();

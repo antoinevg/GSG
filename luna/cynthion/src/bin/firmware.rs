@@ -53,7 +53,7 @@ fn MachineExternal() {
     let message = if usb1.is_pending(pac::Interrupt::USB1) {
         usb1.clear_pending(pac::Interrupt::USB1);
         usb1.bus_reset();
-        return;
+        Message::UsbBusReset(1)
 
     // USB1_EP_CONTROL UsbReceiveSetupPacket
     } else if usb1.is_pending(pac::Interrupt::USB1_EP_CONTROL) {
@@ -91,8 +91,7 @@ fn MachineExternal() {
     // USB0 UsbBusReset
     } else if usb0.is_pending(pac::Interrupt::USB0) {
         usb0.clear_pending(pac::Interrupt::USB0);
-        usb0.bus_reset();
-        return;
+        Message::UsbBusReset(0)
 
     // USB0_EP_CONTROL UsbReceiveSetupPacket
     } else if usb0.is_pending(pac::Interrupt::USB0_EP_CONTROL) {
@@ -305,6 +304,11 @@ impl<'a> Firmware<'a> {
                 match message {
                     // - usb1 message handlers --
 
+                    // Usb1 received USB bus reset
+                    Message::UsbBusReset(1) => {
+                        // handled in MachineExternal
+                    }
+
                     // Usb1 received setup packet
                     Message::UsbReceiveSetupPacket(1, packet) => {
                         self.handle_usb1_receive_setup_packet(packet)?;
@@ -333,6 +337,11 @@ impl<'a> Firmware<'a> {
                     }
 
                     // - usb0 message handlers --
+
+                    // Usb0 received USB bus reset
+                    Message::UsbBusReset(0) => {
+                        self.greatdancer.handle_usb_bus_reset()?;
+                    }
 
                     // Usb0 received setup packet
                     Message::UsbReceiveSetupPacket(0, packet) => {
@@ -431,7 +440,7 @@ impl<'a> Firmware<'a> {
         let length = setup_packet.length as usize;
 
         trace!(
-            "GCP  vendor_request: {:?} dir:{:?} value:{:?} length:{} index:{}",
+            "GCP vendor_request: {:?} dir:{:?} value:{:?} length:{} index:{}",
             request,
             direction,
             request_value,
@@ -448,7 +457,7 @@ impl<'a> Firmware<'a> {
             ) => {
                 self.usb1.hal_driver.ack_status_stage(setup_packet);
                 trace!("ORDER: #1");
-                trace!("GCP   TODO state = Command::Begin");
+                trace!("GCP TODO state = Command::Begin");
                 //trace!("GCP   ack {}", length);
             }
 
@@ -459,18 +468,18 @@ impl<'a> Firmware<'a> {
                 VendorRequestValue::Start,
             ) => {
                 trace!("ORDER: #3");
-                trace!("GCP   TODO state = Command::Send");
+                trace!("GCP TODO state = Command::Send");
                 // do we have a response ready? should we wait if we don't?
                 if let Some(response) = &mut self.active_response {
                     // send it
-                    trace!("GCP   sending command response of {} bytes", response.len());
+                    trace!("GCP sending command response of {} bytes", response.len());
                     self.usb1
                         .hal_driver
                         .write(0, response.take(setup_packet.length as usize));
                     self.active_response = None;
                 } else {
                     // TODO something has gone wrong
-                    error!("GCP   stall: gcp response requested but no response queued");
+                    error!("GCP stall: gcp response requested but no response queued");
                     self.usb1.hal_driver.stall_request();
                 }
                 trace!("ORDER: fin");
@@ -493,15 +502,15 @@ impl<'a> Firmware<'a> {
                 //self.usb1.hal_driver.stall_request();
 
                 // TODO cancel
-                trace!("GCP   TODO state = Command::Cancel");
+                trace!("GCP TODO state = Command::Cancel");
                 debug!(
-                    "GCP   TODO cancel cynthion vendor request sequence: {}",
+                    "GCP TODO cancel cynthion vendor request sequence: {}",
                     length
                 );
             }
             _ => {
                 error!(
-                    "GCP   stall: unknown vendor request and/or value: {:?} {:?} {:?}",
+                    "GCP stall: unknown vendor request and/or value: {:?} {:?} {:?}",
                     direction, request, request_value
                 );
                 self.usb1.hal_driver.stall_request();
@@ -519,7 +528,7 @@ impl<'a> Firmware<'a> {
         // TODO state == Command::Send
 
         trace!(
-            "GCP   Received {} bytes on usb1 control endpoint: {:?}",
+            "GCP Received {} bytes on usb1 control endpoint: {:?}",
             bytes_read,
             &buffer[0..bytes_read]
         );
@@ -533,7 +542,7 @@ impl<'a> Firmware<'a> {
         // parse & dispatch command
         if let Some(command) = gcp::Command::parse(&buffer[0..bytes_read]) {
             trace!("ORDER: #2");
-            trace!("GCP   dispatching command: {:?}", command);
+            trace!("GCP dispatching command: {:?}", command);
             // let response = self.classes.dispatch(command, &self.some_state);
             let response_buffer: [u8; GCP_MAX_RESPONSE_LENGTH] = [0; GCP_MAX_RESPONSE_LENGTH];
             let response = self.dispatch_gcp_command(
@@ -548,13 +557,13 @@ impl<'a> Firmware<'a> {
                     // NEXT so what's happening with greatfet info is that we queue
                     //      the response but the host errors out before we get the
                     //      vendor_request telling us we can send it ???
-                    trace!("GCP   queueing next response");
+                    trace!("GCP queueing next response");
                     self.active_response = Some(response);
                     //self.usb1.hal_driver.ep_out_prime_receive(0);
                     //self.usb1.hal_driver.write(0, [].into_iter());
                 }
                 Err(e) => {
-                    error!("GCP   stall: failed to dispatch command {}", e);
+                    error!("GCP stall: failed to dispatch command {}", e);
                     self.usb1.hal_driver.stall_request();
                 }
             }
@@ -596,6 +605,9 @@ impl<'a> Firmware<'a> {
             }
             // class: greatdancer
             (gcp::ClassId::greatdancer, verb_id) => {
+                if verb_id != 5 {
+                    debug!("GCP {:?}.{} {:?}", class_id, verb_id, arguments);
+                }
                 self.greatdancer
                     .dispatch(verb_id, arguments, response_buffer)
             }
