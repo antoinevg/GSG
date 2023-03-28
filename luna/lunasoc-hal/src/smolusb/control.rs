@@ -22,8 +22,16 @@ impl TryFrom<[u8; 8]> for SetupPacket {
 
     fn try_from(buffer: [u8; 8]) -> core::result::Result<Self, Self::Error> {
         // Deserialize into a SetupRequest in the most cursed manner available to us
-        // TODO parse properly
+        // TODO do this properly
         Ok(unsafe { core::mem::transmute::<[u8; 8], SetupPacket>(buffer) })
+    }
+}
+
+impl SetupPacket {
+    pub fn as_bytes(setup_packet: SetupPacket) -> [u8; 8] {
+        // Serialize into bytes in the most cursed manner available to us
+        // TODO do this properly
+        unsafe { core::mem::transmute::<SetupPacket, [u8; 8]>(setup_packet) }
     }
 }
 

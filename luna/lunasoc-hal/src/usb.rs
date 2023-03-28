@@ -313,8 +313,8 @@ macro_rules! impl_usb {
                     }
                 }
 
-                fn ack(&self, endpoint: u8, packet: &SetupPacket) {
-                    match Direction::from(packet.request_type) {
+                fn ack(&self, endpoint: u8, direction: Direction) {
+                    match direction {
                         // If this is an IN request, read a zero-length packet (ZLP) from the host..
                         Direction::DeviceToHost => self.ep_out_prime_receive(endpoint),
                         // ... otherwise, send a ZLP.
