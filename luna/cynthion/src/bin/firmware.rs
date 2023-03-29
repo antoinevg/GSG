@@ -12,7 +12,8 @@ use smolusb::class::cynthion::vendor::{VendorRequest, VendorRequestValue};
 use smolusb::control::{Direction, RequestType, SetupPacket};
 use smolusb::device::{Speed, UsbDevice};
 use smolusb::traits::{
-    ControlRead, EndpointRead, EndpointWrite, EndpointWriteRef, UsbDriverOperations,
+    ControlRead, EndpointRead, EndpointWrite, EndpointWriteRef, UnsafeUsbDriverOperations,
+    UsbDriverOperations,
 };
 
 use libgreat::gcp::{self, iter_to_response, GcpResponse, GCP_MAX_RESPONSE_LENGTH};
@@ -70,9 +71,10 @@ fn MachineExternal() {
         usb1.clear_pending(pac::Interrupt::USB1_EP_IN);
         let endpoint = usb1.ep_in.epno.read().bits() as u8;
 
+        // TODO move tx_ack_active flag logic to hal_driver
         // TODO something a little bit safer would be nice
         unsafe {
-            smolusb::device::USB1_TX_ACK_ACTIVE = false;
+            usb1.clear_tx_ack_active();
         }
 
         Message::UsbTransferComplete(1, endpoint)
@@ -108,9 +110,10 @@ fn MachineExternal() {
         let endpoint = usb0.ep_in.epno.read().bits() as u8;
         usb0.clear_pending(pac::Interrupt::USB0_EP_IN);
 
+        // TODO move tx_ack_active flag logic to hal_driver
         // TODO something a little bit safer would be nice
         unsafe {
-            smolusb::device::USB0_TX_ACK_ACTIVE = false;
+            usb0.clear_tx_ack_active();
         }
 
         Message::UsbTransferComplete(0, endpoint)
@@ -605,9 +608,6 @@ impl<'a> Firmware<'a> {
             }
             // class: greatdancer
             (gcp::ClassId::greatdancer, verb_id) => {
-                if verb_id != 5 {
-                    debug!("GCP {:?}.{} {:?}", class_id, verb_id, arguments);
-                }
                 self.greatdancer
                     .dispatch(verb_id, arguments, response_buffer)
             }

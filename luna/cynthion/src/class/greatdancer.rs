@@ -7,7 +7,8 @@ use hal::smolusb;
 use smolusb::control::{Direction, RequestType, SetupPacket};
 use smolusb::device::{Speed, UsbDevice};
 use smolusb::traits::{
-    ControlRead, EndpointRead, EndpointWrite, EndpointWriteRef, UsbDriverOperations,
+    ControlRead, EndpointRead, EndpointWrite, EndpointWriteRef, UnsafeUsbDriverOperations,
+    UsbDriverOperations,
 };
 
 use libgreat::error::{GreatError, GreatResult};
@@ -204,33 +205,14 @@ const NUM_ENDPOINTS: usize = 2;
 type ReceiveBuffer = [u8; crate::EP_MAX_RECEIVE_LENGTH];
 
 /// State
-#[derive(Debug)]
 struct State {
     usb0_status_pending: u32,
+    // DeviceToHost has finished
     usb0_endpoint_complete_pending: u32,
     setup_packet: Option<SetupPacket>,
     receive_buffers: [ReceiveBuffer; NUM_ENDPOINTS],
     bytes_read: [usize; NUM_ENDPOINTS],
 }
-
-/*impl core::fmt::Debug for Status {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        write!(f, "Status")
-        write!(
-            f,
-            "Status {{ \
-             usb0_status_pending: {} \
-             usb0_endpoint_complete_pending: {} \
-             setup_packet: {:?} \
-             bytes_read: {:?} \
-             }}",
-            self.usb0_status_pending,
-            self.usb0_endpoint_complete_pending,
-            self.setup_packet,
-            self.bytes_read
-        )
-    }
-}*/
 
 impl Default for State {
     fn default() -> Self {
@@ -245,7 +227,7 @@ impl Default for State {
 }
 
 impl State {
-    pub fn get(&mut self, register_type: RegisterType) -> u32 {
+    pub fn get(&mut self, register_type: &RegisterType) -> u32 {
         let status: u32 = match register_type {
             RegisterType::UsbStatus => self.get_usb_status(),
             RegisterType::EndpointSetupStatus => self.get_endpoint_setup_status(),
@@ -253,25 +235,19 @@ impl State {
             RegisterType::EndpointStatus => self.get_endpoint_status(),
             RegisterType::EndpointNak => self.get_endpoint_nak(),
         };
-
-        if status != 0 {
-            debug!(
-                "GD get_status(Args {{ register_type: {:?} }}) -> {:#034b} -> 0x{:x}",
-                register_type, status, status
-            );
-        }
-
         status
     }
 }
 
 impl State {
+    // 0x0
     fn get_usb_status(&mut self) -> u32 {
         let status_pending = self.usb0_status_pending;
         self.usb0_status_pending = 0;
         status_pending
     }
 
+    // 0x1
     fn get_endpoint_setup_status(&mut self) -> u32 {
         match self.setup_packet.is_some() {
             true => 1,
@@ -279,12 +255,16 @@ impl State {
         }
     }
 
+    // 0x2 - is there data ready to send to host?
+    // called after start_non_blocking_read, returning 1
+    // finish_nonblock_read is called after
     fn get_endpoint_complete(&mut self) -> u32 {
         let endpoint_complete = self.usb0_endpoint_complete_pending;
         self.usb0_endpoint_complete_pending = 0;
         endpoint_complete
     }
 
+    // 0x3
     // aka usb_endpoint_is_ready - which queries the GreatFET for a
     // bitmap describing the endpoints that are not currently primed,
     // and thus ready to be primed again
@@ -292,6 +272,7 @@ impl State {
         0 // TODO ???
     }
 
+    // 0x4
     fn get_endpoint_nak(&mut self) -> u32 {
         0
     }
@@ -363,7 +344,7 @@ impl<'a> Greatdancer<'a> {
 impl<'a> Greatdancer<'a> {
     pub fn handle_usb_bus_reset(&mut self) -> GreatResult<()> {
         self.state.usb0_status_pending |= UsbStatusFlag::USBSTS_D_URI; // URI: USB reset received
-        debug!("GD handle_usb_bus_reset()");
+        debug!("GD => IRQ handle_usb_bus_reset()");
         Ok(())
     }
 
@@ -371,18 +352,20 @@ impl<'a> Greatdancer<'a> {
         &mut self,
         setup_packet: SetupPacket,
     ) -> GreatResult<()> {
+        debug!(
+            "GD => IRQ handle_usb_receive_setup_packet({:?})",
+            setup_packet
+        );
+
         // TODO not sure yet whether this will be a problem in practice
-        /*if self.status.setup_packet.is_some() {
-            error!(
-                "GD handle_usb_receive_setup_packet() queued setup packet has not yet been transmitted"
-            );
-            return Err(GreatError::DeviceOrResourceBusy);
-        }*/
+        if self.state.setup_packet.is_some() {
+            error!("GD =>     queued setup packet has not yet been transmitted");
+            //return Err(GreatError::DeviceOrResourceBusy);
+        }
 
         self.state.setup_packet = Some(setup_packet);
         self.state.usb0_status_pending |= UsbStatusFlag::USBSTS_D_UI; // UI: USB interrupt
 
-        debug!("GD handle_usb_receive_setup_packet()");
         Ok(())
     }
 
@@ -391,11 +374,15 @@ impl<'a> Greatdancer<'a> {
         bytes_read: usize,
         buffer: [u8; crate::EP_MAX_RECEIVE_LENGTH],
     ) -> GreatResult<()> {
+        debug!(
+            "GD => IRQ handle_usb_receive_control_data({}, {:?})",
+            bytes_read,
+            &buffer[0..bytes_read]
+        );
         // TODO if endpoint > NUM_ENDPOINTS
         self.state.bytes_read[0] = bytes_read;
         self.state.receive_buffers[0] = buffer;
         self.state.usb0_status_pending |= UsbStatusFlag::USBSTS_D_UI; // UI: USB interrupt
-        debug!("GD handle_usb_receive_control_data()");
         Ok(())
     }
 
@@ -405,17 +392,21 @@ impl<'a> Greatdancer<'a> {
         bytes_read: usize,
         buffer: [u8; crate::EP_MAX_RECEIVE_LENGTH],
     ) -> GreatResult<()> {
+        debug!(
+            "GD => IRQ handle_usb_receive_data({}, {:?})",
+            bytes_read,
+            &buffer[0..bytes_read]
+        );
         // TODO if endpoint > NUM_ENDPOINTS
         self.state.bytes_read[endpoint as usize] = bytes_read;
         self.state.receive_buffers[endpoint as usize] = buffer;
         self.state.usb0_status_pending |= UsbStatusFlag::USBSTS_D_UI; // UI: USB interrupt
-        debug!("GD handle_usb_receive_data()");
         Ok(())
     }
 
     pub fn handle_usb_transfer_complete(&mut self, endpoint: u8) -> GreatResult<()> {
+        debug!("GD => IRQ handle_usb_transfer_complete({})", endpoint);
         self.state.usb0_endpoint_complete_pending |= 1 << endpoint;
-        debug!("GD handle_usb_transfer_complete()");
         Ok(())
     }
 }
@@ -432,7 +423,6 @@ impl<'a> Greatdancer<'a> {
             quirk_flags: U16<LittleEndian>,
         }
         let args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
-        debug!("GD connect({:?})", args);
 
         self.ep0_max_packet_size = args.ep0_max_packet_size.into();
         self.quirk_flags = args.quirk_flags.into();
@@ -440,7 +430,7 @@ impl<'a> Greatdancer<'a> {
         self.state = State::default();
 
         let speed = self.usb0.connect();
-        debug!("GD connected usb0 device: {:?}", speed);
+        debug!("GD Greatdancer::connect({:?}) -> {:?}", args, speed);
 
         unsafe { self.enable_usb_interrupts() };
 
@@ -449,7 +439,7 @@ impl<'a> Greatdancer<'a> {
 
     /// Terminate all existing communication and disconnects the USB interface.
     pub fn disconnect(&mut self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8> + 'a> {
-        debug!("GD disconnect()");
+        debug!("GD Greatdancer::disconnect()");
 
         self.state = State::default();
         self.usb0.disconnect();
@@ -460,7 +450,7 @@ impl<'a> Greatdancer<'a> {
 
     /// Perform a USB bus reset.
     pub fn bus_reset(&mut self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8> + 'a> {
-        debug!("GD bus_reset()");
+        debug!("GD Greatdancer::bus_reset()");
         self.state = State::default();
         self.usb0.bus_reset();
         Ok([].into_iter())
@@ -470,6 +460,7 @@ impl<'a> Greatdancer<'a> {
 // - verb implementations: enumeration / setup --------------------------------
 
 impl<'a> Greatdancer<'a> {
+    // TODO move tx_ack_active flag logic to hal_driver
     pub fn set_address(&self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8> + 'a> {
         #[repr(C)]
         #[derive(Debug, FromBytes, Unaligned)]
@@ -479,6 +470,29 @@ impl<'a> Greatdancer<'a> {
         }
         let args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
         debug!("GD Greatdancer::set_address({:?})", args);
+
+        // set tx_ack_active flag
+        // TODO a slighty safer approach would be nice
+        unsafe {
+            self.usb0.hal_driver.set_tx_ack_active();
+        }
+
+        // respond with ack status first before changing device address
+        self.usb0.hal_driver.ack(0, Direction::HostToDevice);
+
+        // wait for the response packet to get sent
+        // TODO a slightly safer approach would be nice
+        loop {
+            let active = unsafe { self.usb0.hal_driver.is_tx_ack_active() };
+            if active == false {
+                break;
+            }
+        }
+
+        // activate new address
+        let address = args.address & 0x7f;
+        self.usb0.hal_driver.set_address(address);
+
         let iter = [].into_iter();
         Ok(iter)
     }
@@ -540,7 +554,7 @@ impl<'a> Greatdancer<'a> {
     ///	2 = endpoint completion status (ENDPTCOMPLETE)
     ///	3 = endpoint primed status (ENDPTSTATUS)
     ///
-    ///	Always transmits a 4-byte word back to the host.
+    ///	Returns: register_value: u32
     pub fn get_status(&mut self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8> + 'a> {
         #[repr(C)]
         #[derive(Debug, FromBytes, Unaligned)]
@@ -549,8 +563,28 @@ impl<'a> Greatdancer<'a> {
         }
         let args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
         let register_type = RegisterType::try_from(args.register_type)?;
-        let status = self.state.get(register_type);
-        let iter = status.to_le_bytes().into_iter();
+        let register_value = self.state.get(&register_type);
+
+        static mut LAST_TYPE: u8 = 0;
+        static mut LAST_VALUE: u32 = 0;
+
+        let mut is_repeat = false;
+        unsafe {
+            if args.register_type == LAST_TYPE && register_value == LAST_VALUE {
+                is_repeat = true;
+            }
+            LAST_TYPE = args.register_type;
+            LAST_VALUE = register_value;
+        }
+
+        if !is_repeat {
+            debug!(
+                "GD Greatdancer::get_status(Args {{ register_type: {:?} }}) -> 0x{:x}",
+                register_type, register_value
+            );
+        }
+
+        let iter = register_value.to_le_bytes().into_iter();
         Ok(iter)
     }
 
@@ -560,6 +594,8 @@ impl<'a> Greatdancer<'a> {
     ///
     /// Always transmits an 8-byte setup packet back to the host. If no setup packet
     /// is waiting, the results of this vendor request are unspecified.
+    ///
+    /// Returns: raw_setup_packet: [u8; 8]
     pub fn read_setup(&mut self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8> + 'a> {
         #[repr(C)]
         #[derive(Debug, FromBytes, Unaligned)]
@@ -567,16 +603,16 @@ impl<'a> Greatdancer<'a> {
             endpoint_number: u8,
         }
         let args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
-        debug!("GD Greatdancer::read_setup({:?})", args);
 
         // TODO handle endpoint numbers other than 0
-        match self.state.setup_packet.take() {
-            Some(setup_packet) => {
-                debug!("GD sending {:?}", setup_packet);
-                Ok(SetupPacket::as_bytes(setup_packet).into_iter())
-            }
+        let result = match self.state.setup_packet.take() {
+            Some(setup_packet) => Ok(SetupPacket::as_bytes(setup_packet).into_iter()),
             None => Err(GreatError::NoMessageOfType),
-        }
+        };
+
+        debug!("GD Greatdancer::read_setup({:?}) -> {:?}", args, result);
+
+        result
     }
 
     /// Temporarily stalls the given USB endpoint.
@@ -649,7 +685,7 @@ impl<'a> Greatdancer<'a> {
     /// status can be checked with `get_transfer_status` and then read
     /// with `finish_nonblocking_read`.
     pub fn start_nonblocking_read(
-        &self,
+        &mut self,
         arguments: &[u8],
     ) -> GreatResult<impl Iterator<Item = u8> + 'a> {
         #[repr(C)]
@@ -659,6 +695,8 @@ impl<'a> Greatdancer<'a> {
         }
         let args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
         debug!("GD Greatdancer::start_nonblocking_read({:?})", args);
+
+        self.state.usb0_endpoint_complete_pending |= 1 << args.endpoint_number;
 
         // TODO should I be priming endpoints at this point?
 
@@ -671,6 +709,8 @@ impl<'a> Greatdancer<'a> {
     /// This should only be used after determining that a transfer is
     /// complete with the `get_transfer_status` request and reading
     /// the relevant length with `get_nonblocking_data_length`.
+    ///
+    /// Returns: read_data: [u8]
     pub fn finish_nonblocking_read(
         &mut self,
         arguments: &[u8],
@@ -681,12 +721,17 @@ impl<'a> Greatdancer<'a> {
             endpoint_number: u8,
         }
         let args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
-        debug!("GD Greatdancer::finish_nonblocking_read({:?})", args);
 
         let endpoint = args.endpoint_number as usize;
         let data = self.state.receive_buffers[endpoint];
         let bytes_read = self.state.bytes_read[endpoint];
         self.state.bytes_read[endpoint] = 0;
+
+        debug!(
+            "GD Greatdancer::finish_nonblocking_read({}) -> {:?}",
+            endpoint,
+            &data[0..bytes_read]
+        );
 
         let iter = data.into_iter().take(bytes_read);
         Ok(iter)
@@ -700,6 +745,8 @@ impl<'a> Greatdancer<'a> {
     ///
     /// Response is invalid unless a transfer has been initiated with
     /// `start_nonblocking_read` and completed.
+    ///
+    /// Returns: length: u32
     pub fn get_nonblocking_data_length(
         &self,
         arguments: &[u8],

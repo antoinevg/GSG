@@ -1,11 +1,12 @@
 #![allow(dead_code, unused_imports, unused_variables)] // TODO
 
-use crate::smolusb::control::{Feature, Recipient, Request, RequestType, SetupPacket};
+use crate::smolusb::control::{Direction, Feature, Recipient, Request, RequestType, SetupPacket};
 use crate::smolusb::descriptor::*;
 use crate::smolusb::error::{SmolError, SmolResult};
 use crate::smolusb::traits::AsByteSliceIterator;
 use crate::smolusb::traits::{
-    ControlRead, EndpointRead, EndpointWrite, EndpointWriteRef, UsbDriverOperations,
+    ControlRead, EndpointRead, EndpointWrite, EndpointWriteRef, UnsafeUsbDriverOperations,
+    UsbDriverOperations,
 };
 
 use log::{debug, error, info, trace, warn};
@@ -52,15 +53,6 @@ pub enum DeviceState {
     Configured,
     Suspend,
 }
-
-// These are being used to work around the behaviour where we can only
-// set the device address after we have transmitted our STATUS ACK
-// response.
-//
-// TODO get rid of this global static state
-pub static mut USB0_TX_ACK_ACTIVE: bool = false;
-pub static mut USB1_TX_ACK_ACTIVE: bool = false;
-pub static mut USB2_TX_ACK_ACTIVE: bool = false;
 
 /// A USB device
 ///
@@ -162,7 +154,12 @@ where
 // Handle SETUP packet
 impl<'a, D> UsbDevice<'a, D>
 where
-    D: ControlRead + EndpointRead + EndpointWrite + EndpointWriteRef + UsbDriverOperations,
+    D: ControlRead
+        + EndpointRead
+        + EndpointWrite
+        + EndpointWriteRef
+        + UsbDriverOperations
+        + UnsafeUsbDriverOperations,
 {
     pub fn handle_setup_request(&self, setup_packet: &SetupPacket) -> SmolResult<()> {
         let request_type = setup_packet.request_type();
@@ -232,24 +229,24 @@ where
         Ok(())
     }
 
+    // TODO move tx_ack_active flag logic to hal_driver
     fn handle_set_address(&self, setup_packet: &SetupPacket) -> SmolResult<()> {
+        // set tx_ack_active flag
+        // TODO a slighty safer approach would be nice
         unsafe {
-            USB1_TX_ACK_ACTIVE = true;
+            self.hal_driver.set_tx_ack_active();
         }
 
         // respond with ack status first before changing device address
-        self.hal_driver.ack_status_stage(setup_packet);
+        //self.hal_driver.ack_status_stage(setup_packet);
+        self.hal_driver.ack(0, Direction::HostToDevice);
 
-        // TODO wait for the response packet to get sent
-        // TODO consider integrating this into ack_status_stage
-        unsafe {
-            loop {
-                riscv::register::mie::clear_mext();
-                let active = USB1_TX_ACK_ACTIVE;
-                riscv::register::mie::set_mext();
-                if active == false {
-                    break;
-                }
+        // wait for the response packet to get sent
+        // TODO a slightly safer approach would be nice
+        loop {
+            let active = unsafe { self.hal_driver.is_tx_ack_active() };
+            if active == false {
+                break;
             }
         }
 

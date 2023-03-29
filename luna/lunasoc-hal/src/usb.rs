@@ -5,7 +5,8 @@ pub use error::ErrorKind;
 
 use crate::smolusb::control::*;
 use crate::smolusb::traits::{
-    ControlRead, EndpointRead, EndpointWrite, EndpointWriteRef, UsbDriver, UsbDriverOperations,
+    ControlRead, EndpointRead, EndpointWrite, EndpointWriteRef, UnsafeUsbDriverOperations,
+    UsbDriver, UsbDriverOperations,
 };
 
 use crate::pac;
@@ -204,7 +205,7 @@ macro_rules! impl_usb {
                 }
             }
 
-            // - trait: UsbDriverOperations -----------------------------------------------
+            // - trait: UsbDriverOperations -----------------------------------
 
             impl UsbDriverOperations for $USBX {
                 /// Set the interface up for new connections
@@ -365,7 +366,34 @@ macro_rules! impl_usb {
                 }
             }
 
-            // - trait: Read/Write traits -------------------------------------------------
+            // - trait: UnsafeUsbDriverOperations -----------------------------
+
+            // These are being used to work around the behaviour where we can only
+            // set the device address after we have transmitted our STATUS ACK
+            // response.
+            //
+            // This is not a particularly safe approach.
+            #[allow(non_snake_case)]
+            mod $USBX_CONTROLLER {
+                pub static mut TX_ACK_ACTIVE: bool = false;
+            }
+
+            impl UnsafeUsbDriverOperations for $USBX {
+                unsafe fn set_tx_ack_active(&self) {
+                    $USBX_CONTROLLER::TX_ACK_ACTIVE = true;
+                }
+                unsafe fn clear_tx_ack_active(&self) {
+                    $USBX_CONTROLLER::TX_ACK_ACTIVE = false;
+                }
+                unsafe fn is_tx_ack_active(&self) -> bool {
+                    riscv::register::mie::clear_mext();
+                    let active = $USBX_CONTROLLER::TX_ACK_ACTIVE;
+                    riscv::register::mie::set_mext();
+                    active
+                }
+            }
+
+            // - trait: Read/Write traits -------------------------------------
 
             impl ControlRead for $USBX {
                 fn read_control(&self, buffer: &mut [u8]) -> usize {

@@ -50,9 +50,20 @@ pub trait UsbDriverOperations {
     fn stall_endpoint(&self, endpoint: u8, state: bool);
 }
 
+pub trait UnsafeUsbDriverOperations {
+    unsafe fn set_tx_ack_active(&self);
+    unsafe fn clear_tx_ack_active(&self);
+    unsafe fn is_tx_ack_active(&self) -> bool;
+}
+
 // convenience alias
 pub trait UsbDriver:
-    ControlRead + EndpointRead + EndpointWrite + EndpointWriteRef + UsbDriverOperations
+    ControlRead
+    + EndpointRead
+    + EndpointWrite
+    + EndpointWriteRef
+    + UsbDriverOperations
+    + UnsafeUsbDriverOperations
 {
 }
 
