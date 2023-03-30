@@ -206,10 +206,12 @@ type ReceiveBuffer = [u8; crate::EP_MAX_RECEIVE_LENGTH];
 
 /// State
 struct State {
-    usb0_status_pending: u32,
-    // DeviceToHost has finished
-    usb0_endpoint_complete_pending: u32,
-    setup_packet: Option<SetupPacket>,
+    usb0_status_pending: u32,                // 0x0 USBSTS
+    usb0_setup_pending: Option<SetupPacket>, // 0x1 ENDPTSETUPSTATE
+    usb0_endpoint_complete_pending: u32,     // 0x2 ENDPTCOMPLETE
+    usb0_endpoint_prime_pending: u32,        // 0x3 ENDPTSTATUS
+    usb0_endpoint_nak_pending: u32,          // 0x4 ENDPTNAK
+
     receive_buffers: [ReceiveBuffer; NUM_ENDPOINTS],
     bytes_read: [usize; NUM_ENDPOINTS],
 }
@@ -218,8 +220,10 @@ impl Default for State {
     fn default() -> Self {
         Self {
             usb0_status_pending: 0,
+            usb0_setup_pending: None,
             usb0_endpoint_complete_pending: 0,
-            setup_packet: None,
+            usb0_endpoint_prime_pending: 0,
+            usb0_endpoint_nak_pending: 0,
             receive_buffers: [[0; crate::EP_MAX_RECEIVE_LENGTH]; NUM_ENDPOINTS],
             bytes_read: [0; NUM_ENDPOINTS],
         }
@@ -242,14 +246,14 @@ impl State {
 impl State {
     // 0x0
     fn get_usb_status(&mut self) -> u32 {
-        let status_pending = self.usb0_status_pending;
+        let status = self.usb0_status_pending;
         self.usb0_status_pending = 0;
-        status_pending
+        status
     }
 
     // 0x1
     fn get_endpoint_setup_status(&mut self) -> u32 {
-        match self.setup_packet.is_some() {
+        match self.usb0_setup_pending.is_some() {
             true => 1,
             false => 0,
         }
@@ -269,12 +273,16 @@ impl State {
     // bitmap describing the endpoints that are not currently primed,
     // and thus ready to be primed again
     fn get_endpoint_status(&mut self) -> u32 {
-        0 // TODO ???
+        let endpoint_prime = self.usb0_endpoint_prime_pending;
+        self.usb0_endpoint_prime_pending = 0;
+        endpoint_prime
     }
 
     // 0x4
     fn get_endpoint_nak(&mut self) -> u32 {
-        0
+        let endpoint_nak = self.usb0_endpoint_nak_pending;
+        self.usb0_endpoint_nak_pending = 0;
+        endpoint_nak
     }
 }
 
@@ -282,18 +290,130 @@ impl State {
 pub mod UsbStatusFlag {
     /// UI: USB interrupt
     pub const USBSTS_D_UI: u32 = 1 << 0;
+
+    pub const USBSTS_D_RECEIVE_SETUP_PACKET: u32 = 1 << 1;
+    pub const USBSTS_D_RECEIVE_CONTROL_DATA: u32 = 1 << 2;
+    pub const USBSTS_D_RECEIVE_DATA: u32 = 1 << 3;
+    pub const USBSTS_D_SEND_COMPLETE: u32 = 1 << 4;
+
+    /*
     /// UEI: USB error interrupt
     pub const USBSTS_D_UEI: u32 = 1 << 1;
     /// PCI: Port change detect
     pub const USBSTS_D_PCI: u32 = 1 << 2;
+     */
     /// URI: USB reset received
     pub const USBSTS_D_URI: u32 = 1 << 6;
+    /*
     /// SRRI: SOF received
     pub const USBSTS_D_SRI: u32 = 1 << 7;
     /// SLI: DCSuspend
     pub const USBSTS_D_SLI: u32 = 1 << 8;
+    */
     /// NAKI: NAK interrupt bit
     pub const USBSTS_D_NAKI: u32 = 1 << 16;
+}
+
+// - interrupt handlers -------------------------------------------------------
+
+impl<'a> Greatdancer<'a> {
+    pub fn handle_usb_bus_reset(&mut self) -> GreatResult<()> {
+        self.state.usb0_status_pending |= UsbStatusFlag::USBSTS_D_URI; // URI: USB reset received
+
+        debug!(
+            "GD => IRQ handle_usb_bus_reset() -> 0b{:b}",
+            self.state.usb0_status_pending
+        );
+
+        Ok(())
+    }
+
+    pub fn handle_usb_receive_setup_packet(
+        &mut self,
+        setup_packet: SetupPacket,
+    ) -> GreatResult<()> {
+        self.state.usb0_status_pending |= UsbStatusFlag::USBSTS_D_RECEIVE_SETUP_PACKET;
+        self.state.usb0_setup_pending = Some(setup_packet.clone());
+
+        debug!(
+            "GD => IRQ handle_usb_receive_setup_packet({:?}) -> 0b{:b}",
+            setup_packet, self.state.usb0_status_pending,
+        );
+
+        // TODO not sure yet whether this will be a problem in practice
+        if self.state.usb0_setup_pending.is_some() {
+            error!("GD =>     queued setup packet has not yet been transmitted");
+            //return Err(GreatError::DeviceOrResourceBusy);
+        }
+
+        Ok(())
+    }
+
+    pub fn handle_usb_receive_control_data(
+        &mut self,
+        bytes_read: usize,
+        buffer: [u8; crate::EP_MAX_RECEIVE_LENGTH],
+    ) -> GreatResult<()> {
+        if bytes_read == 0 {
+            self.state.usb0_status_pending |= UsbStatusFlag::USBSTS_D_NAKI; // NAKI: NAK interrupt
+            self.state.usb0_endpoint_nak_pending |= 1 << 0;
+        } else {
+            self.state.usb0_status_pending |= UsbStatusFlag::USBSTS_D_RECEIVE_CONTROL_DATA;
+        }
+
+        debug!(
+            "GD => IRQ handle_usb_receive_control_data({}, {:?}) -> 0b{:b} -> 0b{:b}",
+            bytes_read,
+            &buffer[0..bytes_read],
+            self.state.usb0_status_pending,
+            self.state.usb0_endpoint_nak_pending,
+        );
+
+        // TODO if endpoint > NUM_ENDPOINTS
+        self.state.bytes_read[0] = bytes_read;
+        self.state.receive_buffers[0] = buffer;
+
+        Ok(())
+    }
+
+    pub fn handle_usb_receive_data(
+        &mut self,
+        endpoint: u8,
+        bytes_read: usize,
+        buffer: [u8; crate::EP_MAX_RECEIVE_LENGTH],
+    ) -> GreatResult<()> {
+        if bytes_read == 0 {
+            self.state.usb0_status_pending |= UsbStatusFlag::USBSTS_D_NAKI; // NAKI: NAK interrupt
+            self.state.usb0_endpoint_nak_pending |= 1 << endpoint;
+        } else {
+            self.state.usb0_status_pending |= UsbStatusFlag::USBSTS_D_RECEIVE_DATA;
+        }
+
+        debug!(
+            "GD => IRQ handle_usb_receive_control_data({}, {:?}) -> 0b{:b} -> 0b{:b}",
+            bytes_read,
+            &buffer[0..bytes_read],
+            self.state.usb0_status_pending,
+            self.state.usb0_endpoint_nak_pending,
+        );
+
+        // TODO if endpoint > NUM_ENDPOINTS
+        self.state.bytes_read[endpoint as usize] = bytes_read;
+        self.state.receive_buffers[endpoint as usize] = buffer;
+
+        Ok(())
+    }
+
+    pub fn handle_usb_transfer_complete(&mut self, endpoint: u8) -> GreatResult<()> {
+        self.state.usb0_status_pending |= UsbStatusFlag::USBSTS_D_SEND_COMPLETE;
+
+        debug!(
+            "GD => IRQ handle_usb_transfer_complete({}) -> 0b{:b}",
+            endpoint, self.state.usb0_status_pending
+        );
+
+        Ok(())
+    }
 }
 
 // - Greatdancer --------------------------------------------------------------
@@ -336,78 +456,6 @@ impl<'a> Greatdancer<'a> {
         interrupt::enable(pac::Interrupt::USB0_EP_CONTROL);
         interrupt::enable(pac::Interrupt::USB0_EP_IN);
         interrupt::enable(pac::Interrupt::USB0_EP_OUT);
-    }
-}
-
-// - interrupt handlers -------------------------------------------------------
-
-impl<'a> Greatdancer<'a> {
-    pub fn handle_usb_bus_reset(&mut self) -> GreatResult<()> {
-        self.state.usb0_status_pending |= UsbStatusFlag::USBSTS_D_URI; // URI: USB reset received
-        debug!("GD => IRQ handle_usb_bus_reset()");
-        Ok(())
-    }
-
-    pub fn handle_usb_receive_setup_packet(
-        &mut self,
-        setup_packet: SetupPacket,
-    ) -> GreatResult<()> {
-        debug!(
-            "GD => IRQ handle_usb_receive_setup_packet({:?})",
-            setup_packet
-        );
-
-        // TODO not sure yet whether this will be a problem in practice
-        if self.state.setup_packet.is_some() {
-            error!("GD =>     queued setup packet has not yet been transmitted");
-            //return Err(GreatError::DeviceOrResourceBusy);
-        }
-
-        self.state.setup_packet = Some(setup_packet);
-        self.state.usb0_status_pending |= UsbStatusFlag::USBSTS_D_UI; // UI: USB interrupt
-
-        Ok(())
-    }
-
-    pub fn handle_usb_receive_control_data(
-        &mut self,
-        bytes_read: usize,
-        buffer: [u8; crate::EP_MAX_RECEIVE_LENGTH],
-    ) -> GreatResult<()> {
-        debug!(
-            "GD => IRQ handle_usb_receive_control_data({}, {:?})",
-            bytes_read,
-            &buffer[0..bytes_read]
-        );
-        // TODO if endpoint > NUM_ENDPOINTS
-        self.state.bytes_read[0] = bytes_read;
-        self.state.receive_buffers[0] = buffer;
-        self.state.usb0_status_pending |= UsbStatusFlag::USBSTS_D_UI; // UI: USB interrupt
-        Ok(())
-    }
-
-    pub fn handle_usb_receive_data(
-        &mut self,
-        endpoint: u8,
-        bytes_read: usize,
-        buffer: [u8; crate::EP_MAX_RECEIVE_LENGTH],
-    ) -> GreatResult<()> {
-        debug!(
-            "GD => IRQ handle_usb_receive_data({}, {:?})",
-            bytes_read,
-            &buffer[0..bytes_read]
-        );
-        // TODO if endpoint > NUM_ENDPOINTS
-        self.state.bytes_read[endpoint as usize] = bytes_read;
-        self.state.receive_buffers[endpoint as usize] = buffer;
-        self.state.usb0_status_pending |= UsbStatusFlag::USBSTS_D_UI; // UI: USB interrupt
-        Ok(())
-    }
-
-    pub fn handle_usb_transfer_complete(&mut self, endpoint: u8) -> GreatResult<()> {
-        debug!("GD => IRQ handle_usb_transfer_complete({})", endpoint);
-        self.state.usb0_endpoint_complete_pending |= 1 << endpoint;
-        Ok(())
     }
 }
 
@@ -605,7 +653,7 @@ impl<'a> Greatdancer<'a> {
         let args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
 
         // TODO handle endpoint numbers other than 0
-        let result = match self.state.setup_packet.take() {
+        let result = match self.state.usb0_setup_pending.take() {
             Some(setup_packet) => Ok(SetupPacket::as_bytes(setup_packet).into_iter()),
             None => Err(GreatError::NoMessageOfType),
         };
@@ -636,7 +684,10 @@ impl<'a> Greatdancer<'a> {
     /// Read data from the GreatFET host and sends on the provided GreatDancer endpoint.
     ///
     /// The OUT request should contain a data stage containing all data to be sent.
-    pub fn send_on_endpoint(&self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8> + 'a> {
+    pub fn send_on_endpoint(
+        &mut self,
+        arguments: &[u8],
+    ) -> GreatResult<impl Iterator<Item = u8> + 'a> {
         #[derive(Debug)]
         struct Args<B: zerocopy::ByteSlice> {
             endpoint_number: zerocopy::LayoutVerified<B, u8>,
@@ -651,8 +702,13 @@ impl<'a> Greatdancer<'a> {
         };
 
         let endpoint: u8 = args.endpoint_number.read();
-        let iter = args.data_to_send.into_iter();
-        self.usb0.hal_driver.write_ref(endpoint, iter);
+
+        if args.data_to_send.len() > 1 {
+            let iter = args.data_to_send.into_iter();
+            self.usb0.hal_driver.write_ref(endpoint, iter);
+        } else {
+            self.state.usb0_endpoint_complete_pending |= 1 << 0;
+        }
         self.usb0.hal_driver.ack(endpoint, Direction::DeviceToHost);
 
         debug!("GD Greatdancer::send_on_endpoint({:?})", args);
@@ -695,8 +751,6 @@ impl<'a> Greatdancer<'a> {
         }
         let args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
         debug!("GD Greatdancer::start_nonblocking_read({:?})", args);
-
-        self.state.usb0_endpoint_complete_pending |= 1 << args.endpoint_number;
 
         // TODO should I be priming endpoints at this point?
 

@@ -436,7 +436,7 @@ macro_rules! impl_usb {
 
                     trace!("  RX OUT{} {} bytes + {} overflow: {:?}", endpoint, bytes_read, overflow, &buffer[0..bytes_read]);
 
-                    // TODO prime endpoints - this is dodgy af
+                    // TODO prime OUT endpoints - this is dodgy af
                     for ep in (0..=4).rev() {
                         self.ep_out.epno.write(|w| unsafe { w.epno().bits(ep) });
                         self.ep_out.prime.write(|w| w.prime().bit(true));
