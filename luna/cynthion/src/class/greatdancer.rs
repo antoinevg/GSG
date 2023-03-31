@@ -206,11 +206,23 @@ type ReceiveBuffer = [u8; crate::EP_MAX_RECEIVE_LENGTH];
 
 /// State
 struct State {
-    usb0_status_pending: u32,                // 0x0 USBSTS
+    /// an interrupt is pending
+    usb0_status_pending: u32, // 0x0 USBSTS
+
+    /// bitmap: a setup packet awaits
+    ///
+    /// TODO Option<(endpoint, SetupPacket)>
+    /// TODO multiple queued packets?
     usb0_setup_pending: Option<SetupPacket>, // 0x1 ENDPTSETUPSTATE
-    usb0_endpoint_complete_pending: u32,     // 0x2 ENDPTCOMPLETE
-    usb0_endpoint_prime_pending: u32,        // 0x3 ENDPTSTATUS
-    usb0_endpoint_nak_pending: u32,          // 0x4 ENDPTNAK
+
+    /// bitmap: ndpoints that have completed a transaction
+    ///
+    /// 00-15  receive complete
+    /// 16-31  send complete
+    usb0_endpoint_complete_pending: u32, // 0x2 ENDPTCOMPLETE
+
+    usb0_endpoint_prime_pending: u32, // 0x3 ENDPTSTATUS
+    usb0_endpoint_nak_pending: u32,   // 0x4 ENDPTNAK
 
     receive_buffers: [ReceiveBuffer; NUM_ENDPOINTS],
     bytes_read: [usize; NUM_ENDPOINTS],
@@ -259,13 +271,11 @@ impl State {
         }
     }
 
-    // 0x2 - is there data ready to send to host?
-    // called after start_non_blocking_read, returning 1
-    // finish_nonblock_read is called after
+    // 0x2 - is there data waiting from a handle_receive ?
     fn get_endpoint_complete(&mut self) -> u32 {
-        let endpoint_complete = self.usb0_endpoint_complete_pending;
+        let endpoint_complete_receive = self.usb0_endpoint_complete_pending;
         self.usb0_endpoint_complete_pending = 0;
-        endpoint_complete
+        endpoint_complete_receive
     }
 
     // 0x3
@@ -332,9 +342,6 @@ impl<'a> Greatdancer<'a> {
         &mut self,
         setup_packet: SetupPacket,
     ) -> GreatResult<()> {
-        self.state.usb0_status_pending |= UsbStatusFlag::USBSTS_D_RECEIVE_SETUP_PACKET;
-        self.state.usb0_setup_pending = Some(setup_packet.clone());
-
         debug!(
             "GD => IRQ handle_usb_receive_setup_packet({:?}) -> 0b{:b}",
             setup_packet, self.state.usb0_status_pending,
@@ -346,6 +353,9 @@ impl<'a> Greatdancer<'a> {
             //return Err(GreatError::DeviceOrResourceBusy);
         }
 
+        self.state.usb0_status_pending |= UsbStatusFlag::USBSTS_D_RECEIVE_SETUP_PACKET;
+        self.state.usb0_setup_pending = Some(setup_packet.clone());
+
         Ok(())
     }
 
@@ -354,12 +364,8 @@ impl<'a> Greatdancer<'a> {
         bytes_read: usize,
         buffer: [u8; crate::EP_MAX_RECEIVE_LENGTH],
     ) -> GreatResult<()> {
-        if bytes_read == 0 {
-            self.state.usb0_status_pending |= UsbStatusFlag::USBSTS_D_NAKI; // NAKI: NAK interrupt
-            self.state.usb0_endpoint_nak_pending |= 1 << 0;
-        } else {
-            self.state.usb0_status_pending |= UsbStatusFlag::USBSTS_D_RECEIVE_CONTROL_DATA;
-        }
+        self.state.usb0_status_pending |= UsbStatusFlag::USBSTS_D_RECEIVE_CONTROL_DATA;
+        self.state.usb0_endpoint_complete_pending |= 1 << 0;
 
         debug!(
             "GD => IRQ handle_usb_receive_control_data({}, {:?}) -> 0b{:b} -> 0b{:b}",
@@ -382,15 +388,11 @@ impl<'a> Greatdancer<'a> {
         bytes_read: usize,
         buffer: [u8; crate::EP_MAX_RECEIVE_LENGTH],
     ) -> GreatResult<()> {
-        if bytes_read == 0 {
-            self.state.usb0_status_pending |= UsbStatusFlag::USBSTS_D_NAKI; // NAKI: NAK interrupt
-            self.state.usb0_endpoint_nak_pending |= 1 << endpoint;
-        } else {
-            self.state.usb0_status_pending |= UsbStatusFlag::USBSTS_D_RECEIVE_DATA;
-        }
+        self.state.usb0_status_pending |= UsbStatusFlag::USBSTS_D_RECEIVE_DATA;
+        self.state.usb0_endpoint_complete_pending |= 1 << endpoint;
 
         debug!(
-            "GD => IRQ handle_usb_receive_control_data({}, {:?}) -> 0b{:b} -> 0b{:b}",
+            "GD => IRQ handle_usb_receive_data({}, {:?}) -> 0b{:b} -> 0b{:b}",
             bytes_read,
             &buffer[0..bytes_read],
             self.state.usb0_status_pending,
@@ -406,6 +408,7 @@ impl<'a> Greatdancer<'a> {
 
     pub fn handle_usb_transfer_complete(&mut self, endpoint: u8) -> GreatResult<()> {
         self.state.usb0_status_pending |= UsbStatusFlag::USBSTS_D_SEND_COMPLETE;
+        self.state.usb0_endpoint_complete_pending |= 1 << (endpoint + 16);
 
         debug!(
             "GD => IRQ handle_usb_transfer_complete({}) -> 0b{:b}",
@@ -526,20 +529,32 @@ impl<'a> Greatdancer<'a> {
         }
 
         // respond with ack status first before changing device address
-        self.usb0.hal_driver.ack(0, Direction::HostToDevice);
+        /*self.usb0.hal_driver.ack(0, Direction::HostToDevice);
 
         // wait for the response packet to get sent
         // TODO a slightly safer approach would be nice
+        let mut counter = 0;
         loop {
             let active = unsafe { self.usb0.hal_driver.is_tx_ack_active() };
             if active == false {
                 break;
             }
-        }
+            if counter > 12_000_000 {
+                error!("GD Greatdancer::set_address() timed out");
+                // TODO stall ? nak ?
+                return Ok([].into_iter());
+            }
+            counter += 1;
+        }*/
 
         // activate new address
         let address = args.address & 0x7f;
         self.usb0.hal_driver.set_address(address);
+
+        debug!(
+            "GD Greatdancer::set_address({:?} - activated address)",
+            args
+        );
 
         let iter = [].into_iter();
         Ok(iter)
@@ -562,7 +577,7 @@ impl<'a> Greatdancer<'a> {
         while let Some((endpoint, next)) =
             zerocopy::LayoutVerified::<_, ArgEndpoint>::new_from_prefix(byte_slice)
         {
-            debug!("GD Greatdancer::set_up_endpoint({:?})", endpoint);
+            debug!("TODO GD Greatdancer::set_up_endpoint({:?})", endpoint);
             byte_slice = next;
 
             // endpoint zero is always the control endpoint, and can't be configured
@@ -671,6 +686,9 @@ impl<'a> Greatdancer<'a> {
             endpoint_number: u8,
         }
         let args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
+
+        self.usb0.hal_driver.stall_endpoint(args.endpoint_number, true);
+
         debug!("GD Greatdancer::stall_endpoint({:?})", args);
 
         let iter = [].into_iter();
@@ -703,13 +721,17 @@ impl<'a> Greatdancer<'a> {
 
         let endpoint: u8 = args.endpoint_number.read();
 
-        if args.data_to_send.len() > 1 {
-            let iter = args.data_to_send.into_iter();
-            self.usb0.hal_driver.write_ref(endpoint, iter);
-        } else {
-            self.state.usb0_endpoint_complete_pending |= 1 << 0;
-        }
-        self.usb0.hal_driver.ack(endpoint, Direction::DeviceToHost);
+        let iter = args.data_to_send.into_iter();
+        self.usb0.hal_driver.write_ref(endpoint, iter);
+
+        // TODO ??? should we be issuing ACK ???
+        //self.usb0.hal_driver.ack(endpoint, Direction::DeviceToHost);
+
+        // TODO ??? ack doesn't trigger handle_transfer_complete ???
+        /*if args.data_to_send.len() == 0 {
+            self.state.usb0_status_pending |= UsbStatusFlag::USBSTS_D_SEND_COMPLETE;
+            self.state.usb0_endpoint_complete_pending |= 1 << (endpoint + 16);
+        }*/
 
         debug!("GD Greatdancer::send_on_endpoint({:?})", args);
 
@@ -728,8 +750,11 @@ impl<'a> Greatdancer<'a> {
             endpoint_address: u8,
         }
         let args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
-        debug!("GD Greatdancer::clean_up_transfer({:?})", args);
         let endpoint_number = args.endpoint_address & 0x7f;
+        debug!(
+            "TODO GD Greatdancer::clean_up_transfer({:?} / 0x{:x})",
+            args, endpoint_number
+        );
 
         let iter = [].into_iter();
         Ok(iter)
@@ -752,7 +777,11 @@ impl<'a> Greatdancer<'a> {
         let args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
         debug!("GD Greatdancer::start_nonblocking_read({:?})", args);
 
-        // TODO should I be priming endpoints at this point?
+        // TODO ??? should I be priming endpoints at this point ???
+        // that would basically make this ack(DeviceToHost)
+        self.usb0
+            .hal_driver
+            .ep_out_prime_receive(args.endpoint_number);
 
         let iter = [].into_iter();
         Ok(iter)

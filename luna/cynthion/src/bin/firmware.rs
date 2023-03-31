@@ -66,6 +66,15 @@ fn MachineExternal() {
             Err(e) => Message::ErrorMessage("USB1_EP_CONTROL failed to read setup packet"),
         }
 
+    // USB1_EP_OUT UsbReceiveData
+    } else if usb1.is_pending(pac::Interrupt::USB1_EP_OUT) {
+        let endpoint = usb1.ep_out.data_ep.read().bits() as u8;
+        let mut buffer = [0_u8; cynthion::EP_MAX_RECEIVE_LENGTH];
+        let bytes_read = usb1.read(endpoint, &mut buffer);
+        usb1.clear_pending(pac::Interrupt::USB1_EP_OUT);
+
+        Message::UsbReceiveData(1, endpoint, bytes_read, buffer)
+
     // USB1_EP_IN UsbTransferComplete
     } else if usb1.is_pending(pac::Interrupt::USB1_EP_IN) {
         usb1.clear_pending(pac::Interrupt::USB1_EP_IN);
@@ -78,15 +87,6 @@ fn MachineExternal() {
         }
 
         Message::UsbTransferComplete(1, endpoint)
-
-    // USB1_EP_OUT UsbReceiveData
-    } else if usb1.is_pending(pac::Interrupt::USB1_EP_OUT) {
-        let endpoint = usb1.ep_out.data_ep.read().bits() as u8;
-        let mut buffer = [0_u8; cynthion::EP_MAX_RECEIVE_LENGTH];
-        let bytes_read = usb1.read(endpoint, &mut buffer);
-        usb1.clear_pending(pac::Interrupt::USB1_EP_OUT);
-
-        Message::UsbReceiveData(1, endpoint, bytes_read, buffer)
 
     // - usb0 interrupts - "target_phy" --
 
@@ -105,10 +105,21 @@ fn MachineExternal() {
             Err(e) => Message::ErrorMessage("USB0_EP_CONTROL failed to read setup packet"),
         }
 
+    // USB0_EP_OUT UsbReceiveData
+    } else if usb0.is_pending(pac::Interrupt::USB0_EP_OUT) {
+        let endpoint = usb0.ep_out.data_ep.read().bits() as u8;
+        let mut buffer = [0_u8; cynthion::EP_MAX_RECEIVE_LENGTH];
+        let bytes_read = usb0.read(endpoint, &mut buffer);
+        usb0.clear_pending(pac::Interrupt::USB0_EP_OUT);
+
+        Message::UsbReceiveData(0, endpoint, bytes_read, buffer)
+
     // USB0_EP_IN UsbTransferComplete
     } else if usb0.is_pending(pac::Interrupt::USB0_EP_IN) {
         let endpoint = usb0.ep_in.epno.read().bits() as u8;
         usb0.clear_pending(pac::Interrupt::USB0_EP_IN);
+
+        //debug!("FW => IRQ pac::Interrupt::USB0_EP_IN");
 
         // TODO move tx_ack_active flag logic to hal_driver
         // TODO something a little bit safer would be nice
@@ -118,14 +129,7 @@ fn MachineExternal() {
 
         Message::UsbTransferComplete(0, endpoint)
 
-    // USB0_EP_OUT UsbReceiveData
-    } else if usb0.is_pending(pac::Interrupt::USB0_EP_OUT) {
-        let endpoint = usb0.ep_out.data_ep.read().bits() as u8;
-        let mut buffer = [0_u8; cynthion::EP_MAX_RECEIVE_LENGTH];
-        let bytes_read = usb0.read(endpoint, &mut buffer);
-        usb0.clear_pending(pac::Interrupt::USB0_EP_OUT);
-
-        Message::UsbReceiveData(0, endpoint, bytes_read, buffer)
+    // TIMER TimerEvent
     } else if timer.is_pending() {
         timer.clear_pending();
         Message::TimerEvent(0)
