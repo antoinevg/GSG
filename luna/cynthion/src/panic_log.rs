@@ -22,7 +22,7 @@ fn panic(panic_info: &PanicInfo) -> ! {
     }
 
     if let Some(location) = panic_info.location() {
-        error!("'{}' : {}", location.file(), location.line(),);
+        error!("Panicked at '{}:{}'", location.file(), location.line(),);
     }
 
     loop {

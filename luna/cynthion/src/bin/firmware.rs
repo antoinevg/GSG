@@ -80,7 +80,6 @@ fn MachineExternal() {
         usb1.clear_pending(pac::Interrupt::USB1_EP_IN);
         let endpoint = usb1.ep_in.epno.read().bits() as u8;
 
-        // TODO move tx_ack_active flag logic to hal_driver
         // TODO something a little bit safer would be nice
         unsafe {
             usb1.clear_tx_ack_active();
@@ -119,9 +118,6 @@ fn MachineExternal() {
         let endpoint = usb0.ep_in.epno.read().bits() as u8;
         usb0.clear_pending(pac::Interrupt::USB0_EP_IN);
 
-        //debug!("FW => IRQ pac::Interrupt::USB0_EP_IN");
-
-        // TODO move tx_ack_active flag logic to hal_driver
         // TODO something a little bit safer would be nice
         unsafe {
             usb0.clear_tx_ack_active();
@@ -571,6 +567,7 @@ impl<'a> Firmware<'a> {
                 }
                 Err(e) => {
                     error!("GCP stall: failed to dispatch command {}", e);
+                    error!("    {:?}", command);
                     self.usb1.hal_driver.stall_request();
                 }
             }

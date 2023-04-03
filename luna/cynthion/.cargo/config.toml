@@ -3,6 +3,8 @@ runner = ".cargo/flash.sh"
 rustflags = [
   "-C", "link-arg=-Tmemory.x",
   "-C", "link-arg=-Tlink.x",
+  # generate a linker map
+  # "-C", "link-args=-Map=/tmp/firmware.map",
 ]
 
 [target.riscv32im-unknown-none-elf]
