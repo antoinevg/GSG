@@ -19,17 +19,21 @@ LUNASOC_PAC := ../lunasoc-pac
 blinky_verilog:
 	PATH=$(PATH):$(YOSYS_BIN) AR=$(AR) python blinky_verilog.py
 
-top:
+top_minerva:
 	rm -rf build
 	PATH=$(PATH):$(YOSYS_BIN) AR=$(AR) python top.py
 
-top_verbose:
+top_minerva_verbose:
 	rm -rf build
 	PATH=$(PATH):$(YOSYS_BIN) AR=$(AR) AMARANTH_verbose=1 python top.py
 
 top_vexriscv:
 	rm -rf build
 	PATH=$(PATH):$(YOSYS_BIN) AR=$(AR) python top_vexriscv.py
+
+top_vexriscv_verbose:
+	rm -rf build
+	PATH=$(PATH):$(YOSYS_BIN) AR=$(AR) AMARANTH_verbose=1 python top_vexriscv.py
 
 load:
 	@#apollo configure build/top.bit
