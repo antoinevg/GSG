@@ -198,7 +198,7 @@ impl TryFrom<u8> for RegisterType {
 // - State --------------------------------------------------------------------
 
 // TODO
-const NUM_ENDPOINTS: usize = 4;
+const NUM_ENDPOINTS: usize = 8;
 type ReceiveBuffer = [u8; crate::EP_MAX_RECEIVE_LENGTH];
 
 /// State
@@ -718,7 +718,7 @@ impl<'a> Greatdancer<'a> {
         let args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
         let endpoint_number = args.endpoint_address & 0x7f;
         debug!(
-            "TODO GD Greatdancer::clean_up_transfer({:?} / 0x{:x})",
+            "GD Greatdancer::clean_up_transfer({:?} / 0x{:x})",
             args, endpoint_number
         );
 

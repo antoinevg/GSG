@@ -373,6 +373,8 @@ macro_rules! impl_usb {
             // response.
             //
             // This is not a particularly safe approach.
+            //
+            // TODO use atomic variable when #[cfg(target_has_atomic)]
             #[allow(non_snake_case)]
             mod $USBX_CONTROLLER {
                 pub static mut TX_ACK_ACTIVE: bool = false;

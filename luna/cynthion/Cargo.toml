@@ -13,7 +13,6 @@ default-run = "firmware"
 default-target = "riscv32i-unknown-none-elf"
 targets = [
     "riscv32i-unknown-none-elf",
-    "riscv32im-unknown-none-elf",
     "riscv32imac-unknown-none-elf",
 ]
 
@@ -21,32 +20,41 @@ targets = [
 
 [features]
 default = [
-    "lunasoc-pac/rt",
+    #"minerva",
+    "vexriscv",
+
     #"nightly",
 ]
+
+# select softcore
+minerva = [
+    "lunasoc-pac/minerva"
+]
+vexriscv = [
+    "lunasoc-pac/vexriscv"
+]
+
+# select nightly toolchain
 nightly = [
     "libgreat/nightly",
     "lunasoc-hal/nightly",
 ]
 
+
 # - dependencies --------------------------------------------------------------
 
 [dependencies]
 libgreat = { path = "../libgreat", features = [] }
-lunasoc-pac = { path = "../lunasoc-pac", features = ["critical-section", "rt"]}
+lunasoc-pac = { path = "../lunasoc-pac", default-features = false, features = ["critical-section", "rt"]}
 lunasoc-hal = { path = "../lunasoc-hal", features = []}
 
 riscv = { version = "=0.10.1", features = ["critical-section-single-hart"] }
 riscv-rt = { version = "=0.11.0" }
 
-#atomic-polyfill = "=1.0.1"
 heapless = { version = "=0.7.16", default-features = false, features = ["mpmc_large"] } # TODO 0.8.0 is en-route
 zerocopy = { version = "=0.7.0-alpha.2", default-features = false }
 
-# https://github.com/rust-lang/log/issues/526
-log = "=0.4.17"
-#log = { path = "../toolchain/log.git" }
-#critical-section = "=1.1.1"
+log = { version="=0.4.17", features = ["release_max_level_debug"] }
 
 # - binaries ------------------------------------------------------------------
 
@@ -68,6 +76,10 @@ required-features = ["lunasoc-pac/rt"]
 
 [[bin]]
 name = "hello"
+required-features = ["lunasoc-pac/rt"]
+
+[[bin]]
+name = "interrupts"
 required-features = ["lunasoc-pac/rt"]
 
 [[bin]]

@@ -57,7 +57,7 @@ fn MachineExternal() {
     let mut serial = unsafe { hal::Serial::summon() };
 
     if pac::csr::interrupt::pending(pac::Interrupt::TIMER) {
-        let mut timer = unsafe { hal::Timer::summon() };
+        let timer = unsafe { hal::Timer::summon() };
         timer.clear_pending();
 
         writeln!(serial, "MachineExternal - timer interrupt").unwrap();

@@ -27,7 +27,7 @@ use riscv_rt::entry;
 
 use cynthion::Message;
 use heapless::mpmc::MpMcQueue as Queue;
-static MESSAGE_QUEUE: Queue<Message, 128> = Queue::new();
+static MESSAGE_QUEUE: Queue<Message, 256> = Queue::new();
 
 // - MachineExternal interrupt handler ----------------------------------------
 
@@ -35,7 +35,7 @@ static MESSAGE_QUEUE: Queue<Message, 128> = Queue::new();
 #[no_mangle]
 fn MachineExternal() {
     if pac::csr::interrupt::pending(pac::Interrupt::TIMER) {
-        let mut timer = unsafe { hal::Timer::summon() };
+        let timer = unsafe { hal::Timer::summon() };
         timer.clear_pending();
 
         // enqueue a message

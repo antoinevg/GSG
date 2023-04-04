@@ -21,17 +21,18 @@ pub fn init(writer: hal::Serial) {
     LOGGER.writer.replace(Some(writer));
 
     #[cfg(target_has_atomic)]
-    match log::set_logger(&LOGGER).map(|()| log::set_max_level(LevelFilter::Trace)) {
-        Ok(()) => (),
-        Err(e) => {
-            panic!("panic setting logger")
-        }
+    {
+        log::set_logger(&LOGGER)
+            .map(|()| log::set_max_level(LevelFilter::Trace))
+            .expect("panic setting logger");
     }
 
     #[cfg(not(target_has_atomic))]
-    unsafe { log::set_logger_racy(&LOGGER) }
-        .map(|()| log::set_max_level(LevelFilter::Debug))
-        .expect("panic setting logger");
+    {
+        unsafe { log::set_logger_racy(&LOGGER) }
+            .map(|()| log::set_max_level(LevelFilter::Trace))
+            .expect("panic setting logger");
+    }
 }
 
 // - implementation -----------------------------------------------------------
@@ -54,29 +55,37 @@ where
     }
 
     fn log(&self, record: &Record) {
+        if !self.enabled(record.metadata()) {
+            return;
+        }
+
         #[cfg(target_has_atomic)]
-        match self.writer.borrow_mut().as_mut() {
-            Some(writer) => match writeln!(writer, "{} - {}", record.level(), record.args()) {
-                Ok(()) => (),
-                Err(_e) => {
-                    panic!("Logger failed to write to device");
+        {
+            match self.writer.borrow_mut().as_mut() {
+                Some(writer) => match writeln!(writer, "{}\t{}", record.level(), record.args()) {
+                    Ok(()) => (),
+                    Err(_e) => {
+                        panic!("Logger failed to write to device");
+                    }
+                },
+                None => {
+                    panic!("Logger has not been initialized");
                 }
-            },
-            None => {
-                panic!("Logger has not been initialized");
             }
         }
 
         #[cfg(not(target_has_atomic))]
-        riscv::interrupt::free(|| match self.writer.borrow_mut().as_mut() {
-            Some(writer) => {
-                writeln!(writer, "{}\t{}", record.level(), record.args())
-                    .expect("Logger failed to write to device");
-            }
-            None => {
-                panic!("Logger has not been initialized");
-            }
-        });
+        {
+            riscv::interrupt::free(|| match self.writer.borrow_mut().as_mut() {
+                Some(writer) => {
+                    writeln!(writer, "{}\t{}", record.level(), record.args())
+                        .expect("Logger failed to write to device");
+                }
+                None => {
+                    panic!("Logger has not been initialized");
+                }
+            });
+        }
     }
 
     fn flush(&self) {}
