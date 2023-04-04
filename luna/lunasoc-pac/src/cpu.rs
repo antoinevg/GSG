@@ -19,7 +19,7 @@ pub mod minerva {
         crate::macros::write_csr_as_usize!(0x330);
     }
 
-    // Machine IRQ Pending
+    /// Machine IRQ Pending
     pub mod mip {
         crate::macros::read_csr_as_usize!(0x360);
     }
@@ -38,8 +38,24 @@ pub mod vexriscv {
         crate::macros::write_csr_as_usize!(0xBC0);
     }
 
-    // Machine IRQ Pending
+    /// Machine IRQ Pending
     pub mod mip {
         crate::macros::read_csr_as_usize!(0xFC0);
+    }
+
+    /// Supervisor IRQ Mask
+    pub mod sim {
+        crate::macros::read_csr_as_usize!(0x9C0);
+        crate::macros::write_csr_as_usize!(0x9C0);
+    }
+
+    /// Supervisor IRQ Pending
+    pub mod sip {
+        crate::macros::read_csr_as_usize!(0xDC0);
+    }
+
+    /// DCache Info
+    pub mod dci {
+        crate::macros::read_csr_as_usize!(0xCC0);
     }
 }
