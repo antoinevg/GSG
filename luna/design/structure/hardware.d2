@@ -1,0 +1,146 @@
+power: {
+    # 4-Ch Over-voltage Protection for CC/SBU pins on USB Type-C
+    dpo2036
+
+    # Single/Multi-Channel Power Monitor with Accumulator, 32V Full-Scale Range
+    pac195x
+}
+
+clocks: {
+    # 60 MHz clock crystal
+    osc_60: clk_60MHz
+}
+
+controllers: {
+    # Cortex-M0+ Microcontroller @ 48MHz, 16KB Flash, 4KB SRAM
+    atsamd11d14a-mut
+
+    # 3V 32Mbit Serial Flash Memory With Dual, Quad SPI
+    w25q32jvss
+
+    # Lattice ECP5 FPGA
+    ecp5
+
+    # Programmable USB Type‐C Controller w/PD
+    fusb302bmpx
+
+}
+
+interfaces: {
+    # Enhanced Single Supply Hi-Speed USB ULPI Transceiver
+    usb3343-cp
+}
+
+connectors: {
+}
+
+plugs: {
+}
+
+resource: {
+    clk_60MHz: |c
+        "clk_60MHz"  A8  i
+    |
+
+    spi_flash: |c
+        "spi_flash.sdi"  T8  o
+        "spi_flash.sdo"  T7  i
+        "spi_flash.cs"   N8  o
+    |
+
+    debug_spi: |c
+        "debug_spi.sck"  R13  i
+        "debug_spi.sdi"  P13  i
+        "debug_spi.sdo"  P11  o
+        "debug_spi.cs"   T13  i
+    |
+
+    uart: |c
+        "uart.rx"  R14  i
+        "uart.tx"  T14  o  PULLMODE="UP"
+    |
+
+    leds: |c
+        "led"[0-5]
+        P14 P16 P15 R16 R15 T15
+    |
+
+    phy: |c
+        "sideband_phy"  R1  P3  P1  P2  N1  M2  M1  L2
+        "host_phy"      F1  F2  E1  E2  D1  E3  C1  C2
+        "target_phy"    E16 F14 F16 F15 G16 G15 H15 J16
+    |
+
+    power: |c
+        "power_a_port"          C14  o
+        "power_c_port"          F13  o
+        "pass_through_vbus"     B16  o
+        "target_c_to_a_fault"   F12  i
+        "target_a_to_c_fault"   E14  i
+        "target_5v_to_a_fault"  B15  i
+    |
+
+    user_pmod: |c
+        "user_pmod"[0]  A3 A4 A5 A6 C6 B6 C7 B7  io
+        "user_pmod"[1]  M5 N5 M4 N3 L4 L5 K4 K5  io
+    |
+}
+
+gateware.LunaECP5DomainGenerator -- resource.clk_60MHz
+
+gateware: {
+    LunaECP5DomainGenerator
+}
+
+
+Note: |c
+
+    apollo   runs on ATSAMD11
+    gateware gets sent to SPI Flash
+    lunasoc bitstream gets configured from SPI Flash
+
+    bitstream -> ApolloDebugger
+              -> ECP5_JTAGProgrammer(jtag)
+              -> USB
+              -> MCU
+              -> SPI Flash
+              -> MCU.trigger_fpga_reset()
+              -> SPI Flash
+              -> ECP5.SoC
+
+    firmware -> UART
+             -> ECP5.SoC
+             -> Litex Bios
+             -> ECP5.SoC.RAM
+             -> reset()
+             -> firmware.main()
+|
+
+Bootstrap: |c
+    Flash Saturn-V bootloader:  saturn.bin   -> SWD          -> flash.SAMD   -> SAMD
+    Flash Apollo firmware:      apollo.bin   -> [Saturn-V]   -> flash.SAMD   -> SAMD
+    Configure LunaSoC:          lunasoc.bin  -> [Apollo]     -> flash.SPI    -> ECP5
+    Flash Cynthion firmware:    firmware.bin -> [litex-bios] -> ram.LunaSoC  -> MINERVArdkfiheicjjrbj
+
+|
+
+
+Questions: |md
+    * What is the layout of the SAMD\'s flash?
+    * What is the layout of the spi Flash?
+      - Just the bitstream? start / stop address?
+    * Does ATSAMD bootloader + firmware live on chip flash or spi flash?
+|
+
+Boot Challenges: |md
+    * read SPI flash from LunaSoC
+      - create a SPI Peripheral
+      - read from SPI Peripheral
+    * write to SPI flash from host
+      - extend apollo to load arb data at arb address to SPI flash?
+|
+
+Debug Challenges: |md
+    * Wire up the debug interface on minerva or vexriscv
+    * Connect to it via openocd?
+|
