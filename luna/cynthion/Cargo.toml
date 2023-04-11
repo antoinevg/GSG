@@ -75,6 +75,10 @@ name = "firmware"
 required-features = ["lunasoc-pac/rt"]
 
 [[bin]]
+name = "gpio"
+required-features = ["lunasoc-pac/rt"]
+
+[[bin]]
 name = "hello"
 required-features = ["lunasoc-pac/rt"]
 

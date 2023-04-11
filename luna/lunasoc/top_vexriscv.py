@@ -1,3 +1,4 @@
+from gpio                                    import GpioPeripheral
 from vexsoc                                  import LunaSoC
 
 from luna                                    import configure_default_logging, top_level_cli
@@ -61,6 +62,11 @@ class CynthionSoC(Elaboratable):
             ('tx', [('o', 1)])
         ])
 
+        # Create a stand-in for our PMOD connectors.
+        self.pmoda_pins = Record([
+            ('a', [('io', 8)]),
+        ])
+
         # Create our SoC...
         self.soc = LunaSoC(clock_frequency, internal_sram_size=65536)
 
@@ -98,6 +104,12 @@ class CynthionSoC(Elaboratable):
         self.soc.add_peripheral(self.usb2_ep_in, as_submodule=False)
         self.soc.add_peripheral(self.usb2_ep_out, as_submodule=False)
 
+        # ... add a GpioPeripheral for the PMOD connectors ...
+        self.gpioa = GpioPeripheral(width=8)
+        self.gpiob = GpioPeripheral(width=8)
+        self.soc.add_peripheral(self.gpioa)
+        self.soc.add_peripheral(self.gpiob)
+
         # ... and our LED peripheral, for simple output.
         self.leds = LedPeripheral()
         self.soc.add_peripheral(self.leds)
@@ -118,6 +130,14 @@ class CynthionSoC(Elaboratable):
         ]
         if hasattr(uart_io.tx, 'oe'):
             m.d.comb += uart_io.tx.oe.eq(~self.soc.uart._phy.tx.rdy),
+
+        # connect the GpioPeripheral to the pmod ports
+        pmoda_io = platform.request("user_pmod", 0)
+        pmodb_io = platform.request("user_pmod", 1)
+        m.d.comb += [
+            self.gpioa.pins.connect(pmoda_io),
+            self.gpiob.pins.connect(pmodb_io)
+        ]
 
         # create our USB devices, connect device controllers and add eptri endpoint handlers
         ulpi0 = platform.request(platform.default_usb_connection) # target_phy
