@@ -173,7 +173,6 @@ if __name__ == "__main__":
     #platform = ULX3S_85F_Platform()
 
     # create design
-    # TODO ideally we should be able to get clk_freq from platform
     if isinstance(platform, LUNAPlatformRev0D4):
         logging.info("Building for Luna r04")
         design = CynthionSoC(clock_frequency=int(60e6))

@@ -16,34 +16,43 @@ class GpioPeripheral(Peripheral, Elaboratable):
         self.width = width
 
         # peripheral control registers
-        self._mode  = self.csr_bank().csr(width, "rw")
-        self._odr   = self.csr_bank().csr(width, "w")
-        self._idr   = self.csr_bank().csr(width, "r")
+        bank        = self.csr_bank()
+        self._moder = bank.csr(width, "rw")
+        self._odr   = bank.csr(width, "w")
+        self._idr   = bank.csr(width, "r")
+
+        # peripheral event registers
+        self._ev    = self.event(mode="rise")
 
         # peripheral bus
         self._bridge = self.bridge(data_width=32, granularity=8, alignment=2)
         self.bus     = self._bridge.bus
+        self.irq     = self._bridge.irq
+
 
     def elaborate(self, platform):
         m = Module()
 
         # set pin output enable states: 0=output, 1=input
-        reg_mode = Signal(self.width)
+        moder = Signal(self.width)
         with m.If(self._odr.w_stb):
-            m.d.sync += reg_mode.eq(self._mode.w_data)
-        m.d.comb += self.pins.oe.eq(reg_mode)
+            m.d.sync += moder.eq(self._moder.w_data)
+        m.d.comb += self.pins.oe.eq(moder)
 
         # set pin output states
-        reg_out = Signal(self.width)
+        odr = Signal(self.width)
         with m.If(self._odr.w_stb):
-            m.d.sync += reg_out.eq(self._odr.w_data)
-        m.d.comb += self.pins.o.eq(reg_out)
+            m.d.sync += odr.eq(self._odr.w_data)
+        m.d.comb += self.pins.o.eq(odr)
 
         # get pin input states
-        reg_in = Signal(self.width)
-        m.d.comb += reg_in.eq(self.pins.i)
+        idr = Signal(self.width)
+        m.d.comb += idr.eq(self.pins.i & moder)
         with m.If(self._idr.r_stb):
-            m.d.sync += self._idr.r_data.eq(reg_in)
+            m.d.sync += self._idr.r_data.eq(idr)
+
+        # trigger interrupt on pin input
+        m.d.comb += self._ev.stb.eq(idr.any())
 
         # submodules
         m.submodules.bridge = self._bridge

@@ -22,6 +22,8 @@ extern "C" {
     fn USB2_EP_CONTROL();
     fn USB2_EP_IN();
     fn USB2_EP_OUT();
+    fn GPIOA();
+    fn GPIOB();
 }
 #[doc(hidden)]
 pub union Vector {
@@ -31,7 +33,7 @@ pub union Vector {
 #[cfg(feature = "rt")]
 #[doc(hidden)]
 #[no_mangle]
-pub static __EXTERNAL_INTERRUPTS: [Vector; 14] = [
+pub static __EXTERNAL_INTERRUPTS: [Vector; 16] = [
     Vector { _handler: TIMER },
     Vector { _handler: UART },
     Vector { _handler: USB0 },
@@ -64,6 +66,8 @@ pub static __EXTERNAL_INTERRUPTS: [Vector; 14] = [
     Vector {
         _handler: USB2_EP_OUT,
     },
+    Vector { _handler: GPIOA },
+    Vector { _handler: GPIOB },
 ];
 #[doc(hidden)]
 pub mod interrupt;

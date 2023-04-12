@@ -8,58 +8,78 @@ use hal::hal::delay::DelayUs;
 use hal::Serial;
 use hal::Timer;
 
-use log::info;
+use log::{error, info};
 
 use riscv_rt::entry;
+
+// - interrupt handler --------------------------------------------------------
+
+#[allow(non_snake_case)]
+#[no_mangle]
+fn MachineExternal() {
+    let peripherals = unsafe { pac::Peripherals::steal() };
+    let gpioa = &peripherals.GPIOA;
+
+    if pac::csr::interrupt::pending(pac::Interrupt::GPIOA) {
+        let pending = gpioa.ev_pending.read().pending().bit();
+        gpioa.ev_pending.write(|w| w.pending().bit(pending));
+
+        let bits_all: u32 = gpioa.idr.read().bits();
+        let bits_in: u32 = gpioa.idr.read().bits() & 0b0000_1111;
+        info!("gpioa bits: {bits_all:#010b} {bits_in:#010b}");
+    } else {
+        error!("MachineExternal - unknown interrupt");
+    }
+}
+
+// - main entry point ---------------------------------------------------------
 
 #[entry]
 fn main() -> ! {
     let peripherals = pac::Peripherals::take().unwrap();
+    let leds = &peripherals.LEDS;
 
     // initialize logging
     let serial = Serial::new(peripherals.UART);
     cynthion::log::init(serial);
 
-    // configure gpioa pins 7-4: output, 3-0: input
+    // configure gpioa pins 7-4:output, 3-0:input
     let gpioa = &peripherals.GPIOA;
-    gpioa.mode.write(|w| unsafe { w.mode().bits(0b0000_1111) }); // 0=output, 1=input
+    gpioa
+        .moder
+        .write(|w| unsafe { w.moder().bits(0b0000_1111) }); // 0=output, 1=input
 
-    let leds = &peripherals.LEDS;
-    let mut timer = Timer::new(peripherals.TIMER, cynthion::SYSTEM_CLOCK_FREQUENCY);
+    // enable gpioa events
+    gpioa.ev_enable.write(|w| w.enable().bit(true));
+
+    // configure and enable timer
+    let mut timer = Timer::new(peripherals.TIMER, pac::clock::sysclk());
+    timer.set_timeout_ticks(pac::clock::sysclk() / 2);
+    timer.enable();
+
+    // enable interrupts
+    unsafe {
+        // set mstatus register: interrupt enable
+        riscv::interrupt::enable();
+
+        // set mie register: machine external interrupts enable
+        riscv::register::mie::set_mext();
+
+        // write csr: enable timer interrupt
+        pac::csr::interrupt::enable(pac::Interrupt::GPIOA)
+    }
 
     info!("Peripherals initialized, entering main loop.");
 
     let mut counter = 0;
-    let mut direction = true;
-    let mut led_state = 0b110000;
 
     loop {
+        gpioa
+            .odr
+            .write(|w| unsafe { w.odr().bits(counter & 0b1111_0000) });
+        leds.output.write(|w| unsafe { w.output().bits(counter) });
+
         timer.delay_ms(1_000).unwrap();
-
-        if direction {
-            led_state >>= 1;
-            if led_state == 0b000011 {
-                direction = false;
-            }
-        } else {
-            led_state <<= 1;
-            if led_state == 0b110000 {
-                direction = true;
-            }
-        }
-        leds.output.write(|w| unsafe { w.output().bits(led_state) });
-
-        // gpioa - read input pins
-        let bits: u32 = gpioa.idr.read().bits() & 0b0000_1111;
-        info!("gpioa bits: {bits:#010b}");
-
-        // gpioa - toggle output pins
-        if counter % 2 == 0 {
-            gpioa.odr.write(|w| unsafe { w.odr().bits(0b0001_0000) });
-        } else {
-            gpioa.odr.write(|w| unsafe { w.odr().bits(0b0000_0000) });
-        }
-
         counter += 1;
     }
 }

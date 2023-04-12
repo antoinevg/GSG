@@ -62,11 +62,6 @@ class CynthionSoC(Elaboratable):
             ('tx', [('o', 1)])
         ])
 
-        # Create a stand-in for our PMOD connectors.
-        self.pmoda_pins = Record([
-            ('a', [('io', 8)]),
-        ])
-
         # Create our SoC...
         self.soc = LunaSoC(clock_frequency, internal_sram_size=65536)
 
@@ -193,7 +188,6 @@ if __name__ == "__main__":
     #platform = ULX3S_85F_Platform()
 
     # create design
-    # TODO ideally we should be able to get clk_freq from platform
     if isinstance(platform, LUNAPlatformRev0D4):
         logging.info("Building for Luna r04")
         design = CynthionSoC(clock_frequency=int(60e6))
