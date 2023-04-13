@@ -7,7 +7,9 @@ svd2rust:
 	cp $(SVD) svd/lunasoc.svd
 	svd2rust -i svd/lunasoc.svd -o build/ --target riscv --const_generic --make_mod
 	mv build/mod.rs src/generated.rs
-	mv build/build.rs .
+	@# TODO uncomment once we no longer have to poly-fill 'target_has_atomic'
+	@#		see: https://github.com/rust-lang/rust/issues/94039
+	@# mv build/build.rs .
 	mv build/device.x .
 
 	form -i src/generated.rs -o src/generated/

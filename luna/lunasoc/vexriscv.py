@@ -54,7 +54,7 @@ class VexRiscv(CPU, Elaboratable):
         self._reset_addr = reset_addr
 
         # ports
-        self.reset = Signal()
+        self.ext_reset = Signal()
         self.irq_external = Signal(32)
         self.irq_timer    = Signal()
         self.irq_software = Signal()
@@ -97,7 +97,7 @@ class VexRiscv(CPU, Elaboratable):
 
         # signals
         i_clk       = ClockSignal("sync")
-        i_reset     = ResetSignal("sync") #ResetSignal("sync") | self.reset
+        i_reset     = ResetSignal("sync") | self.ext_reset
 
         # instantiate VexRiscv
         platform.add_file(self._source_path, self._source_verilog)

@@ -134,6 +134,11 @@ class CynthionSoC(Elaboratable):
             self.gpiob.pins.connect(pmodb_io)
         ]
 
+        # wire the cpu external reset signal up to a user port
+        user1_io = platform.request("user_io", 1)
+        m.d.comb += user1_io.oe.eq(1)
+        m.d.comb += self.soc.cpu.ext_reset.eq(user1_io.i)
+
         # create our USB devices, connect device controllers and add eptri endpoint handlers
         ulpi0 = platform.request(platform.default_usb_connection) # target_phy
         usb0_device = USBDevice(bus=ulpi0)
