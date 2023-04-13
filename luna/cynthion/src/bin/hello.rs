@@ -21,7 +21,7 @@ fn main() -> ! {
     let serial = Serial::new(peripherals.UART);
     cynthion::log::init(serial);
 
-    let mut timer = Timer::new(peripherals.TIMER, cynthion::SYSTEM_CLOCK_FREQUENCY);
+    let mut timer = Timer::new(peripherals.TIMER, pac::clock::sysclk());
     let mut counter = 0;
     let mut direction = true;
     let mut led_state = 0b110000;

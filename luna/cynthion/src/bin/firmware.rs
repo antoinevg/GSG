@@ -42,7 +42,6 @@ static MESSAGE_QUEUE: Queue<Message, 32> = Queue::new();
 fn MachineExternal() {
     // peripherals
     let peripherals = unsafe { pac::Peripherals::steal() };
-    let timer = unsafe { hal::Timer::summon() };
     let usb0 = unsafe { hal::Usb0::summon() };
     let usb1 = unsafe { hal::Usb1::summon() };
 
@@ -125,11 +124,6 @@ fn MachineExternal() {
 
         Message::UsbTransferComplete(0, endpoint)
 
-    // TIMER TimerEvent
-    } else if timer.is_pending() {
-        timer.clear_pending();
-        Message::TimerEvent(0)
-
     // - Unknown Interrupt --
     } else {
         Message::HandleUnknownInterrupt(pending)
@@ -176,7 +170,6 @@ fn main() -> ! {
 struct Firmware<'a> {
     // peripherals
     leds: pac::LEDS,
-    timer: hal::Timer,
     usb1: UsbDevice<'a, hal::Usb1>,
 
     // state
@@ -191,10 +184,7 @@ impl<'a> Firmware<'a> {
     fn new(peripherals: pac::Peripherals) -> Self {
         // initialize logging
         cynthion::log::init(hal::Serial::new(peripherals.UART));
-        trace!("logging initialized");
-
-        // timer
-        let timer = hal::Timer::new(peripherals.TIMER, pac::clock::sysclk());
+        trace!("Logging initialized");
 
         // usb1: host
         let mut usb1 = UsbDevice::new(
@@ -241,7 +231,6 @@ impl<'a> Firmware<'a> {
 
         Self {
             leds: peripherals.LEDS,
-            timer,
             usb1,
             active_response: None,
             core,
@@ -255,12 +244,6 @@ impl<'a> Firmware<'a> {
             .output
             .write(|w| unsafe { w.output().bits(1 << 2) });
 
-        // configure and enable timer
-        let one_second = pac::clock::sysclk();
-        self.timer.set_timeout_ticks(one_second / 10);
-        //self.timer.enable();
-        //self.timer.listen(hal::timer::Event::TimeOut);
-
         // connect usb1
         let speed = self.usb1.connect();
         debug!("Connected usb1 device: {:?}", speed);
@@ -272,9 +255,6 @@ impl<'a> Firmware<'a> {
 
             // set mie register: machine external interrupts enable
             riscv::register::mie::set_mext();
-
-            // write csr: enable timer interrupt
-            //interrupt::enable(pac::Interrupt::TIMER);
 
             // write csr: enable usb1 interrupts and events
             self.enable_usb1_interrupts();
@@ -379,9 +359,6 @@ impl<'a> Firmware<'a> {
                     Message::ErrorMessage(message) => {
                         error!("MachineExternal Error - {}\n", message);
                     }
-
-                    // Timer
-                    Message::TimerEvent(_n) => {}
 
                     // Unhandled message
                     _ => {

@@ -70,12 +70,14 @@ impl TryFrom<u8> for DescriptorType {
 // - DeviceDescriptor ---------------------------------------------------------
 
 /// USB device descriptor
+///
+/// TODO consider renaming descriptor fields according to LUNA / industry-standard names
 #[derive(AsBytes, FromBytes)]
 #[repr(C, packed)]
 pub struct DeviceDescriptor {
-    pub _length: u8,          // 18
-    pub _descriptor_type: u8, // 1 = Device
-    pub descriptor_version: u16,
+    pub _length: u8,             // 18
+    pub _descriptor_type: u8,    // 1 = Device
+    pub descriptor_version: u16, // aka bcdUSB
     pub device_class: u8,
     pub device_subclass: u8,
     pub device_protocol: u8,
@@ -96,7 +98,7 @@ impl DeviceDescriptor {
         Self {
             _length: size_of::<Self>() as u8,
             _descriptor_type: DescriptorType::Device as u8,
-            descriptor_version: 0,
+            descriptor_version: 0x0200,
             device_class: 0,
             device_subclass: 0,
             device_protocol: 0,

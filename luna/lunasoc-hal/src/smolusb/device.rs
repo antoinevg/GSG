@@ -378,7 +378,7 @@ where
     }
 
     fn handle_clear_feature(&self, setup_packet: &SetupPacket) -> SmolResult<()> {
-        trace!("SETUP handle_clear_feature()");
+        debug!("SETUP handle_clear_feature()");
 
         // parse request
         let recipient = setup_packet.recipient();
@@ -399,7 +399,7 @@ where
             (Recipient::Endpoint, Feature::EndpointHalt) => {
                 let endpoint = setup_packet.index as u8;
                 self.hal_driver.stall_endpoint(endpoint, false);
-                trace!("SETUP clear stall: 0x{:x}", endpoint);
+                debug!("SETUP clear stall: 0x{:x}", endpoint);
             }
             _ => {
                 warn!(
