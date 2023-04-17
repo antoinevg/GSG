@@ -156,6 +156,11 @@ fn main_loop() -> GreatResult<()> {
     let mut queue_length = 0;
     let mut start = false;
 
+    let mut max_write_time = 0;
+    let mut min_write_time = usize::MAX;
+    let mut max_flush_time = 0;
+    let mut min_flush_time = usize::MAX;
+
     let test_data = [0_u8; TEST_WRITE_SIZE];
 
     //let mut test_data = heapless::Vec::<u8, TEST_WRITE_SIZE>::new();
@@ -183,10 +188,15 @@ fn main_loop() -> GreatResult<()> {
                             info!("starting transmission");
                             start = true;
                         }
-                        _ => {
+                        (1, 1, _) => {
                             info!("stopping transmission");
+                            info!("  max write time: {}", max_write_time);
+                            info!("  min write time: {}", min_write_time);
+                            info!("  max flush time: {}", max_flush_time);
+                            info!("  min flush time: {}", min_flush_time);
                             start = false;
                         }
+                        _ => ()
                     }
                 }
 
@@ -211,11 +221,35 @@ fn main_loop() -> GreatResult<()> {
 
         // send test data as fast as we can
         if usb1.state() == DeviceState::Configured && start {
-            // TODO hrmmm... btw 662 is 1001 cycles
-            unsafe { riscv::asm::delay(1000) };
-
             leds.output.write(|w| unsafe { w.output().bits(0b00_0001) });
-            usb1.hal_driver.write_ref(0x1, test_data.iter());
+
+            // write data to endpoint fifo
+            let (_, t_write) = cynthion::profile!(
+                usb1.hal_driver.write_ref(0x1, test_data.iter());
+            );
+
+            // wait for fifo endpoint to flush
+            let (_, t_flush) = cynthion::profile!(
+                let mut timeout = 100; // TODO Hrmmm...
+                while usb1.hal_driver.ep_in.have.read().have().bit() && timeout > 0 {
+                    timeout -= 1;
+                }
+            );
+
+            // gather some stats
+            if t_write > max_write_time {
+                max_write_time = t_write;
+            }
+            if t_write < min_write_time {
+                min_write_time = t_write;
+            }
+            if t_flush > max_flush_time {
+                max_flush_time = t_flush;
+            }
+            if t_flush < min_flush_time {
+                min_flush_time = t_flush;
+            }
+
             leds.output.write(|w| unsafe { w.output().bits(0b00_0010) });
         }
 
