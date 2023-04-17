@@ -373,25 +373,51 @@ macro_rules! impl_usb {
             // response.
             //
             // This is not a particularly safe approach.
-            //
-            // TODO use atomic variable when #[cfg(target_has_atomic)]
             #[allow(non_snake_case)]
             mod $USBX_CONTROLLER {
+                #[cfg(not(target_has_atomic))]
                 pub static mut TX_ACK_ACTIVE: bool = false;
+                #[cfg(target_has_atomic)]
+                pub static TX_ACK_ACTIVE: core::sync::atomic::AtomicBool =
+                    core::sync::atomic::AtomicBool::new(false);
             }
 
             impl UnsafeUsbDriverOperations for $USBX {
                 unsafe fn set_tx_ack_active(&self) {
-                    $USBX_CONTROLLER::TX_ACK_ACTIVE = true;
+                    #[cfg(not(target_has_atomic))]
+                    {
+                        $USBX_CONTROLLER::TX_ACK_ACTIVE = true;
+                    }
+                    #[cfg(target_has_atomic)]
+                    {
+                        use core::sync::atomic::Ordering;
+                        $USBX_CONTROLLER::TX_ACK_ACTIVE.store(true, Ordering::Relaxed);
+                    }
                 }
                 unsafe fn clear_tx_ack_active(&self) {
-                    $USBX_CONTROLLER::TX_ACK_ACTIVE = false;
+                    #[cfg(not(target_has_atomic))]
+                    {
+                        $USBX_CONTROLLER::TX_ACK_ACTIVE = false;
+                    }
+                    #[cfg(target_has_atomic)]
+                    {
+                        use core::sync::atomic::Ordering;
+                        $USBX_CONTROLLER::TX_ACK_ACTIVE.store(false, Ordering::Relaxed);
+                    }
                 }
                 unsafe fn is_tx_ack_active(&self) -> bool {
-                    riscv::register::mie::clear_mext();
-                    let active = $USBX_CONTROLLER::TX_ACK_ACTIVE;
-                    riscv::register::mie::set_mext();
-                    active
+                    #[cfg(not(target_has_atomic))]
+                    {
+                        riscv::register::mie::clear_mext();
+                        let active = $USBX_CONTROLLER::TX_ACK_ACTIVE;
+                        riscv::register::mie::set_mext();
+                        active
+                    }
+                    #[cfg(target_has_atomic)]
+                    {
+                        use core::sync::atomic::Ordering;
+                        $USBX_CONTROLLER::TX_ACK_ACTIVE.load(Ordering::Relaxed)
+                    }
                 }
             }
 
@@ -455,6 +481,7 @@ macro_rules! impl_usb {
                     I: Iterator<Item = u8>,
                 {
                     // reset output fifo if needed
+                    // TODO rather return an error
                     if self.ep_in.have.read().have().bit() {
                         trace!("  clear tx");
                         self.ep_in.reset.write(|w| w.reset().bit(true));
@@ -482,6 +509,7 @@ macro_rules! impl_usb {
                     I: Iterator<Item = &'a u8>,
                 {
                     // reset output fifo if needed
+                    // TODO rather return an error
                     if self.ep_in.have.read().have().bit() {
                         trace!("  clear tx");
                         self.ep_in.reset.write(|w| w.reset().bit(true));
