@@ -211,7 +211,7 @@ fn main_loop() -> GreatResult<()> {
 
         // send test data as fast as we can
         if usb1.state() == DeviceState::Configured && start {
-            // TODO hrmmm...
+            // TODO hrmmm... btw 662 is 1001 cycles
             unsafe { riscv::asm::delay(1000) };
 
             leds.output.write(|w| unsafe { w.output().bits(0b00_0001) });
