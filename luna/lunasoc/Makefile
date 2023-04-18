@@ -22,18 +22,22 @@ blinky_verilog:
 top_minerva:
 	rm -rf build
 	PATH=$(PATH):$(YOSYS_BIN) AR=$(AR) python top.py
+	cp build/genrust/memory.x ../memory.x
 
 top_minerva_verbose:
 	rm -rf build
 	PATH=$(PATH):$(YOSYS_BIN) AR=$(AR) AMARANTH_verbose=1 python top.py
+	cp build/genrust/memory.x ../memory.x
 
 top_vexriscv:
 	rm -rf build
 	PATH=$(PATH):$(YOSYS_BIN) AR=$(AR) python top_vexriscv.py
+	cp build/genrust/memory.x ../memory.x
 
 top_vexriscv_verbose:
 	rm -rf build
 	PATH=$(PATH):$(YOSYS_BIN) AR=$(AR) AMARANTH_verbose=1 python top_vexriscv.py
+	cp build/genrust/memory.x ../memory.x
 
 load:
 	@#apollo configure build/top.bit

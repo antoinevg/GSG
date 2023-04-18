@@ -44,11 +44,11 @@ class CoreSoC(CPUSoC, Elaboratable):
 
         # create cpu
         self.internal_sram_size = internal_sram_size
-        self.internal_sram_addr = 0x40000000
+        self.internal_sram_addr = 0x10000000
         from vexriscv import VexRiscv
         cpu = VexRiscv(
             #variant="imac+dcache",
-            variant="imac+nodcache", # no dcache no problem. huh?
+            variant="imac+nodcache", # no dcache no problem, right? right?
             reset_addr=0x00000000
         )
 

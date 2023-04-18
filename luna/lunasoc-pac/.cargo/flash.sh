@@ -2,7 +2,7 @@
 
 # configuration
 UART=/dev/cu.usbmodem22301
-BASE_MEM=0x40000000
+BASE_MEM=0x10000000
 
 # create bin file
 NAME=$(basename $1)
