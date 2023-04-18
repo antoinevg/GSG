@@ -517,8 +517,8 @@ macro_rules! impl_usb {
 
                     // write data
                     let mut bytes_written: usize = 0;
-                    for &byte in iter {
-                        self.ep_in.data.write(|w| unsafe { w.data().bits(byte) });
+                    for byte in iter {
+                        self.ep_in.data.write(|w| unsafe { w.data().bits(*byte) });
                         bytes_written += 1;
                     }
 

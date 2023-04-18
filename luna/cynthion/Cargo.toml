@@ -28,10 +28,10 @@ default = [
 
 # select softcore
 minerva = [
-    "lunasoc-pac/minerva"
+    "lunasoc-pac/minerva",
 ]
 vexriscv = [
-    "lunasoc-pac/vexriscv"
+    "lunasoc-pac/vexriscv",
 ]
 
 # select nightly toolchain
@@ -45,8 +45,8 @@ nightly = [
 
 [dependencies]
 libgreat = { path = "../libgreat", features = [] }
-lunasoc-pac = { path = "../lunasoc-pac", default-features = false, features = ["critical-section", "rt"]}
-lunasoc-hal = { path = "../lunasoc-hal", features = []}
+lunasoc-pac = { path = "../lunasoc-pac", default-features = false, features = ["critical-section"]}
+lunasoc-hal = { path = "../lunasoc-hal", default-features = false, features = []}
 
 riscv = { version = "=0.10.1", features = ["critical-section-single-hart"] }
 riscv-rt = { version = "=0.11.0" }

@@ -92,6 +92,25 @@ fn MachineExternal() {
 
 // - main entry point ---------------------------------------------------------
 
+/*#[riscv_rt::pre_init]
+unsafe fn pre_main() {
+    // flush icache
+    unsafe {
+        core::arch::asm!(
+            ".word(0x100f)",
+            "nop",
+            "nop",
+            "nop",
+            "nop",
+            "nop",
+        );
+    }
+    // flush dcache
+    unsafe {
+        core::arch::asm!(".word(0x500f)");
+    }
+}*/
+
 #[entry]
 fn main() -> ! {
     match main_loop() {
@@ -160,11 +179,21 @@ fn main_loop() -> GreatResult<()> {
     let mut min_write_time = usize::MAX;
     let mut max_flush_time = 0;
     let mut min_flush_time = usize::MAX;
+    let mut write_count = 0;
+    let mut reset_count = 0;
 
-    let test_data = [0_u8; TEST_WRITE_SIZE];
+    // 4 MB/s
+    let test_data = {
+        let mut test_data = [0_u8; TEST_WRITE_SIZE];
+        for n in 0..TEST_WRITE_SIZE {
+            test_data[n] = (n % 256) as u8;
+        }
+        test_data
+    };
 
-    //let mut test_data = heapless::Vec::<u8, TEST_WRITE_SIZE>::new();
-    //test_data.resize(TEST_WRITE_SIZE, 0).unwrap();
+    // 3.7 MB/s
+    //let test_data: heapless::Vec<u8, TEST_WRITE_SIZE> =
+    //    (0..TEST_WRITE_SIZE).map(|x| (x % 256) as u8).collect();
 
     loop {
         while let Some(message) = MESSAGE_QUEUE.dequeue() {
@@ -186,6 +215,12 @@ fn main_loop() -> GreatResult<()> {
                     match (endpoint, bytes_read, buffer[0]) {
                         (1, 1, 0x42) => {
                             info!("starting transmission");
+                            max_write_time = 0;
+                            min_write_time = usize::MAX;
+                            max_flush_time = 0;
+                            min_flush_time = usize::MAX;
+                            write_count = 0;
+                            reset_count = 0;
                             start = true;
                         }
                         (1, 1, _) => {
@@ -194,9 +229,11 @@ fn main_loop() -> GreatResult<()> {
                             info!("  min write time: {}", min_write_time);
                             info!("  max flush time: {}", max_flush_time);
                             info!("  min flush time: {}", min_flush_time);
+                            info!("  write count: {}", write_count);
+                            info!("  reset count: {}", reset_count);
                             start = false;
                         }
-                        _ => ()
+                        _ => (),
                     }
                 }
 
@@ -223,18 +260,48 @@ fn main_loop() -> GreatResult<()> {
         if usb1.state() == DeviceState::Configured && start {
             leds.output.write(|w| unsafe { w.output().bits(0b00_0001) });
 
-            // write data to endpoint fifo
-            let (_, t_write) = cynthion::profile!(
-                usb1.hal_driver.write_ref(0x1, test_data.iter());
-            );
+            /// Passing in a fixed size slice ref is 4MB/s vs 3.7MB/s
+            #[inline(always)]
+            fn write_slice(usb1: &hal::Usb1, endpoint: u8, data: &[u8; TEST_WRITE_SIZE]) -> bool {
+                let mut did_reset = false;
+                if usb1.ep_in.have.read().have().bit() {
+                    usb1.ep_in.reset.write(|w| w.reset().bit(true));
+                    did_reset = true;
+                }
+                // 3.7820103262165383 MB/s
+                for byte in data {
+                    usb1.ep_in.data.write(|w| unsafe { w.data().bits(*byte) });
+                }
+                // same as above
+                /*for n in 0..TEST_WRITE_SIZE {
+                    usb1.ep_in.data.write(|w| unsafe { w.data().bits(data[n]) });
+                }*/
+                // 5.063017280948139 MB/s
+                /*for n in 0..TEST_WRITE_SIZE {
+                    usb1.ep_in.data.write(|w| unsafe { w.data().bits((n % 256) as u8) });
+                }*/
+                usb1.ep_in
+                    .epno
+                    .write(|w| unsafe { w.epno().bits(endpoint & 0xf) });
+                did_reset
+            }
 
-            // wait for fifo endpoint to flush
+            // wait for fifo endpoint to be idle
             let (_, t_flush) = cynthion::profile!(
-                let mut timeout = 100; // TODO Hrmmm...
-                while usb1.hal_driver.ep_in.have.read().have().bit() && timeout > 0 {
+                let mut timeout = 100;
+                while !usb1.hal_driver.ep_in.idle.read().idle().bit() && timeout > 0 {
+                    leds.output.write(|w| unsafe { w.output().bits(0b00_0010) });
                     timeout -= 1;
                 }
             );
+
+            // write data to endpoint fifo
+            let (did_reset, t_write) = cynthion::profile!(
+                //usb1.hal_driver.write(0x1, test_data.into_iter()); false // 9560 / 8387
+                //usb1.hal_driver.write_ref(0x1, test_data.iter()); true // 6843 / 5652 - ~3.89MB/s
+                write_slice(&usb1.hal_driver, 0x1, &test_data) // 6843 / 5652 - ~4.04MB/s
+            );
+            write_count += 1;
 
             // gather some stats
             if t_write > max_write_time {
@@ -249,8 +316,11 @@ fn main_loop() -> GreatResult<()> {
             if t_flush < min_flush_time {
                 min_flush_time = t_flush;
             }
+            if did_reset {
+                reset_count += 1;
+            }
 
-            leds.output.write(|w| unsafe { w.output().bits(0b00_0010) });
+            leds.output.write(|w| unsafe { w.output().bits(0b00_0100) });
         }
 
         // queue diagnostics
