@@ -42,14 +42,13 @@ class CoreSoC(CPUSoC, Elaboratable):
     def __init__(self, clock_frequency=int(60e6), internal_sram_size=int(32768), with_debug=False):
         super().__init__()
 
-        # create cpu - TODO maybe do this _after_ we've added our RAM
+        # create cpu
         self.internal_sram_size = internal_sram_size
         self.internal_sram_addr = 0x40000000
         from vexriscv import VexRiscv
         cpu = VexRiscv(
-            #variant="lite", # doesn't seem to have the offset problem, it has no dcache
-            #variant="imac", # offset problem
-            variant="imac+nodcache", # no dache no problem. huh?
+            #variant="imac+dcache",
+            variant="imac+nodcache", # no dcache no problem. huh?
             reset_addr=0x00000000
         )
 

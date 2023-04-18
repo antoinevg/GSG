@@ -26,6 +26,7 @@ CPU_VARIANTS = {
     "standard+debug":     "VexRiscv_Debug",
     "imac":               "VexRiscv_IMAC",
     "imac+debug":         "VexRiscv_IMACDebug",
+    "imac+dcache":        "VexRiscv_IMACDcache",
     "imac+nodcache":      "VexRiscv_IMACNoDcache",
     "full":               "VexRiscv_Full",
     "full+cfu":           "VexRiscv_FullCfu",
