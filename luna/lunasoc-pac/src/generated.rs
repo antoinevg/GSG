@@ -10,6 +10,8 @@ pub mod generic;
 extern "C" {
     fn TIMER();
     fn UART();
+    fn GPIOA();
+    fn GPIOB();
     fn USB0();
     fn USB0_EP_CONTROL();
     fn USB0_EP_IN();
@@ -22,8 +24,6 @@ extern "C" {
     fn USB2_EP_CONTROL();
     fn USB2_EP_IN();
     fn USB2_EP_OUT();
-    fn GPIOA();
-    fn GPIOB();
 }
 #[doc(hidden)]
 pub union Vector {
@@ -36,6 +36,8 @@ pub union Vector {
 pub static __EXTERNAL_INTERRUPTS: [Vector; 16] = [
     Vector { _handler: TIMER },
     Vector { _handler: UART },
+    Vector { _handler: GPIOA },
+    Vector { _handler: GPIOB },
     Vector { _handler: USB0 },
     Vector {
         _handler: USB0_EP_CONTROL,
@@ -66,8 +68,6 @@ pub static __EXTERNAL_INTERRUPTS: [Vector; 16] = [
     Vector {
         _handler: USB2_EP_OUT,
     },
-    Vector { _handler: GPIOA },
-    Vector { _handler: GPIOB },
 ];
 #[doc(hidden)]
 pub mod interrupt;
@@ -128,6 +128,90 @@ impl core::fmt::Debug for UART {
 }
 #[doc = "UART"]
 pub mod uart;
+#[doc = "GPIOA"]
+pub struct GPIOA {
+    _marker: PhantomData<*const ()>,
+}
+unsafe impl Send for GPIOA {}
+impl GPIOA {
+    #[doc = r"Pointer to the register block"]
+    pub const PTR: *const gpioa::RegisterBlock = 0x8000_0040 as *const _;
+    #[doc = r"Return the pointer to the register block"]
+    #[inline(always)]
+    pub const fn ptr() -> *const gpioa::RegisterBlock {
+        Self::PTR
+    }
+}
+impl Deref for GPIOA {
+    type Target = gpioa::RegisterBlock;
+    #[inline(always)]
+    fn deref(&self) -> &Self::Target {
+        unsafe { &*Self::PTR }
+    }
+}
+impl core::fmt::Debug for GPIOA {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        f.debug_struct("GPIOA").finish()
+    }
+}
+#[doc = "GPIOA"]
+pub mod gpioa;
+#[doc = "GPIOB"]
+pub struct GPIOB {
+    _marker: PhantomData<*const ()>,
+}
+unsafe impl Send for GPIOB {}
+impl GPIOB {
+    #[doc = r"Pointer to the register block"]
+    pub const PTR: *const gpiob::RegisterBlock = 0x8000_0060 as *const _;
+    #[doc = r"Return the pointer to the register block"]
+    #[inline(always)]
+    pub const fn ptr() -> *const gpiob::RegisterBlock {
+        Self::PTR
+    }
+}
+impl Deref for GPIOB {
+    type Target = gpiob::RegisterBlock;
+    #[inline(always)]
+    fn deref(&self) -> &Self::Target {
+        unsafe { &*Self::PTR }
+    }
+}
+impl core::fmt::Debug for GPIOB {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        f.debug_struct("GPIOB").finish()
+    }
+}
+#[doc = "GPIOB"]
+pub mod gpiob;
+#[doc = "LEDS"]
+pub struct LEDS {
+    _marker: PhantomData<*const ()>,
+}
+unsafe impl Send for LEDS {}
+impl LEDS {
+    #[doc = r"Pointer to the register block"]
+    pub const PTR: *const leds::RegisterBlock = 0x8000_0080 as *const _;
+    #[doc = r"Return the pointer to the register block"]
+    #[inline(always)]
+    pub const fn ptr() -> *const leds::RegisterBlock {
+        Self::PTR
+    }
+}
+impl Deref for LEDS {
+    type Target = leds::RegisterBlock;
+    #[inline(always)]
+    fn deref(&self) -> &Self::Target {
+        unsafe { &*Self::PTR }
+    }
+}
+impl core::fmt::Debug for LEDS {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        f.debug_struct("LEDS").finish()
+    }
+}
+#[doc = "LEDS"]
+pub mod leds;
 #[doc = "USB0"]
 pub struct USB0 {
     _marker: PhantomData<*const ()>,
@@ -464,90 +548,6 @@ impl core::fmt::Debug for USB2_EP_OUT {
 }
 #[doc = "USB2_EP_OUT"]
 pub mod usb2_ep_out;
-#[doc = "GPIOA"]
-pub struct GPIOA {
-    _marker: PhantomData<*const ()>,
-}
-unsafe impl Send for GPIOA {}
-impl GPIOA {
-    #[doc = r"Pointer to the register block"]
-    pub const PTR: *const gpioa::RegisterBlock = 0x8000_4180 as *const _;
-    #[doc = r"Return the pointer to the register block"]
-    #[inline(always)]
-    pub const fn ptr() -> *const gpioa::RegisterBlock {
-        Self::PTR
-    }
-}
-impl Deref for GPIOA {
-    type Target = gpioa::RegisterBlock;
-    #[inline(always)]
-    fn deref(&self) -> &Self::Target {
-        unsafe { &*Self::PTR }
-    }
-}
-impl core::fmt::Debug for GPIOA {
-    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        f.debug_struct("GPIOA").finish()
-    }
-}
-#[doc = "GPIOA"]
-pub mod gpioa;
-#[doc = "GPIOB"]
-pub struct GPIOB {
-    _marker: PhantomData<*const ()>,
-}
-unsafe impl Send for GPIOB {}
-impl GPIOB {
-    #[doc = r"Pointer to the register block"]
-    pub const PTR: *const gpiob::RegisterBlock = 0x8000_41a0 as *const _;
-    #[doc = r"Return the pointer to the register block"]
-    #[inline(always)]
-    pub const fn ptr() -> *const gpiob::RegisterBlock {
-        Self::PTR
-    }
-}
-impl Deref for GPIOB {
-    type Target = gpiob::RegisterBlock;
-    #[inline(always)]
-    fn deref(&self) -> &Self::Target {
-        unsafe { &*Self::PTR }
-    }
-}
-impl core::fmt::Debug for GPIOB {
-    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        f.debug_struct("GPIOB").finish()
-    }
-}
-#[doc = "GPIOB"]
-pub mod gpiob;
-#[doc = "LEDS"]
-pub struct LEDS {
-    _marker: PhantomData<*const ()>,
-}
-unsafe impl Send for LEDS {}
-impl LEDS {
-    #[doc = r"Pointer to the register block"]
-    pub const PTR: *const leds::RegisterBlock = 0x8000_41c0 as *const _;
-    #[doc = r"Return the pointer to the register block"]
-    #[inline(always)]
-    pub const fn ptr() -> *const leds::RegisterBlock {
-        Self::PTR
-    }
-}
-impl Deref for LEDS {
-    type Target = leds::RegisterBlock;
-    #[inline(always)]
-    fn deref(&self) -> &Self::Target {
-        unsafe { &*Self::PTR }
-    }
-}
-impl core::fmt::Debug for LEDS {
-    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
-        f.debug_struct("LEDS").finish()
-    }
-}
-#[doc = "LEDS"]
-pub mod leds;
 #[no_mangle]
 static mut DEVICE_PERIPHERALS: bool = false;
 #[doc = r" All the peripherals."]
@@ -557,6 +557,12 @@ pub struct Peripherals {
     pub TIMER: TIMER,
     #[doc = "UART"]
     pub UART: UART,
+    #[doc = "GPIOA"]
+    pub GPIOA: GPIOA,
+    #[doc = "GPIOB"]
+    pub GPIOB: GPIOB,
+    #[doc = "LEDS"]
+    pub LEDS: LEDS,
     #[doc = "USB0"]
     pub USB0: USB0,
     #[doc = "USB0_EP_CONTROL"]
@@ -581,12 +587,6 @@ pub struct Peripherals {
     pub USB2_EP_IN: USB2_EP_IN,
     #[doc = "USB2_EP_OUT"]
     pub USB2_EP_OUT: USB2_EP_OUT,
-    #[doc = "GPIOA"]
-    pub GPIOA: GPIOA,
-    #[doc = "GPIOB"]
-    pub GPIOB: GPIOB,
-    #[doc = "LEDS"]
-    pub LEDS: LEDS,
 }
 impl Peripherals {
     #[doc = r" Returns all the peripherals *once*."]
@@ -613,6 +613,15 @@ impl Peripherals {
                 _marker: PhantomData,
             },
             UART: UART {
+                _marker: PhantomData,
+            },
+            GPIOA: GPIOA {
+                _marker: PhantomData,
+            },
+            GPIOB: GPIOB {
+                _marker: PhantomData,
+            },
+            LEDS: LEDS {
                 _marker: PhantomData,
             },
             USB0: USB0 {
@@ -649,15 +658,6 @@ impl Peripherals {
                 _marker: PhantomData,
             },
             USB2_EP_OUT: USB2_EP_OUT {
-                _marker: PhantomData,
-            },
-            GPIOA: GPIOA {
-                _marker: PhantomData,
-            },
-            GPIOB: GPIOB {
-                _marker: PhantomData,
-            },
-            LEDS: LEDS {
                 _marker: PhantomData,
             },
         }

@@ -1,3 +1,4 @@
+from gpio                                    import GpioPeripheral
 from lunasoc                                 import LunaSoC
 
 from luna                                    import configure_default_logging, top_level_cli
@@ -70,7 +71,17 @@ class CynthionSoC(Elaboratable):
         # ... add some bulk RAM ...
         # TODO soc.add_ram(0x4000, name="bulkram")
 
-        # ... the core USB controllers and eptri peripherals ...
+        # ... add a GpioPeripheral for the PMOD connectors ...
+        self.gpioa = GpioPeripheral(width=8)
+        self.gpiob = GpioPeripheral(width=8)
+        self.soc.add_peripheral(self.gpioa)
+        self.soc.add_peripheral(self.gpiob)
+
+        # ... add our LED peripheral, for simple output.
+        self.leds = LedPeripheral()
+        self.soc.add_peripheral(self.leds)
+
+        # ... and the core USB controllers and eptri peripherals ...
         self.usb0 = USBDeviceController()
         self.usb0_ep_control = SetupFIFOInterface()
         self.usb0_ep_in = InFIFOInterface()
@@ -98,11 +109,6 @@ class CynthionSoC(Elaboratable):
         self.soc.add_peripheral(self.usb2_ep_in, as_submodule=False)
         self.soc.add_peripheral(self.usb2_ep_out, as_submodule=False)
 
-        # ... and our LED peripheral, for simple output.
-        self.leds = LedPeripheral()
-        self.soc.add_peripheral(self.leds)
-
-
     def elaborate(self, platform):
         m = Module()
         m.submodules.soc = self.soc
@@ -118,6 +124,19 @@ class CynthionSoC(Elaboratable):
         ]
         if hasattr(uart_io.tx, 'oe'):
             m.d.comb += uart_io.tx.oe.eq(~self.soc.uart._phy.tx.rdy),
+
+        # connect the GpioPeripheral to the pmod ports
+        pmoda_io = platform.request("user_pmod", 0)
+        pmodb_io = platform.request("user_pmod", 1)
+        m.d.comb += [
+            self.gpioa.pins.connect(pmoda_io),
+            self.gpiob.pins.connect(pmodb_io)
+        ]
+
+        # TODO wire the cpu external reset signal up to a user port
+        #user1_io = platform.request("user_io", 1)
+        #m.d.comb += user1_io.oe.eq(1)
+        #m.d.comb += self.soc.cpu.ext_reset.eq(user1_io.i)
 
         # create our USB devices, connect device controllers and add eptri endpoint handlers
         ulpi0 = platform.request(platform.default_usb_connection) # target_phy

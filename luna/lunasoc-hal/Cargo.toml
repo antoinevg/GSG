@@ -27,10 +27,15 @@ bench = false
 
 [features]
 default = [
-    #"lunasoc-pac/minerva",
-    "lunasoc-pac/vexriscv",
-
+    "vexriscv",
     #"nightly",
+]
+# select softcore
+minerva = [
+    "lunasoc-pac/minerva",
+]
+vexriscv = [
+    "lunasoc-pac/vexriscv",
 ]
 nightly = []
 

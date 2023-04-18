@@ -268,6 +268,245 @@
       </registers>
     </peripheral>
     <peripheral>
+      <name>GPIOA</name>
+      <groupName>GPIOA</groupName>
+      <baseAddress>0x80000040</baseAddress>
+      <addressBlock>
+        <offset>0</offset>
+        <size>0x20</size>
+        <usage>registers</usage>
+      </addressBlock>
+      <interrupt>
+        <name>gpioa</name>
+        <value>2</value>
+      </interrupt>
+      <registers>
+        <register>
+          <name>moder</name>
+          <description>gpioa moder register</description>
+          <addressOffset>0x0000</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-write</access>
+          <fields>
+            <field>
+              <name>moder</name>
+              <description>gpioa moder register field</description>
+              <bitRange>[7:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>odr</name>
+          <description>gpioa odr register</description>
+          <addressOffset>0x0004</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>write-only</access>
+          <fields>
+            <field>
+              <name>odr</name>
+              <description>gpioa odr register field</description>
+              <bitRange>[7:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>idr</name>
+          <description>gpioa idr register</description>
+          <addressOffset>0x0008</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-only</access>
+          <fields>
+            <field>
+              <name>idr</name>
+              <description>gpioa idr register field</description>
+              <bitRange>[7:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>ev_status</name>
+          <description>gpioa ev_status register</description>
+          <addressOffset>0x0010</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-only</access>
+          <fields>
+            <field>
+              <name>status</name>
+              <description>gpioa status register field</description>
+              <bitRange>[0:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>ev_pending</name>
+          <description>gpioa ev_pending register</description>
+          <addressOffset>0x0014</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-write</access>
+          <fields>
+            <field>
+              <name>pending</name>
+              <description>gpioa pending register field</description>
+              <bitRange>[0:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>ev_enable</name>
+          <description>gpioa ev_enable register</description>
+          <addressOffset>0x0018</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-write</access>
+          <fields>
+            <field>
+              <name>enable</name>
+              <description>gpioa enable register field</description>
+              <bitRange>[0:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+      </registers>
+    </peripheral>
+    <peripheral>
+      <name>GPIOB</name>
+      <groupName>GPIOB</groupName>
+      <baseAddress>0x80000060</baseAddress>
+      <addressBlock>
+        <offset>0</offset>
+        <size>0x20</size>
+        <usage>registers</usage>
+      </addressBlock>
+      <interrupt>
+        <name>gpiob</name>
+        <value>3</value>
+      </interrupt>
+      <registers>
+        <register>
+          <name>moder</name>
+          <description>gpiob moder register</description>
+          <addressOffset>0x0000</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-write</access>
+          <fields>
+            <field>
+              <name>moder</name>
+              <description>gpiob moder register field</description>
+              <bitRange>[7:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>odr</name>
+          <description>gpiob odr register</description>
+          <addressOffset>0x0004</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>write-only</access>
+          <fields>
+            <field>
+              <name>odr</name>
+              <description>gpiob odr register field</description>
+              <bitRange>[7:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>idr</name>
+          <description>gpiob idr register</description>
+          <addressOffset>0x0008</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-only</access>
+          <fields>
+            <field>
+              <name>idr</name>
+              <description>gpiob idr register field</description>
+              <bitRange>[7:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>ev_status</name>
+          <description>gpiob ev_status register</description>
+          <addressOffset>0x0010</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-only</access>
+          <fields>
+            <field>
+              <name>status</name>
+              <description>gpiob status register field</description>
+              <bitRange>[0:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>ev_pending</name>
+          <description>gpiob ev_pending register</description>
+          <addressOffset>0x0014</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-write</access>
+          <fields>
+            <field>
+              <name>pending</name>
+              <description>gpiob pending register field</description>
+              <bitRange>[0:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+        <register>
+          <name>ev_enable</name>
+          <description>gpiob ev_enable register</description>
+          <addressOffset>0x0018</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>read-write</access>
+          <fields>
+            <field>
+              <name>enable</name>
+              <description>gpiob enable register field</description>
+              <bitRange>[0:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+      </registers>
+    </peripheral>
+    <peripheral>
+      <name>LEDS</name>
+      <groupName>LEDS</groupName>
+      <baseAddress>0x80000080</baseAddress>
+      <addressBlock>
+        <offset>0</offset>
+        <size>0x08</size>
+        <usage>registers</usage>
+      </addressBlock>
+      <registers>
+        <register>
+          <name>output</name>
+          <description>leds output register</description>
+          <addressOffset>0x0000</addressOffset>
+          <size>32</size>
+          <resetValue>0x00</resetValue>
+          <access>write-only</access>
+          <fields>
+            <field>
+              <name>output</name>
+              <description>leds output register field</description>
+              <bitRange>[5:0]</bitRange>
+            </field>
+          </fields>
+        </register>
+      </registers>
+    </peripheral>
+    <peripheral>
       <name>USB0</name>
       <groupName>USB0</groupName>
       <baseAddress>0x80002000</baseAddress>
@@ -278,7 +517,7 @@
       </addressBlock>
       <interrupt>
         <name>usb0</name>
-        <value>2</value>
+        <value>4</value>
       </interrupt>
       <registers>
         <register>
@@ -374,7 +613,7 @@
       </addressBlock>
       <interrupt>
         <name>usb0_ep_control</name>
-        <value>3</value>
+        <value>5</value>
       </interrupt>
       <registers>
         <register>
@@ -534,7 +773,7 @@
       </addressBlock>
       <interrupt>
         <name>usb0_ep_in</name>
-        <value>4</value>
+        <value>6</value>
       </interrupt>
       <registers>
         <register>
@@ -731,7 +970,7 @@
       </addressBlock>
       <interrupt>
         <name>usb0_ep_out</name>
-        <value>5</value>
+        <value>7</value>
       </interrupt>
       <registers>
         <register>
@@ -991,7 +1230,7 @@
       </addressBlock>
       <interrupt>
         <name>usb1</name>
-        <value>6</value>
+        <value>8</value>
       </interrupt>
       <registers>
         <register>
@@ -1087,7 +1326,7 @@
       </addressBlock>
       <interrupt>
         <name>usb1_ep_control</name>
-        <value>7</value>
+        <value>9</value>
       </interrupt>
       <registers>
         <register>
@@ -1247,7 +1486,7 @@
       </addressBlock>
       <interrupt>
         <name>usb1_ep_in</name>
-        <value>8</value>
+        <value>10</value>
       </interrupt>
       <registers>
         <register>
@@ -1444,7 +1683,7 @@
       </addressBlock>
       <interrupt>
         <name>usb1_ep_out</name>
-        <value>9</value>
+        <value>11</value>
       </interrupt>
       <registers>
         <register>
@@ -1704,7 +1943,7 @@
       </addressBlock>
       <interrupt>
         <name>usb2</name>
-        <value>10</value>
+        <value>12</value>
       </interrupt>
       <registers>
         <register>
@@ -1800,7 +2039,7 @@
       </addressBlock>
       <interrupt>
         <name>usb2_ep_control</name>
-        <value>11</value>
+        <value>13</value>
       </interrupt>
       <registers>
         <register>
@@ -1960,7 +2199,7 @@
       </addressBlock>
       <interrupt>
         <name>usb2_ep_in</name>
-        <value>12</value>
+        <value>14</value>
       </interrupt>
       <registers>
         <register>
@@ -2157,7 +2396,7 @@
       </addressBlock>
       <interrupt>
         <name>usb2_ep_out</name>
-        <value>13</value>
+        <value>15</value>
       </interrupt>
       <registers>
         <register>
@@ -2401,245 +2640,6 @@
               <name>enable</name>
               <description>usb2_ep_out enable register field</description>
               <bitRange>[0:0]</bitRange>
-            </field>
-          </fields>
-        </register>
-      </registers>
-    </peripheral>
-    <peripheral>
-      <name>GPIOA</name>
-      <groupName>GPIOA</groupName>
-      <baseAddress>0x80004180</baseAddress>
-      <addressBlock>
-        <offset>0</offset>
-        <size>0x20</size>
-        <usage>registers</usage>
-      </addressBlock>
-      <interrupt>
-        <name>gpioa</name>
-        <value>14</value>
-      </interrupt>
-      <registers>
-        <register>
-          <name>moder</name>
-          <description>gpioa moder register</description>
-          <addressOffset>0x0000</addressOffset>
-          <size>32</size>
-          <resetValue>0x00</resetValue>
-          <access>read-write</access>
-          <fields>
-            <field>
-              <name>moder</name>
-              <description>gpioa moder register field</description>
-              <bitRange>[7:0]</bitRange>
-            </field>
-          </fields>
-        </register>
-        <register>
-          <name>odr</name>
-          <description>gpioa odr register</description>
-          <addressOffset>0x0004</addressOffset>
-          <size>32</size>
-          <resetValue>0x00</resetValue>
-          <access>write-only</access>
-          <fields>
-            <field>
-              <name>odr</name>
-              <description>gpioa odr register field</description>
-              <bitRange>[7:0]</bitRange>
-            </field>
-          </fields>
-        </register>
-        <register>
-          <name>idr</name>
-          <description>gpioa idr register</description>
-          <addressOffset>0x0008</addressOffset>
-          <size>32</size>
-          <resetValue>0x00</resetValue>
-          <access>read-only</access>
-          <fields>
-            <field>
-              <name>idr</name>
-              <description>gpioa idr register field</description>
-              <bitRange>[7:0]</bitRange>
-            </field>
-          </fields>
-        </register>
-        <register>
-          <name>ev_status</name>
-          <description>gpioa ev_status register</description>
-          <addressOffset>0x0010</addressOffset>
-          <size>32</size>
-          <resetValue>0x00</resetValue>
-          <access>read-only</access>
-          <fields>
-            <field>
-              <name>status</name>
-              <description>gpioa status register field</description>
-              <bitRange>[0:0]</bitRange>
-            </field>
-          </fields>
-        </register>
-        <register>
-          <name>ev_pending</name>
-          <description>gpioa ev_pending register</description>
-          <addressOffset>0x0014</addressOffset>
-          <size>32</size>
-          <resetValue>0x00</resetValue>
-          <access>read-write</access>
-          <fields>
-            <field>
-              <name>pending</name>
-              <description>gpioa pending register field</description>
-              <bitRange>[0:0]</bitRange>
-            </field>
-          </fields>
-        </register>
-        <register>
-          <name>ev_enable</name>
-          <description>gpioa ev_enable register</description>
-          <addressOffset>0x0018</addressOffset>
-          <size>32</size>
-          <resetValue>0x00</resetValue>
-          <access>read-write</access>
-          <fields>
-            <field>
-              <name>enable</name>
-              <description>gpioa enable register field</description>
-              <bitRange>[0:0]</bitRange>
-            </field>
-          </fields>
-        </register>
-      </registers>
-    </peripheral>
-    <peripheral>
-      <name>GPIOB</name>
-      <groupName>GPIOB</groupName>
-      <baseAddress>0x800041a0</baseAddress>
-      <addressBlock>
-        <offset>0</offset>
-        <size>0x20</size>
-        <usage>registers</usage>
-      </addressBlock>
-      <interrupt>
-        <name>gpiob</name>
-        <value>15</value>
-      </interrupt>
-      <registers>
-        <register>
-          <name>moder</name>
-          <description>gpiob moder register</description>
-          <addressOffset>0x0000</addressOffset>
-          <size>32</size>
-          <resetValue>0x00</resetValue>
-          <access>read-write</access>
-          <fields>
-            <field>
-              <name>moder</name>
-              <description>gpiob moder register field</description>
-              <bitRange>[7:0]</bitRange>
-            </field>
-          </fields>
-        </register>
-        <register>
-          <name>odr</name>
-          <description>gpiob odr register</description>
-          <addressOffset>0x0004</addressOffset>
-          <size>32</size>
-          <resetValue>0x00</resetValue>
-          <access>write-only</access>
-          <fields>
-            <field>
-              <name>odr</name>
-              <description>gpiob odr register field</description>
-              <bitRange>[7:0]</bitRange>
-            </field>
-          </fields>
-        </register>
-        <register>
-          <name>idr</name>
-          <description>gpiob idr register</description>
-          <addressOffset>0x0008</addressOffset>
-          <size>32</size>
-          <resetValue>0x00</resetValue>
-          <access>read-only</access>
-          <fields>
-            <field>
-              <name>idr</name>
-              <description>gpiob idr register field</description>
-              <bitRange>[7:0]</bitRange>
-            </field>
-          </fields>
-        </register>
-        <register>
-          <name>ev_status</name>
-          <description>gpiob ev_status register</description>
-          <addressOffset>0x0010</addressOffset>
-          <size>32</size>
-          <resetValue>0x00</resetValue>
-          <access>read-only</access>
-          <fields>
-            <field>
-              <name>status</name>
-              <description>gpiob status register field</description>
-              <bitRange>[0:0]</bitRange>
-            </field>
-          </fields>
-        </register>
-        <register>
-          <name>ev_pending</name>
-          <description>gpiob ev_pending register</description>
-          <addressOffset>0x0014</addressOffset>
-          <size>32</size>
-          <resetValue>0x00</resetValue>
-          <access>read-write</access>
-          <fields>
-            <field>
-              <name>pending</name>
-              <description>gpiob pending register field</description>
-              <bitRange>[0:0]</bitRange>
-            </field>
-          </fields>
-        </register>
-        <register>
-          <name>ev_enable</name>
-          <description>gpiob ev_enable register</description>
-          <addressOffset>0x0018</addressOffset>
-          <size>32</size>
-          <resetValue>0x00</resetValue>
-          <access>read-write</access>
-          <fields>
-            <field>
-              <name>enable</name>
-              <description>gpiob enable register field</description>
-              <bitRange>[0:0]</bitRange>
-            </field>
-          </fields>
-        </register>
-      </registers>
-    </peripheral>
-    <peripheral>
-      <name>LEDS</name>
-      <groupName>LEDS</groupName>
-      <baseAddress>0x800041c0</baseAddress>
-      <addressBlock>
-        <offset>0</offset>
-        <size>0x08</size>
-        <usage>registers</usage>
-      </addressBlock>
-      <registers>
-        <register>
-          <name>output</name>
-          <description>leds output register</description>
-          <addressOffset>0x0000</addressOffset>
-          <size>32</size>
-          <resetValue>0x00</resetValue>
-          <access>write-only</access>
-          <fields>
-            <field>
-              <name>output</name>
-              <description>leds output register field</description>
-              <bitRange>[5:0]</bitRange>
             </field>
           </fields>
         </register>

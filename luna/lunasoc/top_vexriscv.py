@@ -71,7 +71,17 @@ class CynthionSoC(Elaboratable):
         # ... add some bulk RAM ...
         # TODO soc.add_ram(0x4000, name="bulkram")
 
-        # ... the core USB controllers and eptri peripherals ...
+        # ... add a GpioPeripheral for the PMOD connectors ...
+        self.gpioa = GpioPeripheral(width=8)
+        self.gpiob = GpioPeripheral(width=8)
+        self.soc.add_peripheral(self.gpioa)
+        self.soc.add_peripheral(self.gpiob)
+
+        # ... add our LED peripheral, for simple output.
+        self.leds = LedPeripheral()
+        self.soc.add_peripheral(self.leds)
+
+        # ... and the core USB controllers and eptri peripherals ...
         self.usb0 = USBDeviceController()
         self.usb0_ep_control = SetupFIFOInterface()
         self.usb0_ep_in = InFIFOInterface()
@@ -98,17 +108,6 @@ class CynthionSoC(Elaboratable):
         self.soc.add_peripheral(self.usb2_ep_control, as_submodule=False)
         self.soc.add_peripheral(self.usb2_ep_in, as_submodule=False)
         self.soc.add_peripheral(self.usb2_ep_out, as_submodule=False)
-
-        # ... add a GpioPeripheral for the PMOD connectors ...
-        self.gpioa = GpioPeripheral(width=8)
-        self.gpiob = GpioPeripheral(width=8)
-        self.soc.add_peripheral(self.gpioa)
-        self.soc.add_peripheral(self.gpiob)
-
-        # ... and our LED peripheral, for simple output.
-        self.leds = LedPeripheral()
-        self.soc.add_peripheral(self.leds)
-
 
     def elaborate(self, platform):
         m = Module()
