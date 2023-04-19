@@ -12,9 +12,9 @@ pub mod cpu;
 pub mod csr;
 pub mod register {
     #[cfg(feature = "minerva")]
-    pub use crate::cpu::minerva::*;
+    pub use crate::cpu::minerva::register::*;
     #[cfg(feature = "vexriscv")]
-    pub use crate::cpu::vexriscv::*;
+    pub use crate::cpu::vexriscv::register::*;
 }
 
 pub mod clock {
