@@ -16,12 +16,12 @@ class GpioPeripheral(Peripheral, Elaboratable):
         self.width = width
 
         # peripheral control registers
-        bank        = self.csr_bank()
-        self._moder = bank.csr(width, "rw")
-        self._odr   = bank.csr(width, "w")
-        self._idr   = bank.csr(width, "r")
+        regs        = self.csr_bank()
+        self._moder = regs.csr(width, "rw")
+        self._odr   = regs.csr(width, "w")
+        self._idr   = regs.csr(width, "r")
 
-        # peripheral event registers
+        # peripheral events
         self._ev    = self.event(mode="rise")
 
         # peripheral bus

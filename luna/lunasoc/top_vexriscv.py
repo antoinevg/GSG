@@ -54,7 +54,7 @@ class LedPeripheral(Peripheral, Elaboratable):
 # - CynthionSoC ---------------------------------------------------------------
 
 class CynthionSoC(Elaboratable):
-    def __init__(self, clock_frequency=int(50e6)):
+    def __init__(self, clock_frequency=int(60e6)):
 
         # Create a stand-in for our UART.
         self.uart_pins = Record([

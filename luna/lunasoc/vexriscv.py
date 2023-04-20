@@ -8,35 +8,12 @@ from lambdasoc.soc.cpu import ConstantAddr
 import os
 import logging
 
-# Verilog sources can be found here:
-#
-# https://github.com/litex-hub/pythondata-cpu-vexriscv/
-
-
 # Variants --------------------------------------------------------------------
 
 CPU_VARIANTS = {
-    "minimal":            "VexRiscv_Min",
-    "minimal+debug":      "VexRiscv_MinDebug",
-    "minimal+debug+hwbp": "VexRiscv_MinDebugHwBP",
-    "lite":               "VexRiscv_Lite",
-    "lite+debug":         "VexRiscv_LiteDebug",
-    "lite+debug+hwbp":    "VexRiscv_LiteDebugHwBP",
-    "standard":           "VexRiscv",
-    "standard+debug":     "VexRiscv_Debug",
-    "imac":               "VexRiscv_IMAC",
-    "imac+debug":         "VexRiscv_IMACDebug",
-    "imac+dcache":        "VexRiscv_IMACDcache",
-    "imac+nodcache":      "VexRiscv_IMACNoDcache",
-    "full":               "VexRiscv_Full",
-    "full+cfu":           "VexRiscv_FullCfu",
-    "full+debug":         "VexRiscv_FullDebug",
-    "full+cfu+debug":     "VexRiscv_FullCfuDebug",
-    "linux":              "VexRiscv_Linux",
-    "linux+debug":        "VexRiscv_LinuxDebug",
-    "linux+no-dsp":       "VexRiscv_LinuxNoDspFmax",
-    "secure":             "VexRiscv_Secure",
-    "secure+debug":       "VexRiscv_SecureDebug",
+    "cynthion":     "vexriscv_cynthion",
+    "imac":         "vexriscv_imac",
+    "imac+dcache":  "vexriscv_imac+dcache",
 }
 
 # - VexRiscv ------------------------------------------------------------------
@@ -48,7 +25,7 @@ class VexRiscv(CPU, Elaboratable):
     data_width = 32
 
     def __init__(self,
-                 variant="standard",
+                 variant="imac",
                  reset_addr=0x00000000):
         super().__init__()
 
@@ -68,7 +45,7 @@ class VexRiscv(CPU, Elaboratable):
         if not variant in CPU_VARIANTS:
             raise(f"unsupported variant: {variant}")
         self._source_file = f"{CPU_VARIANTS[variant]}.v"
-        self._source_path = os.path.join("verilog", self._source_file)
+        self._source_path = os.path.join("verilog", "vexriscv", self._source_file)
         if not os.path.exists(self._source_path):
             raise(f"source file not found: {self._source_path}")
         with open(self._source_path, "r") as f:

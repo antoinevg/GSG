@@ -47,8 +47,9 @@ class CoreSoC(CPUSoC, Elaboratable):
         self.internal_sram_addr = 0x10000000
         from vexriscv import VexRiscv
         cpu = VexRiscv(
-            #variant="imac+dcache",
-            variant="imac+nodcache", # no dcache no problem, right? right?
+            variant="cynthion",
+            #variant="imac",
+            #variant="imac+dcache", # TODO significant corruption of memory occurs
             reset_addr=0x00000000
         )
 
