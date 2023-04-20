@@ -92,24 +92,13 @@ fn MachineExternal() {
 
 // - main entry point ---------------------------------------------------------
 
-/*#[riscv_rt::pre_init]
+#[cfg(feature = "vexriscv")]
+#[riscv_rt::pre_init]
 unsafe fn pre_main() {
-    // flush icache
-    unsafe {
-        core::arch::asm!(
-            ".word(0x100f)",
-            "nop",
-            "nop",
-            "nop",
-            "nop",
-            "nop",
-        );
-    }
-    // flush dcache
-    unsafe {
-        core::arch::asm!(".word(0x500f)");
-    }
-}*/
+    pac::cpu::vexriscv::flush_icache();
+    #[cfg(feature = "vexriscv_dcache")]
+    pac::cpu::vexriscv::flush_dcache();
+}
 
 #[entry]
 fn main() -> ! {

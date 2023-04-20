@@ -33,6 +33,7 @@ minerva = [
 vexriscv = [
     "lunasoc-pac/vexriscv",
 ]
+vexriscv_dcache = []
 
 # select nightly toolchain
 nightly = [
@@ -60,32 +61,24 @@ log = { version="=0.4.17", features = ["release_max_level_debug"] }
 
 [[bin]]
 name = "benchmark"
-required-features = ["lunasoc-pac/rt"]
 
 [[bin]]
 name = "benchmark-mutex"
-required-features = ["lunasoc-pac/rt"]
 
 [[bin]]
 name = "cdc-serial-loopback"
-required-features = ["lunasoc-pac/rt"]
 
 [[bin]]
 name = "firmware"
-required-features = ["lunasoc-pac/rt"]
 
 [[bin]]
 name = "gpio"
-required-features = ["lunasoc-pac/rt"]
 
 [[bin]]
 name = "hello"
-required-features = ["lunasoc-pac/rt"]
 
 [[bin]]
 name = "interrupts"
-required-features = ["lunasoc-pac/rt"]
 
 [[bin]]
 name = "usb"
-required-features = ["lunasoc-pac/rt"]

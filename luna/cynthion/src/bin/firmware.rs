@@ -140,6 +140,14 @@ fn MachineExternal() {
 
 // - main entry point ---------------------------------------------------------
 
+#[cfg(feature = "vexriscv")]
+#[riscv_rt::pre_init]
+unsafe fn pre_main() {
+    pac::cpu::vexriscv::flush_icache();
+    #[cfg(feature = "vexriscv_dcache")]
+    pac::cpu::vexriscv::flush_dcache();
+}
+
 #[entry]
 fn main() -> ! {
     // initialize firmware
