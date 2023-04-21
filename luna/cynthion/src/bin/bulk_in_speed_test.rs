@@ -160,16 +160,8 @@ fn main_loop() -> GreatResult<()> {
 
     info!("Peripherals initialized, entering main loop.");
 
-    let mut max_queue_length = 0;
-    let mut queue_length = 0;
-    let mut start = false;
-
-    let mut max_write_time = 0;
-    let mut min_write_time = usize::MAX;
-    let mut max_flush_time = 0;
-    let mut min_flush_time = usize::MAX;
-    let mut write_count = 0;
-    let mut reset_count = 0;
+    let mut test_command = TestCommand::Stop;
+    let mut test_stats = TestStats::new();
 
     // 4 MB/s
     let test_data = {
@@ -185,6 +177,7 @@ fn main_loop() -> GreatResult<()> {
     //    (0..TEST_WRITE_SIZE).map(|x| (x % 256) as u8).collect();
 
     loop {
+        let mut queue_length = 0;
         while let Some(message) = MESSAGE_QUEUE.dequeue() {
             match message {
                 // - usb1 message handlers --
@@ -194,33 +187,33 @@ fn main_loop() -> GreatResult<()> {
 
                 // Usb1 received setup packet
                 Message::UsbReceiveSetupPacket(1, setup_packet) => {
-                    start = false;
+                    test_command = TestCommand::Stop;
                     usb1.handle_setup_request(&setup_packet)
                         .map_err(|_| GreatError::BadMessage)?;
                 }
 
                 // Usb1 received data on endpoint
                 Message::UsbReceiveData(1, endpoint, bytes_read, buffer) => {
-                    match (endpoint, bytes_read, buffer[0]) {
-                        (1, 1, 0x42) => {
-                            info!("starting transmission");
-                            max_write_time = 0;
-                            min_write_time = usize::MAX;
-                            max_flush_time = 0;
-                            min_flush_time = usize::MAX;
-                            write_count = 0;
-                            reset_count = 0;
-                            start = true;
+                    match (endpoint, bytes_read, buffer[0].into()) {
+                        (1, 1, TestCommand::In) => {
+                            info!("starting test: IN");
+                            test_stats.reset();
+                            test_command = TestCommand::In;
+                        }
+                        (1, 1, TestCommand::Out) => {
+                            info!("starting test: OUT");
+                            test_stats.reset();
+                            test_command = TestCommand::Out;
                         }
                         (1, 1, _) => {
-                            info!("stopping transmission");
-                            info!("  max write time: {}", max_write_time);
-                            info!("  min write time: {}", min_write_time);
-                            info!("  max flush time: {}", max_flush_time);
-                            info!("  min flush time: {}", min_flush_time);
-                            info!("  write count: {}", write_count);
-                            info!("  reset count: {}", reset_count);
-                            start = false;
+                            info!("stopping test");
+                            info!("  max write time: {}", test_stats.max_write_time);
+                            info!("  min write time: {}", test_stats.min_write_time);
+                            info!("  max flush time: {}", test_stats.max_flush_time);
+                            info!("  min flush time: {}", test_stats.min_flush_time);
+                            info!("  write count: {}", test_stats.write_count);
+                            info!("  reset count: {}", test_stats.reset_count);
+                            test_command = TestCommand::Stop;
                         }
                         _ => (),
                     }
@@ -245,79 +238,151 @@ fn main_loop() -> GreatResult<()> {
             queue_length += 1;
         }
 
-        // send test data as fast as we can
-        if usb1.state() == DeviceState::Configured && start {
-            leds.output.write(|w| unsafe { w.output().bits(0b00_0001) });
-
-            /// Passing in a fixed size slice ref is 4MB/s vs 3.7MB/s
-            #[inline(always)]
-            fn write_slice(usb1: &hal::Usb1, endpoint: u8, data: &[u8; TEST_WRITE_SIZE]) -> bool {
-                let mut did_reset = false;
-                if usb1.ep_in.have.read().have().bit() {
-                    usb1.ep_in.reset.write(|w| w.reset().bit(true));
-                    did_reset = true;
-                }
-                // 3.7820103262165383 MB/s
-                for byte in data {
-                    usb1.ep_in.data.write(|w| unsafe { w.data().bits(*byte) });
-                }
-                // same as above
-                /*for n in 0..TEST_WRITE_SIZE {
-                    usb1.ep_in.data.write(|w| unsafe { w.data().bits(data[n]) });
-                }*/
-                // 5.063017280948139 MB/s
-                /*for n in 0..TEST_WRITE_SIZE {
-                    usb1.ep_in.data.write(|w| unsafe { w.data().bits((n % 256) as u8) });
-                }*/
-                usb1.ep_in
-                    .epno
-                    .write(|w| unsafe { w.epno().bits(endpoint & 0xf) });
-                did_reset
-            }
-
-            // wait for fifo endpoint to be idle
-            let (_, t_flush) = cynthion::profile!(
-                let mut timeout = 100;
-                while !usb1.hal_driver.ep_in.idle.read().idle().bit() && timeout > 0 {
-                    leds.output.write(|w| unsafe { w.output().bits(0b00_0010) });
-                    timeout -= 1;
-                }
-            );
-
-            // write data to endpoint fifo
-            let (did_reset, t_write) = cynthion::profile!(
-                //usb1.hal_driver.write(0x1, test_data.into_iter()); false // 9560 / 8387
-                //usb1.hal_driver.write_ref(0x1, test_data.iter()); true // 6843 / 5652 - ~3.89MB/s
-                write_slice(&usb1.hal_driver, 0x1, &test_data) // 6843 / 5652 - ~4.04MB/s
-            );
-            write_count += 1;
-
-            // gather some stats
-            if t_write > max_write_time {
-                max_write_time = t_write;
-            }
-            if t_write < min_write_time {
-                min_write_time = t_write;
-            }
-            if t_flush > max_flush_time {
-                max_flush_time = t_flush;
-            }
-            if t_flush < min_flush_time {
-                min_flush_time = t_flush;
-            }
-            if did_reset {
-                reset_count += 1;
-            }
-
-            leds.output.write(|w| unsafe { w.output().bits(0b00_0100) });
+        // perform tests
+        match test_command {
+            TestCommand::In => test_in_speed(leds, &usb1.hal_driver, &test_data, &mut test_stats),
+            TestCommand::Out => test_out_speed(leds, &usb1.hal_driver, &mut test_stats),
+            _ => (),
         }
 
         // queue diagnostics
-        if queue_length > max_queue_length {
-            max_queue_length = queue_length;
-            debug!("max_queue_length: {}", max_queue_length);
+        if queue_length > test_stats.max_queue_length {
+            test_stats.max_queue_length = queue_length;
+            debug!("max_queue_length: {}", test_stats.max_queue_length);
         }
-        queue_length = 0;
+    }
+}
+
+// - tests --------------------------------------------------------------------
+
+/// Send test data to host as fast as possible
+#[inline(always)]
+fn test_in_speed(
+    leds: &pac::LEDS,
+    usb1: &hal::Usb1,
+    test_data: &[u8; TEST_WRITE_SIZE],
+    test_stats: &mut TestStats,
+) {
+    leds.output.write(|w| unsafe { w.output().bits(0b00_0001) });
+
+    // Passing in a fixed size slice ref is 4MB/s vs 3.7MB/s
+    #[inline(always)]
+    fn test_write_slice(usb1: &hal::Usb1, endpoint: u8, data: &[u8; TEST_WRITE_SIZE]) -> bool {
+        let mut did_reset = false;
+        if usb1.ep_in.have.read().have().bit() {
+            usb1.ep_in.reset.write(|w| w.reset().bit(true));
+            did_reset = true;
+        }
+        // 4.00309544825905 MB/s
+        for byte in data {
+            usb1.ep_in.data.write(|w| unsafe { w.data().bits(*byte) });
+        }
+        // 5.063017280948139 MB/s - no memory access
+        /*for n in 0..TEST_WRITE_SIZE {
+            usb1.ep_in.data.write(|w| unsafe { w.data().bits((n % 256) as u8) });
+        }*/
+        usb1.ep_in
+            .epno
+            .write(|w| unsafe { w.epno().bits(endpoint & 0xf) });
+        did_reset
+    }
+
+    // wait for fifo endpoint to be idle
+    let (_, t_flush) = cynthion::profile!(
+        let mut timeout = 100;
+        while !usb1.ep_in.idle.read().idle().bit() && timeout > 0 {
+            leds.output.write(|w| unsafe { w.output().bits(0b00_0010) });
+            timeout -= 1;
+        }
+    );
+
+    // write data to endpoint fifo
+    let (did_reset, t_write) = cynthion::profile!(
+        //usb1.write(0x1, test_data.into_iter().copied()); false // 6780 / 5653 ~3.99MB/s
+        //usb1.write_ref(0x1, test_data.iter()); false // 5663 / 5652 - ~4.02MB/s
+        test_write_slice(usb1, 0x1, test_data) // 56533 / 5652 - ~4.04MB/s
+    );
+    test_stats.write_count += 1;
+
+    // update stats
+    test_stats.update_in(t_write, t_flush, did_reset);
+
+    leds.output.write(|w| unsafe { w.output().bits(0b00_0100) });
+}
+
+/// Receive test data from host as fast as possible
+#[inline(always)]
+fn test_out_speed(leds: &pac::LEDS, usb1: &hal::Usb1, test_stats: &mut TestStats) {
+    leds.output.write(|w| unsafe { w.output().bits(0b00_0001) });
+    leds.output.write(|w| unsafe { w.output().bits(0b00_0100) });
+}
+
+// - types --------------------------------------------------------------------
+
+#[derive(PartialEq)]
+#[repr(u8)]
+enum TestCommand {
+    Stop,
+    In = 0x23,
+    Out = 0x42,
+}
+
+impl From<u8> for TestCommand {
+    fn from(value: u8) -> Self {
+        match value {
+            0x23 => TestCommand::In,
+            0x42 => TestCommand::Out,
+            _ => TestCommand::Stop,
+        }
+    }
+}
+
+struct TestStats {
+    max_queue_length: usize,
+
+    max_write_time: usize,
+    min_write_time: usize,
+    max_flush_time: usize,
+    min_flush_time: usize,
+
+    write_count: usize,
+    reset_count: usize,
+}
+
+impl TestStats {
+    const fn new() -> Self {
+        Self {
+            max_queue_length: 0,
+            max_write_time: 0,
+            min_write_time: usize::MAX,
+            max_flush_time: 0,
+            min_flush_time: usize::MAX,
+            write_count: 0,
+            reset_count: 0,
+        }
+    }
+
+    fn reset(&mut self) {
+        *self = Self::new();
+    }
+
+    #[inline(always)]
+    fn update_in(&mut self, t_write: usize, t_flush: usize, did_reset: bool) {
+        if t_write > self.max_write_time {
+            self.max_write_time = t_write;
+        }
+        if t_write < self.min_write_time {
+            self.min_write_time = t_write;
+        }
+        if t_flush > self.max_flush_time {
+            self.max_flush_time = t_flush;
+        }
+        if t_flush < self.min_flush_time {
+            self.min_flush_time = t_flush;
+        }
+        if did_reset {
+            self.reset_count += 1;
+        }
     }
 }
 

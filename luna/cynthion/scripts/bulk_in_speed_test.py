@@ -11,6 +11,8 @@ import sys
 import logging
 import time
 
+from enum import IntEnum
+
 import usb1
 
 from luna import configure_default_logging
@@ -27,6 +29,13 @@ TEST_TRANSFER_SIZE = 16 * 1024
 # Size of the host-size "transfer queue" -- this is effectively the number of async transfers we'll
 # have scheduled at a given time.
 TRANSFER_QUEUE_DEPTH = 16
+
+# Test commands
+class TestCommand(IntEnum):
+    Stop = 0x01,
+    In   = 0x23,
+    Out  = 0x42,
+
 
 def run_speed_test():
     """ Runs a simple speed test, and reports throughput. """
@@ -105,7 +114,7 @@ def run_speed_test():
             transfer.submit()
 
         # Tell Cynthion to start transmitting
-        device.bulkWrite(0x01, [0x42])
+        device.bulkWrite(0x01, [TestCommand.In])
 
         # Run our transfers until we get enough data.
         while not _should_terminate():
@@ -122,7 +131,7 @@ def run_speed_test():
 
         # If we failed out; tell Cynthion to stop transmitting and indicate it.
         if (failed_out):
-            device.bulkWrite(0x01, [0x23])
+            device.bulkWrite(0x01, [TestCommand.Stop])
             logging.error(f"Test failed because a transfer {_messages[failed_out]}.")
             sys.exit(failed_out)
 
@@ -131,7 +140,7 @@ def run_speed_test():
         logging.info(f"Exchanged {total_data_exchanged / 1000000}MB total at {bytes_per_second / 1000000}MB/s.")
 
         # Tell Cynthion to stop transmitting
-        device.bulkWrite(0x01, [0x23])
+        device.bulkWrite(0x01, [TestCommand.Stop])
 
 
 if __name__ == "__main__":
