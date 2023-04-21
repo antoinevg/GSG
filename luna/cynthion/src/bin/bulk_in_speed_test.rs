@@ -192,20 +192,30 @@ fn main_loop() -> GreatResult<()> {
                         .map_err(|_| GreatError::BadMessage)?;
                 }
 
-                // Usb1 received data on endpoint
-                Message::UsbReceiveData(1, endpoint, bytes_read, buffer) => {
-                    match (endpoint, bytes_read, buffer[0].into()) {
-                        (1, 1, TestCommand::In) => {
+                // TODO Usb1 received zero byte packet on endpoint 0x00 ???
+                Message::UsbReceiveData(1, 0x00, bytes_read, buffer) => {
+                    info!("received {} bytes on endpoint 0x00", bytes_read);
+                }
+
+                // Usb1 received bulk test data on endpoint 0x01
+                Message::UsbReceiveData(1, 0x01, bytes_read, buffer) => {
+                    info!("received bulk data from host: {} bytes", bytes_read);
+                }
+
+                // Usb1 received command data on endpoint 0x02
+                Message::UsbReceiveData(1, 0x02, bytes_read, buffer) => {
+                    match (bytes_read, buffer[0].into()) {
+                        (1, TestCommand::In) => {
                             info!("starting test: IN");
                             test_stats.reset();
                             test_command = TestCommand::In;
                         }
-                        (1, 1, TestCommand::Out) => {
+                        (1, TestCommand::Out) => {
                             info!("starting test: OUT");
                             test_stats.reset();
                             test_command = TestCommand::Out;
                         }
-                        (1, 1, _) => {
+                        (1, _) => {
                             info!("stopping test");
                             info!("  max write time: {}", test_stats.max_write_time);
                             info!("  min write time: {}", test_stats.min_write_time);
@@ -215,7 +225,12 @@ fn main_loop() -> GreatResult<()> {
                             info!("  reset count: {}", test_stats.reset_count);
                             test_command = TestCommand::Stop;
                         }
-                        _ => (),
+                        _ => {
+                            error!(
+                                "received invalid command from host: {:x?}",
+                                &buffer[0..bytes_read]
+                            );
+                        }
                     }
                 }
 
@@ -442,6 +457,13 @@ static USB_CONFIGURATION_DESCRIPTOR_0: ConfigurationDescriptor = ConfigurationDe
                 ..EndpointDescriptor::new()
             },
             EndpointDescriptor {
+                endpoint_address: 0x02, // OUT - host commands
+                attributes: 0x02,       // Bulk
+                max_packet_size: 8,
+                interval: 0,
+                ..EndpointDescriptor::new()
+            },
+            EndpointDescriptor {
                 endpoint_address: 0x81, // IN
                 attributes: 0x02,       // Bulk
                 max_packet_size: 512,
@@ -477,6 +499,13 @@ static USB_OTHER_SPEED_CONFIGURATION_DESCRIPTOR_0: ConfigurationDescriptor =
                     endpoint_address: 0x01, // OUT
                     attributes: 0x02,       // Bulk
                     max_packet_size: 64,
+                    interval: 0,
+                    ..EndpointDescriptor::new()
+                },
+                EndpointDescriptor {
+                    endpoint_address: 0x02, // OUT - host commands
+                    attributes: 0x02,       // Bulk
+                    max_packet_size: 8,
                     interval: 0,
                     ..EndpointDescriptor::new()
                 },

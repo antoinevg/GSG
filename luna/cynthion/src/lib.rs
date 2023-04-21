@@ -38,6 +38,13 @@ pub const EP_MAX_RECEIVE_LENGTH: usize = 64;
 
 // - messages -----------------------------------------------------------------
 
+// TODO use these instead of u8 in messages
+pub enum UsbInterface {
+    Target,
+    Host,
+    Sideband,
+}
+
 pub enum Message {
     // interrupts
     HandleInterrupt(pac::Interrupt),
