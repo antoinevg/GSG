@@ -40,6 +40,8 @@ static MESSAGE_QUEUE: Queue<Message, 32> = Queue::new();
 #[allow(non_snake_case)]
 #[no_mangle]
 fn MachineExternal() {
+    use cynthion::UsbInterface::{Host, Target};
+
     // peripherals
     let peripherals = unsafe { pac::Peripherals::steal() };
     let usb0 = unsafe { hal::Usb0::summon() };
@@ -53,7 +55,7 @@ fn MachineExternal() {
     let message = if usb1.is_pending(pac::Interrupt::USB1) {
         usb1.clear_pending(pac::Interrupt::USB1);
         usb1.bus_reset();
-        Message::UsbBusReset(1)
+        Message::UsbBusReset(Host)
 
     // USB1_EP_CONTROL UsbReceiveSetupPacket
     } else if usb1.is_pending(pac::Interrupt::USB1_EP_CONTROL) {
@@ -61,7 +63,7 @@ fn MachineExternal() {
         usb1.read_control(&mut setup_packet_buffer);
         usb1.clear_pending(pac::Interrupt::USB1_EP_CONTROL);
         match SetupPacket::try_from(setup_packet_buffer) {
-            Ok(setup_packet) => Message::UsbReceiveSetupPacket(1, setup_packet),
+            Ok(setup_packet) => Message::UsbReceiveSetupPacket(Host, setup_packet),
             Err(e) => Message::ErrorMessage("USB1_EP_CONTROL failed to read setup packet"),
         }
 
@@ -72,7 +74,7 @@ fn MachineExternal() {
         let bytes_read = usb1.read(endpoint, &mut buffer);
         usb1.clear_pending(pac::Interrupt::USB1_EP_OUT);
 
-        Message::UsbReceiveData(1, endpoint, bytes_read, buffer)
+        Message::UsbReceiveData(Host, endpoint, bytes_read, buffer)
 
     // USB1_EP_IN UsbTransferComplete
     } else if usb1.is_pending(pac::Interrupt::USB1_EP_IN) {
@@ -84,14 +86,14 @@ fn MachineExternal() {
             usb1.clear_tx_ack_active();
         }
 
-        Message::UsbTransferComplete(1, endpoint)
+        Message::UsbTransferComplete(Host, endpoint)
 
     // - usb0 interrupts - "target_phy" --
 
     // USB0 UsbBusReset
     } else if usb0.is_pending(pac::Interrupt::USB0) {
         usb0.clear_pending(pac::Interrupt::USB0);
-        Message::UsbBusReset(0)
+        Message::UsbBusReset(Target)
 
     // USB0_EP_CONTROL UsbReceiveSetupPacket
     } else if usb0.is_pending(pac::Interrupt::USB0_EP_CONTROL) {
@@ -99,7 +101,7 @@ fn MachineExternal() {
         usb0.read_control(&mut setup_packet_buffer);
         usb0.clear_pending(pac::Interrupt::USB0_EP_CONTROL);
         match SetupPacket::try_from(setup_packet_buffer) {
-            Ok(setup_packet) => Message::UsbReceiveSetupPacket(0, setup_packet),
+            Ok(setup_packet) => Message::UsbReceiveSetupPacket(Target, setup_packet),
             Err(e) => Message::ErrorMessage("USB0_EP_CONTROL failed to read setup packet"),
         }
 
@@ -110,7 +112,7 @@ fn MachineExternal() {
         let bytes_read = usb0.read(endpoint, &mut buffer);
         usb0.clear_pending(pac::Interrupt::USB0_EP_OUT);
 
-        Message::UsbReceiveData(0, endpoint, bytes_read, buffer)
+        Message::UsbReceiveData(Target, endpoint, bytes_read, buffer)
 
     // USB0_EP_IN UsbTransferComplete
     } else if usb0.is_pending(pac::Interrupt::USB0_EP_IN) {
@@ -122,7 +124,7 @@ fn MachineExternal() {
             usb0.clear_tx_ack_active();
         }
 
-        Message::UsbTransferComplete(0, endpoint)
+        Message::UsbTransferComplete(Target, endpoint)
 
     // - Unknown Interrupt --
     } else {
@@ -289,6 +291,11 @@ impl<'a> Firmware<'a> {
             queue_length = 0;
 
             while let Some(message) = MESSAGE_QUEUE.dequeue() {
+                use cynthion::{
+                    Message::*,
+                    UsbInterface::{Host, Target},
+                };
+
                 queue_length += 1;
 
                 trace!("MachineExternal: {:?}", message);
@@ -296,28 +303,28 @@ impl<'a> Firmware<'a> {
                     // - usb1 message handlers --
 
                     // Usb1 received USB bus reset
-                    Message::UsbBusReset(1) => {
+                    UsbBusReset(Host) => {
                         // handled in MachineExternal
                     }
 
                     // Usb1 received setup packet
-                    Message::UsbReceiveSetupPacket(1, packet) => {
+                    UsbReceiveSetupPacket(Host, packet) => {
                         self.handle_usb1_receive_setup_packet(packet)?;
                     }
 
                     // Usb1 transfer complete
-                    Message::UsbTransferComplete(1, endpoint) => {
+                    UsbTransferComplete(Host, endpoint) => {
                         self.handle_usb1_transfer_complete(endpoint)?;
                         trace!("MachineExternal - USB1_EP_IN {}\n", endpoint);
                     }
 
                     // Usb1 received data on control endpoint
-                    Message::UsbReceiveData(1, 0, bytes_read, buffer) => {
+                    UsbReceiveData(Host, 0, bytes_read, buffer) => {
                         self.handle_usb1_receive_control_data(bytes_read, buffer)?;
                     }
 
                     // Usb1 received data on endpoint
-                    Message::UsbReceiveData(1, endpoint, bytes_read, buffer) => {
+                    UsbReceiveData(Host, endpoint, bytes_read, buffer) => {
                         self.handle_usb1_receive_data(endpoint, bytes_read, buffer)?;
                         debug!(
                             "Usb1 received {} bytes on usb1 endpoint: {} - {:?}",
@@ -330,29 +337,29 @@ impl<'a> Firmware<'a> {
                     // - usb0 message handlers --
 
                     // Usb0 received USB bus reset
-                    Message::UsbBusReset(0) => {
+                    UsbBusReset(Target) => {
                         self.greatdancer.handle_usb_bus_reset()?;
                     }
 
                     // Usb0 received setup packet
-                    Message::UsbReceiveSetupPacket(0, packet) => {
+                    UsbReceiveSetupPacket(Target, packet) => {
                         self.greatdancer.handle_usb_receive_setup_packet(packet)?;
                     }
 
                     // Usb0 transfer complete
-                    Message::UsbTransferComplete(0, endpoint) => {
+                    UsbTransferComplete(Target, endpoint) => {
                         self.greatdancer.handle_usb_transfer_complete(endpoint)?;
                         trace!("MachineExternal - USB0_EP_IN {}\n", endpoint);
                     }
 
                     // Usb0 received data on control endpoint
-                    Message::UsbReceiveData(0, 0, bytes_read, buffer) => {
+                    UsbReceiveData(Target, 0, bytes_read, buffer) => {
                         self.greatdancer
                             .handle_usb_receive_control_data(bytes_read, buffer)?;
                     }
 
                     // Usb0 received data on endpoint
-                    Message::UsbReceiveData(0, endpoint, bytes_read, buffer) => {
+                    UsbReceiveData(Target, endpoint, bytes_read, buffer) => {
                         self.greatdancer
                             .handle_usb_receive_data(endpoint, bytes_read, buffer)?;
                         debug!(
@@ -364,7 +371,7 @@ impl<'a> Firmware<'a> {
                     }
 
                     // Error Message
-                    Message::ErrorMessage(message) => {
+                    ErrorMessage(message) => {
                         error!("MachineExternal Error - {}\n", message);
                     }
 

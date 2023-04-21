@@ -39,10 +39,11 @@ pub const EP_MAX_RECEIVE_LENGTH: usize = 64;
 // - messages -----------------------------------------------------------------
 
 // TODO use these instead of u8 in messages
+#[derive(Debug)]
 pub enum UsbInterface {
-    Target,
-    Host,
-    Sideband,
+    Target,   // Usb0
+    Host,     // Usb1
+    Sideband, // Usb2
 }
 
 pub enum Message {
@@ -56,26 +57,27 @@ pub enum Message {
     // usb events
     /// Receives a USB bus reset
     ///
-    /// Contents is (interface)
-    UsbBusReset(u8),
+    /// Contents is (UsbInterface)
+    UsbBusReset(UsbInterface),
 
     /// Received a SETUP packet on USBx_EP_CONTROL
     ///
-    /// Contents is (interface, setup_packet)
-    UsbReceiveSetupPacket(u8, hal::smolusb::control::SetupPacket),
+    /// Contents is (UsbInterface, SetupPacket)
+    UsbReceiveSetupPacket(UsbInterface, hal::smolusb::control::SetupPacket),
 
     /// Transfer is complete on USBx_EP_IN
     ///
-    /// Contents is (interface, endpoint)
-    UsbTransferComplete(u8, u8),
+    /// Contents is (UsbInterface, endpoint)
+    UsbTransferComplete(UsbInterface, u8),
 
     /// Received data on USBx_EP_OUT
     ///
-    /// Contents is (interface, endpoint, bytes_read, buffer)
-    UsbReceiveData(u8, u8, usize, [u8; EP_MAX_RECEIVE_LENGTH]),
+    /// Contents is (UsbInterface, endpoint, bytes_read, buffer)
+    UsbReceiveData(UsbInterface, u8, usize, [u8; EP_MAX_RECEIVE_LENGTH]),
 
     // misc
     ErrorMessage(&'static str),
+    DebugMessage(&'static str),
 }
 
 impl core::fmt::Debug for Message {
@@ -92,23 +94,26 @@ impl core::fmt::Debug for Message {
 
             // usb events
             Message::UsbBusReset(interface) => {
-                write!(f, "UsbBusReset({})", interface)
+                write!(f, "UsbBusReset({:?})", interface)
             }
             Message::UsbReceiveSetupPacket(interface, _setup_packet) => {
-                write!(f, "UsbReceiveSetupPacket({})", interface)
+                write!(f, "UsbReceiveSetupPacket({:?})", interface)
             }
             Message::UsbReceiveData(interface, endpoint, bytes_read, _buffer) => write!(
                 f,
-                "UsbReceiveData({}, {}, {})",
+                "UsbReceiveData({:?}, {}, {})",
                 interface, endpoint, bytes_read
             ),
             Message::UsbTransferComplete(interface, endpoint) => {
-                write!(f, "UsbTransferComplete({}, {})", interface, endpoint)
+                write!(f, "UsbTransferComplete({:?}, {})", interface, endpoint)
             }
 
             // misc
             Message::ErrorMessage(message) => {
                 write!(f, "ErrorMessage({})", message)
+            }
+            Message::DebugMessage(message) => {
+                write!(f, "DebugMessage({})", message)
             }
         }
     }

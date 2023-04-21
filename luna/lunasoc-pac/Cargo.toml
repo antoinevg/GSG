@@ -25,7 +25,7 @@ bench = false
 
 [features]
 default = [
-    "minerva",
+    "vexriscv",
 ]
 rt = ["riscv-rt"]
 minerva = []

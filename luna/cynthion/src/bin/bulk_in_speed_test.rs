@@ -33,6 +33,8 @@ static MESSAGE_QUEUE: Queue<Message, 32> = Queue::new();
 #[allow(non_snake_case)]
 #[no_mangle]
 fn MachineExternal() {
+    use cynthion::UsbInterface::Host;
+
     let usb1 = unsafe { hal::Usb1::summon() };
 
     // - usb1 interrupts - "host_phy" --
@@ -41,7 +43,7 @@ fn MachineExternal() {
     let message = if usb1.is_pending(pac::Interrupt::USB1) {
         usb1.clear_pending(pac::Interrupt::USB1);
         usb1.bus_reset();
-        Message::UsbBusReset(1)
+        Message::UsbBusReset(Host)
 
     // USB1_EP_CONTROL UsbReceiveSetupPacket
     } else if usb1.is_pending(pac::Interrupt::USB1_EP_CONTROL) {
@@ -50,7 +52,7 @@ fn MachineExternal() {
         usb1.clear_pending(pac::Interrupt::USB1_EP_CONTROL);
 
         match SetupPacket::try_from(setup_packet_buffer) {
-            Ok(setup_packet) => Message::UsbReceiveSetupPacket(1, setup_packet),
+            Ok(setup_packet) => Message::UsbReceiveSetupPacket(Host, setup_packet),
             Err(e) => Message::ErrorMessage("USB1_EP_CONTROL failed to read setup packet"),
         }
 
@@ -61,7 +63,7 @@ fn MachineExternal() {
         let bytes_read = usb1.read(endpoint, &mut buffer);
         usb1.clear_pending(pac::Interrupt::USB1_EP_OUT);
 
-        Message::UsbReceiveData(1, endpoint, bytes_read, buffer)
+        Message::UsbReceiveData(Host, endpoint, bytes_read, buffer)
 
     // USB1_EP_IN UsbTransferComplete
     } else if usb1.is_pending(pac::Interrupt::USB1_EP_IN) {
@@ -73,7 +75,7 @@ fn MachineExternal() {
             usb1.clear_tx_ack_active();
         }
 
-        Message::UsbTransferComplete(1, endpoint)
+        Message::UsbTransferComplete(Host, endpoint)
 
     // - Unknown Interrupt --
     } else {
@@ -179,31 +181,33 @@ fn main_loop() -> GreatResult<()> {
     loop {
         let mut queue_length = 0;
         while let Some(message) = MESSAGE_QUEUE.dequeue() {
+            use cynthion::{Message::*, UsbInterface::Host};
+
             match message {
                 // - usb1 message handlers --
 
                 // Usb1 received USB bus reset
-                Message::UsbBusReset(1) => (),
+                UsbBusReset(Host) => (),
 
                 // Usb1 received setup packet
-                Message::UsbReceiveSetupPacket(1, setup_packet) => {
+                UsbReceiveSetupPacket(Host, setup_packet) => {
                     test_command = TestCommand::Stop;
                     usb1.handle_setup_request(&setup_packet)
                         .map_err(|_| GreatError::BadMessage)?;
                 }
 
                 // TODO Usb1 received zero byte packet on endpoint 0x00 ???
-                Message::UsbReceiveData(1, 0x00, bytes_read, buffer) => {
+                UsbReceiveData(Host, 0x00, bytes_read, buffer) => {
                     info!("received {} bytes on endpoint 0x00", bytes_read);
                 }
 
                 // Usb1 received bulk test data on endpoint 0x01
-                Message::UsbReceiveData(1, 0x01, bytes_read, buffer) => {
+                UsbReceiveData(Host, 0x01, bytes_read, buffer) => {
                     info!("received bulk data from host: {} bytes", bytes_read);
                 }
 
                 // Usb1 received command data on endpoint 0x02
-                Message::UsbReceiveData(1, 0x02, bytes_read, buffer) => {
+                UsbReceiveData(Host, 0x02, bytes_read, buffer) => {
                     match (bytes_read, buffer[0].into()) {
                         (1, TestCommand::In) => {
                             info!("starting test: IN");
@@ -235,12 +239,12 @@ fn main_loop() -> GreatResult<()> {
                 }
 
                 // Usb1 transfer complete
-                Message::UsbTransferComplete(1, endpoint) => {
+                UsbTransferComplete(Host, endpoint) => {
                     leds.output.write(|w| unsafe { w.output().bits(0b10_0000) });
                 }
 
                 // Error Message
-                Message::ErrorMessage(message) => {
+                ErrorMessage(message) => {
                     error!("MachineExternal Error - {}", message);
                 }
 

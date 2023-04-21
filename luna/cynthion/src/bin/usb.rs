@@ -34,6 +34,8 @@ static MESSAGE_QUEUE: Queue<Message, 128> = Queue::new();
 #[allow(non_snake_case)]
 #[no_mangle]
 fn MachineExternal() {
+    use cynthion::UsbInterface::Target;
+
     // peripherals
     let peripherals = unsafe { pac::Peripherals::steal() };
     let leds = &peripherals.LEDS;
@@ -59,7 +61,7 @@ fn MachineExternal() {
             }
         };
         usb0.clear_pending(pac::Interrupt::USB0_EP_CONTROL);
-        Message::UsbReceiveSetupPacket(0, setup_packet)
+        Message::UsbReceiveSetupPacket(Target, setup_packet)
     } else if usb0.is_pending(pac::Interrupt::USB0_EP_IN) {
         usb0.clear_pending(pac::Interrupt::USB0_EP_IN);
         Message::HandleInterrupt(pac::Interrupt::USB0_EP_IN)
@@ -79,7 +81,7 @@ fn MachineExternal() {
         // clear pending IRQ after data is read
         usb0.clear_pending(pac::Interrupt::USB0_EP_OUT);
 
-        Message::UsbReceiveData(0, endpoint, bytes_read, buffer)
+        Message::UsbReceiveData(Target, endpoint, bytes_read, buffer)
     } else {
         Message::HandleUnknownInterrupt(pending)
     };
@@ -179,8 +181,10 @@ fn main() -> ! {
         }
 
         if let Some(message) = MESSAGE_QUEUE.dequeue() {
+            use cynthion::UsbInterface::Target;
+
             match message {
-                Message::UsbReceiveSetupPacket(0, packet) => {
+                Message::UsbReceiveSetupPacket(Target, packet) => {
                     start_polling = false;
                     match usb0_device.handle_setup_request(&packet) {
                         Ok(()) => {
@@ -194,7 +198,7 @@ fn main() -> ! {
                     }
                 }
 
-                Message::UsbReceiveData(0, endpoint, bytes_read, buffer) => {
+                Message::UsbReceiveData(Target, endpoint, bytes_read, buffer) => {
                     if endpoint != 0 {
                         debug!(
                             "Received {} bytes on endpoint: {} - {:?}\n",
