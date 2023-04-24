@@ -34,6 +34,7 @@ pub const BOARD_INFORMATION: BoardInformation = BoardInformation {
     ],
 };
 
+pub const EP_MAX_ENDPOINTS: usize = 16;
 pub const EP_MAX_RECEIVE_LENGTH: usize = 64;
 
 // - messages -----------------------------------------------------------------

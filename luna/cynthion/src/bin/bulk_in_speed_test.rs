@@ -1,12 +1,14 @@
-#![allow(dead_code, unused_imports, unused_variables)] // TODO
+#![allow(dead_code, unused_imports, unused_mut, unused_variables)] // TODO
 #![no_std]
 #![no_main]
 
-use cynthion::{hal, pac};
+//use riscv_atomic_emulation_trap as _;
+
+use cynthion::{hal, pac, Message};
 
 use hal::{smolusb, Serial};
 
-use smolusb::control::SetupPacket;
+use smolusb::control::{Direction, SetupPacket};
 use smolusb::descriptor::*;
 use smolusb::device::{DeviceState, Speed, UsbDevice};
 use smolusb::traits::{
@@ -16,17 +18,23 @@ use smolusb::traits::{
 
 use libgreat::{GreatError, GreatResult};
 
+use bbqueue::{BBBuffer, Producer};
+use heapless::mpmc::MpMcQueue as Queue;
 use log::{debug, error, info};
 
 use riscv_rt::entry;
 
-// - global static state ------------------------------------------------------
+// - configuration ------------------------------------------------------------
 
 const TEST_WRITE_SIZE: usize = 512;
 
-use cynthion::Message;
-use heapless::mpmc::MpMcQueue as Queue;
+// - global static state ------------------------------------------------------
+
 static MESSAGE_QUEUE: Queue<Message, 32> = Queue::new();
+
+const USB_RECEIVE_BUFFER_SIZE: usize = cynthion::EP_MAX_ENDPOINTS * cynthion::EP_MAX_RECEIVE_LENGTH;
+static USB_RECEIVE_BUFFER: BBBuffer<USB_RECEIVE_BUFFER_SIZE> = BBBuffer::new();
+static mut USB_RECEIVE_BUFFER_PRODUCER: Option<Producer<USB_RECEIVE_BUFFER_SIZE>> = None;
 
 // - MachineExternal interrupt handler ----------------------------------------
 
@@ -36,6 +44,7 @@ fn MachineExternal() {
     use cynthion::UsbInterface::Host;
 
     let usb1 = unsafe { hal::Usb1::summon() };
+    let leds = unsafe { &pac::Peripherals::steal().LEDS };
 
     // - usb1 interrupts - "host_phy" --
 
@@ -58,12 +67,63 @@ fn MachineExternal() {
 
     // USB1_EP_OUT UsbReceiveData
     } else if usb1.is_pending(pac::Interrupt::USB1_EP_OUT) {
+        // TODO <= start here, read into a shared data structure of some kind and send offsets
         let endpoint = usb1.ep_out.data_ep.read().bits() as u8;
-        let mut buffer = [0_u8; cynthion::EP_MAX_RECEIVE_LENGTH];
-        let bytes_read = usb1.read(endpoint, &mut buffer);
-        usb1.clear_pending(pac::Interrupt::USB1_EP_OUT);
 
-        Message::UsbReceiveData(Host, endpoint, bytes_read, buffer)
+        if endpoint != 1 {
+            let mut buffer = [0_u8; cynthion::EP_MAX_RECEIVE_LENGTH];
+            let bytes_read = usb1.read(endpoint, &mut buffer);
+            usb1.clear_pending(pac::Interrupt::USB1_EP_OUT);
+            Message::UsbReceiveData(Host, endpoint, bytes_read, buffer)
+
+        } else {
+            /*if let Some(producer) = unsafe { USB_RECEIVE_BUFFER_PRODUCER.as_mut() } {
+                leds.output.write(|w| unsafe { w.output().bits(0b00_0011) });
+                match producer.grant_exact(16) {
+                    Ok(mut grant) => {
+                        leds.output.write(|w| unsafe { w.output().bits(0b00_0111) });
+                        grant.commit(16);
+                        leds.output.write(|w| unsafe { w.output().bits(0b00_1111) });
+                    },
+                    Err(e) => {
+                        leds.output.write(|w| unsafe { w.output().bits(0b11_1100) });
+                    }
+                }
+            } else {
+                leds.output.write(|w| unsafe { w.output().bits(0b11_1110) });
+            }
+
+            leds.output.write(|w| unsafe { w.output().bits(0b00_0000) });
+            let mut buffer = [0_u8; cynthion::EP_MAX_RECEIVE_LENGTH];
+            let bytes_read = usb1.read(endpoint, &mut buffer);
+            usb1.clear_pending(pac::Interrupt::USB1_EP_OUT);
+            Message::UsbReceiveData(Host, endpoint, bytes_read, buffer)*/
+
+            leds.output.write(|w| unsafe { w.output().bits(0b00_0001) });
+            if let Some(producer) = unsafe { USB_RECEIVE_BUFFER_PRODUCER.as_mut() } {
+                leds.output.write(|w| unsafe { w.output().bits(0b00_0011) });
+                match producer.grant_exact(64) {
+                    Ok(mut grant) => {
+                        let buffer = [0_u8; cynthion::EP_MAX_RECEIVE_LENGTH];
+                        leds.output.write(|w| unsafe { w.output().bits(0b00_0111) });
+                        let bytes_read = usb1.read(endpoint, grant.buf());
+                        //let bytes_read = usb1.read(endpoint, &mut buffer);
+                        usb1.clear_pending(pac::Interrupt::USB1_EP_OUT);
+                        leds.output.write(|w| unsafe { w.output().bits(0b00_1111) });
+                        grant.commit(64);
+                        leds.output.write(|w| unsafe { w.output().bits(0b01_1111) });
+                        Message::UsbReceiveData(Host, endpoint, bytes_read, buffer)
+                    }
+                    Err(e) => {
+                        leds.output.write(|w| unsafe { w.output().bits(0b11_1100) });
+                        Message::ErrorMessage("no space in bbqueue")
+                    }
+                }
+            } else {
+                leds.output.write(|w| unsafe { w.output().bits(0b11_1110) });
+                Message::ErrorMessage("no bbqueue")
+            }
+        }
 
     // USB1_EP_IN UsbTransferComplete
     } else if usb1.is_pending(pac::Interrupt::USB1_EP_IN) {
@@ -119,6 +179,10 @@ fn main() -> ! {
 // - main loop ----------------------------------------------------------------
 
 fn main_loop() -> GreatResult<()> {
+    let (producer, mut consumer) = USB_RECEIVE_BUFFER.try_split().unwrap();
+    //let producer: bbqueue::Producer<USB_RECEIVE_BUFFER_SIZE> = producer;
+    unsafe { USB_RECEIVE_BUFFER_PRODUCER = Some(producer); }
+
     let peripherals = pac::Peripherals::take().unwrap();
     let leds = &peripherals.LEDS;
 
@@ -203,7 +267,19 @@ fn main_loop() -> GreatResult<()> {
 
                 // Usb1 received bulk test data on endpoint 0x01
                 UsbReceiveData(Host, 0x01, bytes_read, buffer) => {
+                    leds.output.write(|w| unsafe { w.output().bits(0b11_1000) });
                     info!("received bulk data from host: {} bytes", bytes_read);
+
+                    match consumer.read() {
+                        Ok(bbbuffer) => {
+                            info!("{:?} .. {:?}", &bbbuffer[0..8], &bbbuffer[(bytes_read - 8)..]);
+                            bbbuffer.release(64);
+                        },
+                        Err(e) => {
+                            error!("no bbqueue: {:?}", e);
+                            leds.output.write(|w| unsafe { w.output().bits(0b00_0011) });
+                        }
+                    }
                 }
 
                 // Usb1 received command data on endpoint 0x02
@@ -213,11 +289,13 @@ fn main_loop() -> GreatResult<()> {
                             info!("starting test: IN");
                             test_stats.reset();
                             test_command = TestCommand::In;
+                            leds.output.write(|w| unsafe { w.output().bits(0b00_0000) });
                         }
                         (1, TestCommand::Out) => {
                             info!("starting test: OUT");
                             test_stats.reset();
                             test_command = TestCommand::Out;
+                            leds.output.write(|w| unsafe { w.output().bits(0b00_0000) });
                         }
                         (1, _) => {
                             info!("stopping test");
@@ -228,6 +306,7 @@ fn main_loop() -> GreatResult<()> {
                             info!("  write count: {}", test_stats.write_count);
                             info!("  reset count: {}", test_stats.reset_count);
                             test_command = TestCommand::Stop;
+                            leds.output.write(|w| unsafe { w.output().bits(0b00_0000) });
                         }
                         _ => {
                             error!(
@@ -332,8 +411,8 @@ fn test_in_speed(
 /// Receive test data from host as fast as possible
 #[inline(always)]
 fn test_out_speed(leds: &pac::LEDS, usb1: &hal::Usb1, test_stats: &mut TestStats) {
-    leds.output.write(|w| unsafe { w.output().bits(0b00_0001) });
-    leds.output.write(|w| unsafe { w.output().bits(0b00_0100) });
+    //leds.output.write(|w| unsafe { w.output().bits(0b00_0001) });
+    //leds.output.write(|w| unsafe { w.output().bits(0b00_0100) });
 }
 
 // - types --------------------------------------------------------------------

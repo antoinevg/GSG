@@ -29,7 +29,8 @@ TEST_TRANSFER_SIZE = 16 * 1024
 
 # Size of the host-size "transfer queue" -- this is effectively the number of async transfers we'll
 # have scheduled at a given time.
-TRANSFER_QUEUE_DEPTH = 16
+IN_TRANSFER_QUEUE_DEPTH = 16
+OUT_TRANSFER_QUEUE_DEPTH = 1
 
 # Test commands
 class TestCommand(IntEnum):
@@ -99,7 +100,7 @@ def run_in_speed_test():
 
         # Submit a set of transfers to perform async comms with.
         active_transfers = []
-        for _ in range(TRANSFER_QUEUE_DEPTH):
+        for _ in range(IN_TRANSFER_QUEUE_DEPTH):
 
             # Allocate the transfer...
             transfer = device.getTransfer()
@@ -177,6 +178,9 @@ def run_out_speed_test():
                 logging.info("usb1.TRANSFER_COMPLETED terminating")
                 return
 
+            import time
+            time.sleep(1)
+
             # Otherwise, re-submit the transfer.
             transfer.submit()
 
@@ -193,7 +197,7 @@ def run_out_speed_test():
 
         # Submit a set of transfers to perform async comms with.
         active_transfers = []
-        for _ in range(TRANSFER_QUEUE_DEPTH):
+        for _ in range(OUT_TRANSFER_QUEUE_DEPTH):
 
             # Allocate the transfer...
             transfer = device.getTransfer()
@@ -210,7 +214,7 @@ def run_out_speed_test():
             transfer.submit()
 
         # Tell Cynthion to start transmitting
-        device.bulkWrite(COMMAND_ENDPOINT_NUMBER, [TestCommand.In])
+        device.bulkWrite(COMMAND_ENDPOINT_NUMBER, [TestCommand.Out])
 
         # Run our transfers until we get enough data.
         while not _should_terminate():
@@ -243,13 +247,13 @@ def run_out_speed_test():
 
 if __name__ == "__main__":
     configure_default_logging()
-    logging.info("Running IN speed test...")
+    #logging.info("Running IN speed test...")
     try:
         run_in_speed_test()
     except Exception as e:
         logging.error(f"USB Bulk IN speed test failed: {e}")
-    #logging.info("Running OUT speed test...")
-    #try:
-    #    run_out_speed_test()
-    #except Exception as e:
-    #    logging.error(f"USB Bulk OUT speed test failed: {e}")
+    logging.info("Running OUT speed test...")
+    try:
+        run_out_speed_test()
+    except Exception as e:
+        logging.error(f"USB Bulk OUT speed test failed: {e}")
