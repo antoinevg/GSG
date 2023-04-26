@@ -47,10 +47,10 @@ class CoreSoC(CPUSoC, Elaboratable):
         self.internal_sram_addr = 0x10000000
         from vexriscv import VexRiscv
         cpu = VexRiscv(
+            reset_addr=0x00000000,
             variant="cynthion",
             #variant="imac",
             #variant="imac+dcache", # TODO significant corruption of memory occurs
-            reset_addr=0x00000000
         )
 
         # create system bus
@@ -156,7 +156,7 @@ class LunaSoC(CoreSoC):
             uart_baud_rate  -- The baud rate to be used by the BIOS' uart.
         """
 
-        # memory
+        # memory configuration
         bootrom_addr       = 0x00000000
         bootrom_size       = 0x4000
         scratchpad_addr    = 0x00004000
@@ -164,13 +164,13 @@ class LunaSoC(CoreSoC):
         internal_sram_size = self.internal_sram_size
         internal_sram_addr = self.internal_sram_addr
 
-        # timer
+        # timer configuration
         timer_addr  = 0x80001000
         timer_width = 32
         timer_irqno = self._interrupt_index
         self._interrupt_index += 1
 
-        # uart
+        # uart configuration
         uart_addr  = 0x80000000
         uart_irqno = self._interrupt_index
         self._interrupt_index += 1
@@ -187,7 +187,15 @@ class LunaSoC(CoreSoC):
         self.scratchpad = SRAMPeripheral(size=scratchpad_size)
         self._bus_decoder.add(self.scratchpad.bus, addr=scratchpad_addr)
 
+        # load bootloader into sram
+        #firmware_bin = "../target/riscv32i-unknown-none-elf/release/lunabios.bin"
+        #data = get_mem_data(firmware_bin,
+        #                    data_width = 32,
+        #                    endianness = "little")
+        #print(["0x{:08x}".format(i) for i in data[:128]])
+
         self._internal_sram = SRAMPeripheral(size=internal_sram_size)
+        #self._internal_sram = SRAMPeripheral(size=internal_sram_size, init=data)
         self._bus_decoder.add(self._internal_sram.bus, addr=internal_sram_addr)
 
         self.timer = TimerPeripheral(width=timer_width)

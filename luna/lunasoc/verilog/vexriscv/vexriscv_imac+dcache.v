@@ -1,6 +1,6 @@
 // Generator : SpinalHDL v1.8.1    git head : 2a7592004363e5b40ec43e1f122ed8641cd8965b
 // Component : VexRiscv
-// Git hash  : 7e67f2b27c9f2faa8bbbcfe4a2b18178c40fc8f5
+// Git hash  : 4b2bc87498a1f03320c31244b775ff61f373cb12
 
 `timescale 1ns/1ps
 
@@ -1496,7 +1496,7 @@ module VexRiscv (
   reg [47:0] memory_to_writeBack_ENV_CTRL_string;
   `endif
 
-  (* no_rw_check , ram_style = "block" *) reg [31:0] RegFilePlugin_regFile [0:31] /* verilator public */ ;
+  reg [31:0] RegFilePlugin_regFile [0:31] /* verilator public */ ;
 
   assign _zz_when = ({decodeExceptionPort_valid,IBusCachedPlugin_decodeExceptionPort_valid} != 2'b00);
   assign _zz_memory_MUL_LOW = ($signed(_zz_memory_MUL_LOW_1) + $signed(_zz_memory_MUL_LOW_5));
@@ -6101,11 +6101,11 @@ module DataCache (
   reg                 loader_valid_regNext;
   wire                when_DataCache_l1128;
   wire                when_DataCache_l1131;
-  (* no_rw_check , ram_style = "block" *) reg [22:0] ways_0_tags [0:63];
-  (* no_rw_check , ram_style = "block" *) reg [7:0] ways_0_data_symbol0 [0:511];
-  (* no_rw_check , ram_style = "block" *) reg [7:0] ways_0_data_symbol1 [0:511];
-  (* no_rw_check , ram_style = "block" *) reg [7:0] ways_0_data_symbol2 [0:511];
-  (* no_rw_check , ram_style = "block" *) reg [7:0] ways_0_data_symbol3 [0:511];
+  reg [22:0] ways_0_tags [0:63];
+  reg [7:0] ways_0_data_symbol0 [0:511];
+  reg [7:0] ways_0_data_symbol1 [0:511];
+  reg [7:0] ways_0_data_symbol2 [0:511];
+  reg [7:0] ways_0_data_symbol3 [0:511];
   reg [7:0] _zz_ways_0_datasymbol_read;
   reg [7:0] _zz_ways_0_datasymbol_read_1;
   reg [7:0] _zz_ways_0_datasymbol_read_2;
@@ -6938,8 +6938,8 @@ module InstructionCache (
   wire                fetchStage_hit_error;
   wire       [31:0]   fetchStage_hit_data;
   wire       [31:0]   fetchStage_hit_word;
-  (* no_rw_check , ram_style = "block" *) reg [31:0] banks_0 [0:511];
-  (* no_rw_check , ram_style = "block" *) reg [22:0] ways_0_tags [0:63];
+  reg [31:0] banks_0 [0:511];
+  reg [22:0] ways_0_tags [0:63];
 
   assign _zz_ways_0_tags_port = {lineLoader_write_tag_0_payload_data_address,{lineLoader_write_tag_0_payload_data_error,lineLoader_write_tag_0_payload_data_valid}};
   always @(posedge clk) begin

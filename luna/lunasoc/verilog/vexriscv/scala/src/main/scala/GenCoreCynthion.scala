@@ -26,6 +26,14 @@ object GenCoreCynthion {
       // configure plugins
       val plugins = ArrayBuffer[Plugin[VexRiscv]]()
       plugins ++= List(
+        /*new IBusSimplePlugin(
+          resetVector = null,
+          prediction = STATIC,
+          cmdForkOnSecondStage = false,
+          cmdForkPersistence = false,
+          compressedGen = true,
+          memoryTranslatorPortConfig = null
+        ),*/
         new IBusCachedPlugin(
           resetVector = null,
           relaxedPcCalculation = false,
@@ -33,7 +41,7 @@ object GenCoreCynthion {
           compressedGen = true, // compressed instructions support
           memoryTranslatorPortConfig = null,
           config = InstructionCacheConfig(
-            cacheSize = 4096,
+            cacheSize = 2048,
             bytePerLine = 32,
             wayCount = 1,
             addressWidth = 32,
@@ -59,7 +67,7 @@ object GenCoreCynthion {
           dBusRspSlavePipe = false,
           relaxedMemoryTranslationRegister = false,
           config = new DataCacheConfig(
-            cacheSize = 4096,
+            cacheSize = 2048,
             bytePerLine = 32,
             wayCount = 1,
             addressWidth = 32,
@@ -68,8 +76,8 @@ object GenCoreCynthion {
             catchAccessError = true,
             catchIllegal = true,
             catchUnaligned = true,
-            withLrSc = true, // atomic instruction support
-            withAmo = true,  // atomic instruction support
+            withLrSc = true, // load-reserved/store-conditional instructions (LB, LH, LW, SB, SH, SW etc.)
+            withAmo = true,  // atomic memory operation instructions (AMOSWAP, AMOADD, AMOAND etc.)
             earlyWaysHits = true
           ),
           memoryTranslatorPortConfig = null,

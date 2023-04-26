@@ -13,8 +13,8 @@ object LunaSpinalConfig
         resetKind = spinal.core.SYNC
       )
     ) {
-  // insert a compilation phase which will add a  (* ram_style = "block" *) on all synchronous rams
-  phasesInserters += { (array) =>
+  // disable these to let the toolchain infer block memories
+  /*phasesInserters += { (array) =>
     array.insert(
       array.indexWhere(_.isInstanceOf[PhaseAllocateNames]) + 1,
       new ForceRamBlockPhase
@@ -25,7 +25,7 @@ object LunaSpinalConfig
       array.indexWhere(_.isInstanceOf[PhaseAllocateNames]) + 1,
       new NoRwCheckPhase
     )
-  }
+  }*/
 }
 
 class ForceRamBlockPhase() extends spinal.core.internals.Phase {
