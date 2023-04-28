@@ -1,16 +1,8 @@
-## Read
-
-* [Luna Documentation - Getting Started](https://luna.readthedocs.io/en/latest/getting_started.html)
-
-
 ---
 
-## Setup
+## Step 0: Set up environment
 
-### OS Dependencies
-
-    # gtkwave
-    brew install gtkwave
+### General Dependencies
 
     # rust
     curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
@@ -18,53 +10,8 @@
     # pyenv
     curl https://pyenv.run | bash
 
-    # riscv-gnu-toolchain - https://github.com/riscv-software-src/homebrew-riscv
-    brew tap riscv-software-src/riscv
-    brew install riscv-gnu-toolchain
-
-### Rust Dependencies
-
-    rustup target add riscv32i-unknown-none-elf
-    rustup target add riscv32i-unknown-none-elf --toolchain nightly
-
-    rustup component add llvm-tools-preview
-    rustup component add llvm-tools-preview --toolchain nightly
-
-    cargo install cargo-binutils
-    cargo +nightly install cargo-binutils
-
-### Python Environments
-
-    # x86_64/rosetta
-    pyenv install pypy3.9-7.3.9
-    pyenv virtualenv pypy3.9-7.3.9 gsg-amaranth
-    pyenv virtualenv pypy3.9-7.3.9 gsg-luna
-    pyenv local gsg-amaranth
-    pyenv local gsg-luna
-
-    # arm64
-    pyenv install 3.11.1
-    pyenv virtualenv 3.11.1 gsg-amaranth
-    pyenv virtualenv 3.11.1 gsg-luna
-    pyenv local gsg-amaranth
-    pyenv local gsg-luna
-
-    # upgrade pip to latest
-    pip install --upgrade pip
-
-    # install wheel
-    pip install wheel
-
----
-
-## Environments
-
 
 ### Yosys Toolchain
-
-Links:
-
-* https://github.com/YosysHQ/oss-cad-suite-build
 
 Grab the latest toolchain from:
 
@@ -73,14 +20,130 @@ Grab the latest toolchain from:
 Copy it into the `toolchain/` directory and:
 
     cd toolchain/
-    tar xzf oss-cad-suite-darwin-arm64-*.tgz
+    tar xzf oss-cad-suite-*.tgz
 
-    # Mollify gatekeeper
+    # Mollify gatekeeper if you're on macOS
     oss-cad-suite/activate
 
 Enable environment with:
 
-    source toolchain/oss-cad-suite/environment
+    source <path-to>/oss-cad-suite/environment
+
+
+### Rust Dependencies
+
+    rustup target add riscv32i-unknown-none-elf
+    rustup component add llvm-tools-preview
+    cargo install cargo-binutils
+
+
+### Python Environment
+
+    # install python
+    pyenv install 3.11.3
+
+    # create a new virtual environment
+    pyenv virtualenv 3.11.3 gsg-cynthion
+
+    # enable virtual environment for gsg.git/cynthion/ directory
+    cd gsg.git/cynthion/
+    pyenv local gsg-cynthion
+
+    # upgrade pip to latest
+    python -m pip install --upgrade pip
+
+    # install package: luna
+    python -m pip install "luna @ git+https://github.com/greatscottgadgets/luna@main"
+
+    # because: https://github.com/python-poetry/poetry/issues/3514
+    cd gsg.git/cynthion/
+    python -m pip install -r requirements.txt
+
+
+### RiscV toolchain
+
+This is needed to build litex-bios:
+
+    # macOS
+    # riscv-gnu-toolchain - https://github.com/riscv-software-src/homebrew-riscv
+    brew tap riscv-software-src/riscv
+    brew install riscv-gnu-toolchain
+
+    # debian/ubuntu
+    TODO
+
+If we can get rid of litex-bios it'll only be needed to build the C examples.
+
+
+### Optional
+
+To use rust nightly:
+
+    rustup target add riscv32i-unknown-none-elf --toolchain nightly
+    rustup component add llvm-tools-preview --toolchain nightly
+    cargo +nightly install cargo-binutils
+
+To mess around with C examples:
+
+
+
+---
+
+## Step 1: Build the Cynthion SoC gateware
+
+The Cynthion SoC gateware can be found in the [`lunasoc/`](lunasoc/) directory:
+
+    cd lunasoc/
+
+### 0. Activate Yosys
+
+    source <path-to>/oss-cad-suite/environment
+
+### 1. Test environment setup
+
+    python blinky_verilog.py
+
+If all goes well your cynthion should show start counting in binary on the fpga led's.
+
+### 2. Install requirements
+
+    python -m pip install -r requirements.txt
+
+### 3. Build soc gateware
+
+    make top
+
+
+Note: there are two variations of the Cynthion SoC
+
+* `top_minerva.py` - built on [Minerva](https://github.com/minerva-cpu/minerva)
+  - supports the `rv32i` or `rv32im` isa
+* `top_vexriscv.py` - built on [VexRiscv](https://github.com/SpinalHDL/VexRiscv)
+  - supports the `rv32imac` isa
+
+
+
+---
+
+## Uninstall
+
+### Python Environment
+
+    pip uninstall -y -r <(pip freeze)
+    pyenv uninstall 3.11.3/envs/gsg-cynthion
+    pyenv uninstall 3.11.3
+
+
+
+
+========================================================================================================
+
+---
+
+## Environments
+
+
+### Yosys Toolchain
 
 
 
@@ -114,7 +177,7 @@ Enable environment with:
 
     See [WORKAROUNDS.md](WORKAROUNDS.md) for issues.
 
-    pyenv activate gsg-luna
+    pyenv activate gsg-cynthion
 
     cd toolchain/
     # git clone https://github.com/greatscottgadgets/luna.git luna.git
@@ -130,7 +193,7 @@ Enable environment with:
     python setup.py install
 
     # test installation - apollo
-    ~/.pyenv/versions/gsg-luna/bin/apollo info
+    ~/.pyenv/versions/gsg-cynthion/bin/apollo info
 
     # test installation - self test
     poetry run applets/interactive-test.py
@@ -138,19 +201,6 @@ Enable environment with:
     # test installation - blinky
     cd examples/blinky
     python blinky.py
-
-
----
-
-## Uninstall
-
-    brew uninstall gtkwave
-
-    pip uninstall -y -r <(pip freeze)
-
-    pyenv uninstall 3.11.1/envs/gsg-amaranth
-    pyenv uninstall 3.11.1/envs/gsg-luna
-    pyenv uninstall 3.11.1
 
 
 
@@ -174,3 +224,8 @@ Enable environment with:
 ## `hello-uart/`
 
     picocom --imap lfcrlf -b 115200 /dev/cu.usbmodem22301
+
+
+## References
+
+* [Luna Documentation - Getting Started](https://luna.readthedocs.io/en/latest/getting_started.html)

@@ -4,6 +4,7 @@ A repo for sharing stuff with my colleagues at Great Scott Gadgets.
 
 ## Documentation
 
+* [`cynthion/README.md`](cynthion/README.md) - start here!
 * [`cynthion/design/`](cynthion/design/) - cynthion firmware design documentation
 
 ## Gateware

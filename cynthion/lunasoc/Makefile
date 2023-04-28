@@ -19,14 +19,16 @@ LUNASOC_PAC := ../lunasoc-pac
 blinky_verilog:
 	PATH=$(PATH):$(YOSYS_BIN) AR=$(AR) python blinky_verilog.py
 
+top: top_vexriscv
+
 top_minerva:
 	rm -rf build
-	PATH=$(PATH):$(YOSYS_BIN) AR=$(AR) python top.py
+	PATH=$(PATH):$(YOSYS_BIN) AR=$(AR) python top_minerva.py
 	cp build/genrust/memory.x ../memory.x
 
 top_minerva_verbose:
 	rm -rf build
-	PATH=$(PATH):$(YOSYS_BIN) AR=$(AR) AMARANTH_verbose=1 python top.py
+	PATH=$(PATH):$(YOSYS_BIN) AR=$(AR) AMARANTH_verbose=1 python top_minerva.py
 	cp build/genrust/memory.x ../memory.x
 
 top_vexriscv:

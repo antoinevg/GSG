@@ -1,0 +1,16 @@
+# - luna ----------------------------------------------------------------------
+
+luna @ git+https://github.com/greatscottgadgets/luna@main
+
+# - luna dev dependencies -----------------------------------------------------
+
+# because: https://github.com/python-poetry/poetry/issues/3514
+
+minerva @ git+https://github.com/lambdaconcept/minerva.git
+amaranth-stdio @ git+https://github.com/amaranth-lang/amaranth-stdio.git@main
+
+# forked lambdasoc with vexriscv support
+# lambdasoc @ git+https://github.com/lambdaconcept/lambdasoc.git
+lambdasoc @ git+https://github.com/antoinevg/lambdasoc.git@antoinevg/support-vexriscv
+
+prompt-toolkit==3.0.16
