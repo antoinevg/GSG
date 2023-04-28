@@ -26,6 +26,7 @@ use riscv_rt::entry;
 
 // - configuration ------------------------------------------------------------
 
+const TEST_READ_SIZE: usize = 512;
 const TEST_WRITE_SIZE: usize = 512;
 
 // - global static state ------------------------------------------------------
@@ -67,7 +68,6 @@ fn MachineExternal() {
 
     // USB1_EP_OUT UsbReceiveData
     } else if usb1.is_pending(pac::Interrupt::USB1_EP_OUT) {
-        // TODO <= start here, read into a shared data structure of some kind and send offsets
         let endpoint = usb1.ep_out.data_ep.read().bits() as u8;
 
         if endpoint != 1 {
@@ -75,30 +75,7 @@ fn MachineExternal() {
             let bytes_read = usb1.read(endpoint, &mut buffer);
             usb1.clear_pending(pac::Interrupt::USB1_EP_OUT);
             Message::UsbReceiveData(Host, endpoint, bytes_read, buffer)
-
         } else {
-            /*if let Some(producer) = unsafe { USB_RECEIVE_BUFFER_PRODUCER.as_mut() } {
-                leds.output.write(|w| unsafe { w.output().bits(0b00_0011) });
-                match producer.grant_exact(16) {
-                    Ok(mut grant) => {
-                        leds.output.write(|w| unsafe { w.output().bits(0b00_0111) });
-                        grant.commit(16);
-                        leds.output.write(|w| unsafe { w.output().bits(0b00_1111) });
-                    },
-                    Err(e) => {
-                        leds.output.write(|w| unsafe { w.output().bits(0b11_1100) });
-                    }
-                }
-            } else {
-                leds.output.write(|w| unsafe { w.output().bits(0b11_1110) });
-            }
-
-            leds.output.write(|w| unsafe { w.output().bits(0b00_0000) });
-            let mut buffer = [0_u8; cynthion::EP_MAX_RECEIVE_LENGTH];
-            let bytes_read = usb1.read(endpoint, &mut buffer);
-            usb1.clear_pending(pac::Interrupt::USB1_EP_OUT);
-            Message::UsbReceiveData(Host, endpoint, bytes_read, buffer)*/
-
             leds.output.write(|w| unsafe { w.output().bits(0b00_0001) });
             if let Some(producer) = unsafe { USB_RECEIVE_BUFFER_PRODUCER.as_mut() } {
                 leds.output.write(|w| unsafe { w.output().bits(0b00_0011) });
@@ -107,7 +84,6 @@ fn MachineExternal() {
                         let buffer = [0_u8; cynthion::EP_MAX_RECEIVE_LENGTH];
                         leds.output.write(|w| unsafe { w.output().bits(0b00_0111) });
                         let bytes_read = usb1.read(endpoint, grant.buf());
-                        //let bytes_read = usb1.read(endpoint, &mut buffer);
                         usb1.clear_pending(pac::Interrupt::USB1_EP_OUT);
                         leds.output.write(|w| unsafe { w.output().bits(0b00_1111) });
                         grant.commit(64);
@@ -181,7 +157,9 @@ fn main() -> ! {
 fn main_loop() -> GreatResult<()> {
     let (producer, mut consumer) = USB_RECEIVE_BUFFER.try_split().unwrap();
     //let producer: bbqueue::Producer<USB_RECEIVE_BUFFER_SIZE> = producer;
-    unsafe { USB_RECEIVE_BUFFER_PRODUCER = Some(producer); }
+    unsafe {
+        USB_RECEIVE_BUFFER_PRODUCER = Some(producer);
+    }
 
     let peripherals = pac::Peripherals::take().unwrap();
     let leds = &peripherals.LEDS;
@@ -272,9 +250,13 @@ fn main_loop() -> GreatResult<()> {
 
                     match consumer.read() {
                         Ok(bbbuffer) => {
-                            info!("{:?} .. {:?}", &bbbuffer[0..8], &bbbuffer[(bytes_read - 8)..]);
+                            info!(
+                                "{:?} .. {:?}",
+                                &bbbuffer[0..8],
+                                &bbbuffer[(bytes_read - 8)..]
+                            );
                             bbbuffer.release(64);
-                        },
+                        }
                         Err(e) => {
                             error!("no bbqueue: {:?}", e);
                             leds.output.write(|w| unsafe { w.output().bits(0b00_0011) });

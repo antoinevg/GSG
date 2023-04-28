@@ -268,13 +268,10 @@ class LunaSoC(CoreSoC):
 
     @property
     def mainram(self):
-        # TODO what is @mainram to LambdaSoC / Luna?
         return self.sram
 
     @property
     def sram(self):
-        # TODO what is @sram to LambdaSoC / Luna?
-        # TODO this is currently being set by LunaSoC
         return self._internal_sram
 
 

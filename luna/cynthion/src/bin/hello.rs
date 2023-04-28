@@ -12,6 +12,14 @@ use log::{debug, info};
 
 use riscv_rt::entry;
 
+#[cfg(feature = "vexriscv")]
+#[riscv_rt::pre_init]
+unsafe fn pre_main() {
+    pac::cpu::vexriscv::flush_icache();
+    #[cfg(feature = "vexriscv_dcache")]
+    pac::cpu::vexriscv::flush_dcache();
+}
+
 #[entry]
 fn main() -> ! {
     let peripherals = pac::Peripherals::take().unwrap();

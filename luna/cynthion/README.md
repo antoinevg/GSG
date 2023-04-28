@@ -1,3 +1,11 @@
+## Dependencies
+
+Add one or more of:
+
+    rustup target add riscv32i-unknown-none-elf
+    rustup target add riscv32imc-unknown-none-elf
+    rustup target add riscv32imac-unknown-none-elf
+
 ## Select softcore
 
 LunaSoC and the Cynthion firmware supports two different softcores:

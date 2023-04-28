@@ -52,6 +52,11 @@ lunasoc-hal = { path = "../lunasoc-hal", default-features = false, features = []
 riscv = { version = "=0.10.1", features = ["critical-section-single-hart"] }
 riscv-rt = { version = "=0.11.0" }
 
+#atomic-polyfill = "1.0.2"
+#riscv-atomic-emulation-trap = "0.4.0"
+#bbqueue = { version = "0.5.1", default-features = false }
+bbqueue = { path = "../../../upstream/bbqueue.git/core", default-features = false }
+
 heapless = { version = "=0.7.16", default-features = false, features = ["mpmc_large"] } # TODO 0.8.0 is en-route
 zerocopy = { version = "=0.7.0-alpha.2", default-features = false }
 
@@ -63,10 +68,10 @@ log = { version="=0.4.17", features = ["release_max_level_debug"] }
 name = "benchmark"
 
 [[bin]]
-name = "benchmark-mutex"
+name = "bulk_speed_test"
 
 [[bin]]
-name = "cdc-serial-loopback"
+name = "cdc_serial_loopback"
 
 [[bin]]
 name = "firmware"
