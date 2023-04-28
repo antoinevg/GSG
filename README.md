@@ -2,34 +2,23 @@
 
 A repo for sharing stuff with my colleagues at Great Scott Gadgets.
 
+## Documentation
 
-## Dependencies
+* [`cynthion/design/`](cynthion/design/) - cynthion firmware design documentation
 
-### multimarkdown
+## Gateware
 
-    brew install multimarkdown
+* [`cynthion/lunasoc/`](cynthion/lunasoc/) - cynthion soc gateware
 
-### d2
+## Rust crates
 
-See: https://d2lang.com/tour/install
+* [`cynthion/lunasoc-pac/`](cynthion/lunasoc-pac/) - lunasoc peripheral access crate
+* [`cynthion/lunasoc-hal/`](cynthion/lunasoc-hal/) - lunasoc embedded-hal crate
+* [`cynthion/libgreat/`](cynthion/libgreat/) - libgreat crate
+* [`cynthion/cynthion/`](cynthion/cynthion/)  - cynthion firmware crate
 
-Install:
+# Standalone examples
 
-    curl -fsSL https://d2lang.com/install.sh | sh -s -- --dry-run
-    curl -fsSL https://d2lang.com/install.sh | sh -s --
-
-Uninstall:
-
-    curl -fsSL https://d2lang.com/install.sh | sh -s -- --uninstall
-
-### watchexec
-
-See: https://watchexec.github.io/
-
-Install:
-
-    cargo install watchexec-cli
-
-Uninstall:
-
-    cargo uninstall watchexec-cli
+* [`cynthion/hello-bios/`](cynthion/hello-bios/) - zero dependency c example for lunasoc
+* [`cynthion/hello-rust/`](cynthion/hello-rust) - zero dependency rust example for lunasoc
+* [`cynthion/hello-r04/`](cynthion/hello-r04/) - amaranth blinky for cynthion r04
