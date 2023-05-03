@@ -7,7 +7,7 @@ categories = ["embedded", "hardware-support", "no-std"]
 description = "Support library and firmware for the Great Scott Gadgets Cynthion USB Multitool"
 edition = "2021"
 rust-version = "1.68"
-default-run = "firmware"
+default-run = "moondancer"
 
 [package.metadata.docs.rs]
 default-target = "riscv32i-unknown-none-elf"
@@ -73,9 +73,6 @@ name = "bulk_speed_test"
 name = "cdc_serial_loopback"
 
 [[bin]]
-name = "firmware"
-
-[[bin]]
 name = "gpio"
 
 [[bin]]
@@ -83,6 +80,9 @@ name = "hello"
 
 [[bin]]
 name = "interrupts"
+
+[[bin]]
+name = "moondancer"
 
 [[bin]]
 name = "usb"

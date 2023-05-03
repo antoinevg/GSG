@@ -8,7 +8,7 @@ use pac::csr::interrupt;
 use cynthion::hal;
 use hal::smolusb;
 use smolusb::class;
-use smolusb::class::cynthion::vendor::{VendorRequest, VendorRequestValue};
+use smolusb::class::moondancer::vendor::{VendorRequest, VendorRequestValue};
 use smolusb::control::{Direction, RequestType, SetupPacket};
 use smolusb::device::{Speed, UsbDevice};
 use smolusb::traits::{
@@ -204,14 +204,14 @@ impl<'a> Firmware<'a> {
                 peripherals.USB1_EP_IN,
                 peripherals.USB1_EP_OUT,
             ),
-            &class::cynthion::DEVICE_DESCRIPTOR,
-            &class::cynthion::CONFIGURATION_DESCRIPTOR_0,
-            &class::cynthion::USB_STRING_DESCRIPTOR_0,
-            &class::cynthion::USB_STRING_DESCRIPTORS,
+            &class::moondancer::DEVICE_DESCRIPTOR,
+            &class::moondancer::CONFIGURATION_DESCRIPTOR_0,
+            &class::moondancer::USB_STRING_DESCRIPTOR_0,
+            &class::moondancer::USB_STRING_DESCRIPTORS,
         );
-        usb1.device_qualifier_descriptor = Some(&class::cynthion::DEVICE_QUALIFIER_DESCRIPTOR);
+        usb1.device_qualifier_descriptor = Some(&class::moondancer::DEVICE_QUALIFIER_DESCRIPTOR);
         usb1.other_speed_configuration_descriptor =
-            Some(class::cynthion::OTHER_SPEED_CONFIGURATION_DESCRIPTOR_0);
+            Some(class::moondancer::OTHER_SPEED_CONFIGURATION_DESCRIPTOR_0);
 
         // usb0: target
         let usb0 = UsbDevice::new(
@@ -221,10 +221,10 @@ impl<'a> Firmware<'a> {
                 peripherals.USB0_EP_IN,
                 peripherals.USB0_EP_OUT,
             ),
-            &class::cynthion::DEVICE_DESCRIPTOR,
-            &class::cynthion::CONFIGURATION_DESCRIPTOR_0,
-            &class::cynthion::USB_STRING_DESCRIPTOR_0,
-            &class::cynthion::USB_STRING_DESCRIPTORS,
+            &class::moondancer::DEVICE_DESCRIPTOR,
+            &class::moondancer::CONFIGURATION_DESCRIPTOR_0,
+            &class::moondancer::USB_STRING_DESCRIPTOR_0,
+            &class::moondancer::USB_STRING_DESCRIPTORS,
         );
 
         // initialize class registry

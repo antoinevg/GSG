@@ -177,7 +177,7 @@ pub static USB_STRING_DESCRIPTOR_0: StringDescriptorZero =
     StringDescriptorZero::new(&[LanguageId::EnglishUnitedStates]);
 
 pub static USB_STRING_DESCRIPTOR_1: StringDescriptor = StringDescriptor::new("Great Scott Gadgets");
-pub static USB_STRING_DESCRIPTOR_2: StringDescriptor = StringDescriptor::new("Cynthion");
+pub static USB_STRING_DESCRIPTOR_2: StringDescriptor = StringDescriptor::new("Moondancer");
 pub static USB_STRING_DESCRIPTOR_3: StringDescriptor = StringDescriptor::new("040");
 
 pub static USB_STRING_DESCRIPTORS: &[&StringDescriptor] = &[
