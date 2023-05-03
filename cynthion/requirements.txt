@@ -8,9 +8,11 @@ luna @ git+https://github.com/greatscottgadgets/luna@main
 
 minerva @ git+https://github.com/lambdaconcept/minerva.git
 amaranth-stdio @ git+https://github.com/amaranth-lang/amaranth-stdio.git@main
-
-# forked lambdasoc with vexriscv support
-# lambdasoc @ git+https://github.com/lambdaconcept/lambdasoc.git
-lambdasoc @ git+https://github.com/antoinevg/lambdasoc.git@antoinevg/support-vexriscv
-
 prompt-toolkit==3.0.16
+
+# - forked dependencies -------------------------------------------------------
+
+lambdasoc @ git+https://github.com/antoinevg/lambdasoc.git@antoinevg/support-vexriscv
+greatfet @ git+https://github.com/antoinevg/greatfet@antoinevg/moondancer#subdirectory=host
+pygreat @ git+https://github.com/antoinevg/libgreat.git@antoinevg/moondancer#subdirectory=host
+facedancer @ git+https://github.com/antoinevg/Facedancer.git@antoinevg/moondancer

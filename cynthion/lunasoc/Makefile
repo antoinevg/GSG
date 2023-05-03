@@ -4,7 +4,7 @@ SHELL := /bin/zsh
 UART := /dev/cu.usbmodem22401
 #UART := /dev/cu.usbmodem22101
 
-YOSYS_BIN := ~/GreatScott/gsg.git/luna/toolchain/oss-cad-suite/bin
+YOSYS_BIN := ~/GreatScott/gsg.git/cynthion/toolchain/oss-cad-suite/bin
 AR=riscv64-unknown-elf-ar
 CC=riscv64-unknown-elf-gcc
 OBJCOPY=riscv64-unknown-elf-objcopy

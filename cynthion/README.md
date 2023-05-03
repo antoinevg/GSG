@@ -2,48 +2,49 @@
 
 ## Step 0: Set up environment
 
-### General Dependencies
+### Check out repo
 
-    # rust
-    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+    git clone https://github.com/antoinevg/gsg.git gsg.git
 
-    # pyenv
+
+### Script dependencies
+
+If you don't have these installed already you'll probably want to:
+
+    # debian
+    apt install curl expect picocom zsh
+
+    # macos
+    brew install curl expect picocom zsh
+
+
+### Python
+
+If you'd like to use `pyenv` to manage your Python environment you can install it with:
+
+    # macos
+    brew install pyenv
+
+    # other
     curl https://pyenv.run | bash
 
+You'll also need these to build Python versions:
 
-### Yosys Toolchain
+    # debian
+    apt install build-essential libssl-dev zlib1g-dev libbz2-dev \
+        libreadline-dev libsqlite3-dev libncursesw5-dev xz-utils \
+        tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev
 
-Grab the latest toolchain from:
+    # macos
+    brew install openssl readline sqlite3 xz zlib tcl-tk
 
-    https://github.com/YosysHQ/oss-cad-suite-build/releases/latest
-
-Copy it into the `toolchain/` directory and:
-
-    cd toolchain/
-    tar xzf oss-cad-suite-*.tgz
-
-    # Mollify gatekeeper if you're on macOS
-    oss-cad-suite/activate
-
-Enable environment with:
-
-    source <path-to>/oss-cad-suite/environment
-
-
-### Rust Dependencies
-
-    rustup target add riscv32i-unknown-none-elf
-    rustup component add llvm-tools-preview
-    cargo install cargo-binutils
-
-
-### Python Environment
+Finally, you can setup an environment with:
 
     # install python
-    pyenv install 3.11.3
+    pyenv install 3.11
 
     # create a new virtual environment
-    pyenv virtualenv 3.11.3 gsg-cynthion
+    pyenv virtualenv 3.11 gsg-cynthion
 
     # enable virtual environment for gsg.git/cynthion/ directory
     cd gsg.git/cynthion/
@@ -52,67 +53,100 @@ Enable environment with:
     # upgrade pip to latest
     python -m pip install --upgrade pip
 
-    # install package: luna
-    python -m pip install "luna @ git+https://github.com/greatscottgadgets/luna@main"
 
-    # because: https://github.com/python-poetry/poetry/issues/3514
-    cd gsg.git/cynthion/
-    python -m pip install -r requirements.txt
+### Yosys Toolchain
 
+Grab and install the latest toolchain from:
 
-### RiscV toolchain
+    https://github.com/YosysHQ/oss-cad-suite-build/releases/latest
 
-This is needed to build litex-bios:
+Remember to mollify Gatekeeper if you're on macOS:
 
-    # macOS
-    # riscv-gnu-toolchain - https://github.com/riscv-software-src/homebrew-riscv
-    brew tap riscv-software-src/riscv
-    brew install riscv-gnu-toolchain
+    oss-cad-suite/activate
 
-    # debian/ubuntu
-    TODO
+Enable environment with:
 
-If we can get rid of litex-bios it'll only be needed to build the C examples.
+    source <path-to>/oss-cad-suite/environment
 
 
-### Optional
+### Rust
 
-To use rust nightly:
+If you'd like to use `rustup` to manage your Rust environment you can install it with:
 
-    rustup target add riscv32i-unknown-none-elf --toolchain nightly
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+
+Install riscv target support:
+
+    #rustup target add riscv32imac-unknown-none-elf
+    rustup target add riscv32imc-unknown-none-elf  # use imc until dcache issues are resolved
+
+    rustup component add llvm-tools-preview
+    cargo install cargo-binutils
+
+Optional: only needed if you want to use rust nightly
+
+    rustup target add riscv32imac-unknown-none-elf --toolchain nightly
     rustup component add llvm-tools-preview --toolchain nightly
     cargo +nightly install cargo-binutils
 
-To mess around with C examples:
 
+### RiscV GNU Toolchain
+
+This is needed to build litex-bios and any of the C examples:
+
+    # macOS - https://github.com/riscv-software-src/homebrew-riscv
+    brew tap riscv-software-src/riscv
+    brew install riscv-gnu-toolchain
+
+    # debian
+    apt install gcc-riscv64-unknown-elf
+
+If we can get rid of litex-bios it'll only be needed to build the C examples.
 
 
 ---
 
 ## Step 1: Build the Cynthion SoC gateware
 
-The Cynthion SoC gateware can be found in the [`lunasoc/`](lunasoc/) directory:
-
-    cd lunasoc/
+The Cynthion SoC gateware can be found in the [`gsg.git/cynthion/lunasoc/`](lunasoc/) directory.
 
 ### 0. Activate Yosys
 
     source <path-to>/oss-cad-suite/environment
 
-### 1. Test environment setup
+### 1. Install python requirements
 
+    cd gsg.git/cynthion/
+    python -m pip install -r requirements.txt
+
+### 2. Test environment setup
+
+    cd gsg.git/cynthion/lunasoc/
     python blinky_verilog.py
 
-If all goes well your cynthion should show start counting in binary on the fpga led's.
-
-### 2. Install requirements
-
-    python -m pip install -r requirements.txt
+If all goes well your cynthion should start counting in binary on the fpga led's.
 
 ### 3. Build soc gateware
 
-    make top
+Build the bitstream with:
 
+    python top_vexriscv.py
+
+You can load the bitstream with `apollo` using:
+
+    apollo configure build/top.bit
+
+Finally, you can check if the soc is working with something like:
+
+    # ubuntu
+    picocom --imap lfcrlf -b 115200 /dev/ttyACM0
+
+    # macos
+    picocom --imap lfcrlf -b 115200 /dev/cu.usbserial-D00137
+
+Hit enter after connecting and you should see a prompt like:
+
+    BIOS>
 
 Note: there are two variations of the Cynthion SoC
 
@@ -122,6 +156,80 @@ Note: there are two variations of the Cynthion SoC
   - supports the `rv32imac` isa
 
 
+---
+
+## Step 2: Build the Cynthion SoC firmware
+
+The Cynthion SoC firmware crate can be found in the [`gsg.git/cynthion/cynthion/`](cynthion/) directory.
+
+### 0. Check UART configuration in `flash.sh`
+
+Edit `gsg.git/cynthion/cynthion/.cargo/flash.sh` and make sure the `UART` variable is pointing at the right device file.
+
+
+### 1. Try running a simple example
+
+    cargo run --release --bin hello
+
+You should see a chase sequence on the fpga led's and the console should be outputting something like:
+
+    INFO    Peripherals initialized, entering main loop.
+    INFO    left: 3
+    DEBUG   right: 7
+    INFO    left: 11
+    ...
+
+
+### 2. Try running the USB bulk speed test example
+
+Make sure the USB host and sideband ports are both connected to the machine you will be performing the test on.
+
+In one terminal, build and run the speed test firmware:
+
+    cargo run --release --bin bulk_speed_test
+
+In another terminal, run the host-side speed test script:
+
+    python scripts/bulk_speed_test.py
+
+
+---
+
+## Step 3: Try running the moondancer-info script
+
+In one terminal, build and run the moondancer firmware:
+
+    cargo run --release --bin moondancer
+
+In another terminal, run:
+
+    python scripts/moondancer-info.py
+
+You should see something like:
+
+    Found a GreatFET One!
+      Board ID: 0
+      Firmware version: v2023.0.1
+      Part ID: a0000a30604f5e
+      Serial number: 000057cc67e6306f5357
+
+
+---
+
+## Step 4: Run a Facedancer example
+
+In one terminal, build and run the moondancer firmware:
+
+    cargo run --release --bin moondancer
+
+In another terminal, run:
+
+    python scripts/facedancer-ftdi-echo.py
+
+In a third terminal, run:
+
+    picocom --imap lfcrlf -b 115200 /dev/ttyUSB0
+
 
 ---
 
@@ -130,102 +238,5 @@ Note: there are two variations of the Cynthion SoC
 ### Python Environment
 
     pip uninstall -y -r <(pip freeze)
-    pyenv uninstall 3.11.3/envs/gsg-cynthion
-    pyenv uninstall 3.11.3
-
-
-
-
-========================================================================================================
-
----
-
-## Environments
-
-
-### Yosys Toolchain
-
-
-
-### Vanilla Amaranth Environment
-
-    pyenv activate gsg-amaranth
-
-    pip install --upgrade 'amaranth[builtin-yosys]'
-
-    # prefer
-    cd toolchain/
-    git clone https://github.com/amaranth-lang/amaranth.git amaranth.git
-    cd amaranth.git
-    python setup.py install
-
-    cd toolchain/
-    git clone https://github.com/amaranth-lang/amaranth-boards.git amaranth-boards.git
-    cd amaranth-boards.git
-    python setup.py install
-    pip install markupsafe==2.0.1     # fix
-
-    cd toolchain/
-    git clone https://github.com/lambdaconcept/lambdasoc.git lambdasoc.git
-
-    # test installation
-    python -m amaranth_boards.icestick
-    python -m amaranth_boards.ulx3s 85F
-
-
-### Vanilla `luna.git` Environment
-
-    See [WORKAROUNDS.md](WORKAROUNDS.md) for issues.
-
-    pyenv activate gsg-cynthion
-
-    cd toolchain/
-    # git clone https://github.com/greatscottgadgets/luna.git luna.git
-    git clone git@github.com:antoinevg/luna.git luna.git
-
-    # Install luna using poetry
-    pip3 install poetry
-    rm poetry.lock
-    poetry install
-
-    # Install using requirements.txt (preferred ?)
-    pip install -r requirements.txt
-    python setup.py install
-
-    # test installation - apollo
-    ~/.pyenv/versions/gsg-cynthion/bin/apollo info
-
-    # test installation - self test
-    poetry run applets/interactive-test.py
-
-    # test installation - blinky
-    cd examples/blinky
-    python blinky.py
-
-
-
----
-
-## Run Luna Examples
-
-    cd toolchain/luna.git/examples/soc/bios
-    LUNA_PLATFORM=luna.gateware.platform.ulx3s:ULX3S_85F_Platform AR=riscv64-unknown-elf-ar make clean all
-
-
----
-
-## `hello-r04/`
-
-    python hello-r04/blinky.py
-
-
----
-
-## `hello-uart/`
-
-    picocom --imap lfcrlf -b 115200 /dev/cu.usbmodem22301
-
-
-## References
-
-* [Luna Documentation - Getting Started](https://luna.readthedocs.io/en/latest/getting_started.html)
+    pyenv uninstall 3.11/envs/gsg-cynthion
+    pyenv uninstall 3.11

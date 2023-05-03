@@ -7,6 +7,6 @@ Cargo.lock
 **/.python-version
 
 # local files
-/luna/**/build/
-/luna/toolchain
-/luna/**/*.off
+/cynthion/**/build/
+/cynthion/toolchain
+/cynthion/**/*.off
