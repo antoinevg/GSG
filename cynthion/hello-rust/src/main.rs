@@ -38,7 +38,7 @@ const IO_TIMER_RELOAD: usize = IO_BASE + 0x1000;
 const IO_TIMER_EN: usize = IO_BASE + 0x1004;
 const IO_TIMER_CTR: usize = IO_BASE + 0x1008;
 
-const IO_LEDS: usize = IO_BASE + 0x4180;
+const IO_LEDS: usize = IO_BASE + 0x0080;
 
 pub unsafe fn timer_delay(cycles: u32) {
     let reload = IO_TIMER_RELOAD as *mut u32;
