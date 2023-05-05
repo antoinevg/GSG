@@ -22,16 +22,24 @@ pub fn init(writer: hal::Serial) {
 
     #[cfg(target_has_atomic)]
     {
-        log::set_logger(&LOGGER)
-            .map(|()| log::set_max_level(LevelFilter::Trace))
-            .expect("panic setting logger");
+        match log::set_logger(&LOGGER).map(|()| log::set_max_level(LevelFilter::Trace)) {
+            Ok(()) => (),
+            Err(_e) => {
+                panic!("Failed to set logger");
+            }
+        }
     }
 
     #[cfg(not(target_has_atomic))]
     {
-        unsafe { log::set_logger_racy(&LOGGER) }
+        match unsafe { log::set_logger_racy(&LOGGER) }
             .map(|()| log::set_max_level(LevelFilter::Trace))
-            .expect("panic setting logger");
+        {
+            Ok(()) => (),
+            Err(_e) => {
+                panic!("Failed to set logger");
+            }
+        }
     }
 }
 
@@ -77,10 +85,12 @@ where
         #[cfg(not(target_has_atomic))]
         {
             riscv::interrupt::free(|| match self.writer.borrow_mut().as_mut() {
-                Some(writer) => {
-                    writeln!(writer, "{}\t{}", record.level(), record.args())
-                        .expect("Logger failed to write to device");
-                }
+                Some(writer) => match writeln!(writer, "{}\t{}", record.level(), record.args()) {
+                    Ok(()) => (),
+                    Err(_e) => {
+                        panic!("Logger failed to write to device");
+                    }
+                },
                 None => {
                     panic!("Logger has not been initialized");
                 }
