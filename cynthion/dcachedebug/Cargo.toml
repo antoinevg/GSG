@@ -19,27 +19,15 @@ targets = [
 # - features ------------------------------------------------------------------
 
 [features]
-default = [
-    #"minerva",
-    "vexriscv", "vexriscv_dcache",
-
-    #"nightly",
-]
+default = ["vexriscv"]
 
 # select softcore
-minerva = [
-    "lunasoc-pac/minerva",
-]
-vexriscv = [
-    "lunasoc-pac/vexriscv",
-]
+minerva = ["lunasoc-pac/minerva"]
+vexriscv = ["lunasoc-pac/vexriscv"]
 vexriscv_dcache = []
 
 # select nightly toolchain
-nightly = [
-    "libgreat/nightly",
-    "lunasoc-hal/nightly",
-]
+nightly = ["libgreat/nightly", "lunasoc-hal/nightly"]
 
 
 # - dependencies --------------------------------------------------------------
@@ -50,18 +38,28 @@ lunasoc-pac = { path = "../lunasoc-pac", default-features = false, features = ["
 lunasoc-hal = { path = "../lunasoc-hal", default-features = false, features = []}
 
 riscv = { version = "=0.10.1", features = ["critical-section-single-hart"] }
-riscv-rt = { version = "=0.11.0" }
+#riscv-rt = { version = "=0.11.0", default-features = false  }
+#riscv-rt = { path = "../../../upstream/riscv-rt.git", default-features = false }
 
-#bbqueue = { version = "0.5.1", default-features = false }
-#bbqueue = { path = "../../../upstream/bbqueue.git/core", default-features = false }
-bbqueue = { git = "https://github.com/antoinevg/bbqueue.git", branch = "antoinevg/atomic-polyfill", default-features = false }
+bbqueue = { version = "0.5.1", default-features = false }
+#bbqueue = { path = "../../../forks/bbqueue.git/core", default-features = false }
+#bbqueue = { git = "https://github.com/antoinevg/bbqueue.git", branch = "antoinevg/atomic-polyfill", default-features = false }
 
 heapless = { version = "=0.7.16", default-features = false, features = ["mpmc_large"] } # TODO 0.8.0 is en-route
 zerocopy = { version = "=0.7.0-alpha.2", default-features = false }
 
 log = { version="=0.4.17", features = ["release_max_level_debug"] }
 
+r0 = "1.0.0"
+
+[build-dependencies]
+cc = "1.0.79"
+#riscv-target = "0.1.2"
+
 # - binaries ------------------------------------------------------------------
+
+[[bin]]
+name = "bare"
 
 [[bin]]
 name = "benchmark"
@@ -71,6 +69,9 @@ name = "bulk_speed_test"
 
 [[bin]]
 name = "cdc_serial_loopback"
+
+[[bin]]
+name = "diag"
 
 [[bin]]
 name = "gpio"
@@ -86,3 +87,14 @@ name = "moondancer"
 
 [[bin]]
 name = "usb"
+
+# - profiles ------------------------------------------------------------------
+
+[profile.release]
+codegen-units = 1
+debug = true
+debug-assertions = false
+incremental = false
+lto = true
+opt-level = "s"
+overflow-checks = false

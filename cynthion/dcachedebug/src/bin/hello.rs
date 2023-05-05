@@ -1,32 +1,51 @@
+#![allow(unused_imports, unused_mut, unused_variables)]
+
 #![no_std]
 #![no_main]
 
 use cynthion::pac;
+use cynthion::rt;
 
 use cynthion::hal;
 use hal::hal::delay::DelayUs;
 use hal::Serial;
 use hal::Timer;
 
-use log::{debug, info};
+use log::info;
 
-use riscv_rt::entry;
+use core::fmt::Write;
 
-#[cfg(feature = "vexriscv")]
-#[riscv_rt::pre_init]
-unsafe fn pre_main() {
+// - asm.S --------------------------------------------------------------------
+
+//core::arch::global_asm!(include_str!("../../asm.S"));
+
+
+// - panic_handler ------------------------------------------------------------
+
+use core::panic::PanicInfo;
+
+#[panic_handler]
+#[no_mangle]
+fn panic(_info: &PanicInfo) -> ! {
+    loop {
+    }
+}
+
+// - main ---------------------------------------------------------------------
+
+#[no_mangle]
+pub unsafe fn __pre_init() {
     pac::cpu::vexriscv::flush_icache();
-    #[cfg(feature = "vexriscv_dcache")]
     pac::cpu::vexriscv::flush_dcache();
 }
 
-#[entry]
-fn main() -> ! {
+#[no_mangle]
+pub unsafe extern "C" fn main() -> ! {
     let peripherals = pac::Peripherals::take().unwrap();
     let leds = &peripherals.LEDS;
 
     // initialize logging
-    let serial = Serial::new(peripherals.UART);
+    let mut serial = Serial::new(peripherals.UART);
     cynthion::log::init(serial);
 
     let mut timer = Timer::new(peripherals.TIMER, pac::clock::sysclk());
@@ -37,7 +56,8 @@ fn main() -> ! {
     info!("Peripherals initialized, entering main loop.");
 
     loop {
-        pac::cpu::vexriscv::flush_dcache();
+        //pac::cpu::vexriscv::flush_dcache();
+        //unsafe { riscv::asm::nop() };
 
         timer.delay_ms(1000).unwrap();
 
@@ -51,7 +71,7 @@ fn main() -> ! {
             led_state <<= 1;
             if led_state == 0b110000 {
                 direction = true;
-                debug!("right: {}", counter);
+                info!("right: {}", counter);
             }
         }
 

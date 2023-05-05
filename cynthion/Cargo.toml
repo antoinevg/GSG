@@ -7,6 +7,7 @@ members = [
 ]
 
 exclude = [
+    "dcachedebug",
     "design",
     "hello-bios",
     "hello-lunasoc",
