@@ -41,9 +41,9 @@ riscv = { version = "=0.10.1", features = ["critical-section-single-hart"] }
 #riscv-rt = { version = "=0.11.0", default-features = false  }
 #riscv-rt = { path = "../../../upstream/riscv-rt.git", default-features = false }
 
-bbqueue = { version = "0.5.1", default-features = false }
+#bbqueue = { version = "0.5.1", default-features = false }
 #bbqueue = { path = "../../../forks/bbqueue.git/core", default-features = false }
-#bbqueue = { git = "https://github.com/antoinevg/bbqueue.git", branch = "antoinevg/atomic-polyfill", default-features = false }
+bbqueue = { git = "https://github.com/antoinevg/bbqueue.git", branch = "antoinevg/atomic-polyfill", default-features = false }
 
 heapless = { version = "=0.7.16", default-features = false, features = ["mpmc_large"] } # TODO 0.8.0 is en-route
 zerocopy = { version = "=0.7.0-alpha.2", default-features = false }
@@ -95,6 +95,7 @@ codegen-units = 1
 debug = true
 debug-assertions = false
 incremental = false
-lto = true
-opt-level = "s"
+lto = false
+#opt-level = "s"
+opt-level = 0
 overflow-checks = false

@@ -1,10 +1,10 @@
-#![allow(missing_docs)]
+#![allow(missing_docs, unused_imports)]
 
-#[cfg(feature = "s-mode")]
-use riscv::register::{scause as xcause, stvec as xtvec, stvec::TrapMode as xTrapMode};
+//#[cfg(feature = "s-mode")]
+//use riscv::register::{scause as xcause, stvec as xtvec, stvec::TrapMode as xTrapMode};
 
-#[cfg(not(feature = "s-mode"))]
-use riscv::register::{mcause as xcause, mhartid, mtvec as xtvec, mtvec::TrapMode as xTrapMode};
+//#[cfg(not(feature = "s-mode"))]
+//use riscv::register::{mcause as xcause, mhartid, mtvec as xtvec, mtvec::TrapMode as xTrapMode};
 
 //pub use riscv_rt_macros::{entry, pre_init};
 
@@ -14,15 +14,15 @@ pub static __ONCE__: () = ();
 
 extern "C" {
     // Boundaries of the .bss section
-    static mut _ebss: u32;
-    static mut _sbss: u32;
+    //static mut _ebss: u32;
+    //static mut _sbss: u32;
 
     // Boundaries of the .data section
-    static mut _edata: u32;
-    static mut _sdata: u32;
+    //static mut _edata: u32;
+    //static mut _sdata: u32;
 
     // Initial values of the .data section (stored in Flash)
-    static _sidata: u32;
+    //static _sidata: u32;
 }
 
 /// Rust entry point (_start_rust)
@@ -38,29 +38,35 @@ pub unsafe extern "C" fn start_rust(a0: usize, a1: usize, a2: usize) -> ! {
         fn main(a0: usize, a1: usize, a2: usize) -> !;
 
         // This symbol will be provided by the user via `#[pre_init]`
-        fn __pre_init();
+        //fn __pre_init();
 
-        fn _setup_interrupts();
+        //fn _setup_interrupts();
 
-        fn _mp_hook(hartid: usize) -> bool;
+        //fn _mp_hook(hartid: usize) -> bool;
     }
 
     // sbi passes hartid as first parameter (a0)
-    #[cfg(feature = "s-mode")]
+    /*#[cfg(feature = "s-mode")]
     let hartid = a0;
     #[cfg(not(feature = "s-mode"))]
-    let hartid = mhartid::read();
+    let hartid = mhartid::read();*/
 
-    if _mp_hook(hartid) {
-        __pre_init();
+    //if _mp_hook(hartid) {
+        //__pre_init();
 
-        r0::zero_bss(&mut _sbss, &mut _ebss);
-        r0::init_data(&mut _sdata, &mut _edata, &_sidata);
-    }
+        //r0::zero_bss(&mut _sbss, &mut _ebss);
+        //r0::init_data(&mut _sdata, &mut _edata, &_sidata);
+    //}
 
     // TODO: Enable FPU when available
 
-    _setup_interrupts();
+    //_setup_interrupts();
+
+    /*unsafe { riscv::asm::nop() };
+    unsafe { riscv::asm::nop() };
+    unsafe { riscv::asm::nop() };
+    unsafe { riscv::asm::nop() };
+    unsafe { riscv::asm::nop() };*/
 
     main(a0, a1, a2);
 }
@@ -98,15 +104,15 @@ pub struct TrapFrame {
 pub extern "C" fn start_trap_rust(trap_frame: *const TrapFrame) {
     extern "C" {
         fn ExceptionHandler(trap_frame: &TrapFrame);
-        fn DefaultHandler();
+        //fn DefaultHandler();
     }
 
     unsafe {
-        let cause = xcause::read();
+        //let cause = xcause::read();
 
-        if cause.is_exception() {
+        //if cause.is_exception() {
             ExceptionHandler(&*trap_frame)
-        } else {
+        /*} else {
             if cause.code() < __INTERRUPTS.len() {
                 let h = &__INTERRUPTS[cause.code()];
                 if h.reserved == 0 {
@@ -117,7 +123,7 @@ pub extern "C" fn start_trap_rust(trap_frame: *const TrapFrame) {
             } else {
                 DefaultHandler();
             }
-        }
+        }*/
     }
 }
 
@@ -132,6 +138,7 @@ pub fn DefaultExceptionHandler(trap_frame: &TrapFrame) -> ! {
     }
 }
 
+/*
 #[doc(hidden)]
 #[no_mangle]
 #[allow(unused_variables, non_snake_case)]
@@ -141,7 +148,7 @@ pub fn DefaultInterruptHandler() {
         // see rust-lang/rust#28728 for details
         continue;
     }
-}
+}*/
 
 /* Interrupts */
 #[doc(hidden)]
@@ -213,7 +220,7 @@ pub static __INTERRUPTS: [Vector; 12] = [
 #[rustfmt::skip]
 pub unsafe extern "Rust" fn default_pre_init() {}
 
-#[doc(hidden)]
+/*#[doc(hidden)]
 #[no_mangle]
 #[rustfmt::skip]
 pub extern "Rust" fn default_mp_hook(hartid: usize) -> bool {
@@ -223,8 +230,9 @@ pub extern "Rust" fn default_mp_hook(hartid: usize) -> bool {
             unsafe { riscv::asm::wfi() }
         },
     }
-}
+}*/
 
+/*
 /// Default implementation of `_setup_interrupts` that sets `mtvec`/`stvec` to a trap handler address.
 #[doc(hidden)]
 #[no_mangle]
@@ -236,3 +244,4 @@ pub unsafe extern "Rust" fn default_setup_interrupts() {
 
     xtvec::write(_start_trap as usize, xTrapMode::Direct);
 }
+*/

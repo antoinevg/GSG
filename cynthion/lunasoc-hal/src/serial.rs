@@ -46,9 +46,32 @@ macro_rules! impl_serial {
             // trait: core::fmt::Write
             impl core::fmt::Write for $SERIALX {
                 fn write_str(&mut self, s: &str) -> core::fmt::Result {
-                    use $crate::hal::serial::Write;
-                    self.write(s.as_bytes()).ok();
-                    self.flush().ok();
+                    //use $crate::hal::serial::Write;
+                    //self.write(s.as_bytes()).ok();
+                    //self.flush().ok();
+                    /*match self.write(s.as_bytes()) {
+                        Ok(()) => (),
+                        Err(_e) => {
+                        }
+                    }
+                    match self.flush() {
+                        Ok(()) => (),
+                        Err(_e) => {
+                        }
+                    }*/
+                    for &byte in s.as_bytes() {
+                        let mut timeout = 0;
+                        while self.registers.tx_rdy.read().tx_rdy().bit() == false {
+                            unsafe { riscv::asm::delay(1) };
+                            if timeout > 1_000 {
+                                break;
+                            }
+                            timeout += 1;
+                        }
+                        self.registers.tx_data.write(|w| unsafe {
+                            w.tx_data().bits(byte.into())
+                        });
+                    }
                     Ok(())
                 }
             }
@@ -68,6 +91,7 @@ macro_rules! impl_serial {
                             $crate::nb::block!(
                                 <$SERIALX as $crate::hal_nb::serial::Write<u8>>::write(self, word)
                             )?;
+                            self.flush()?;
                         }
                         Ok(())
                     }
