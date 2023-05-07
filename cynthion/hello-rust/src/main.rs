@@ -1,3 +1,5 @@
+#![allow(dead_code, unused_imports)]
+
 #![no_std]
 #![no_main]
 
@@ -8,12 +10,29 @@
 pub unsafe extern "C" fn main() -> ! {
     let io_leds = IO_LEDS as *mut _;
 
+    //let mut writer = Writer;
+    //writeln!(writer, "oh hai\n").unwrap();
+
+    uart_tx("oh hai here we go already!\n");
+
     loop {
+        uart_tx("boink\n");
         for n in 0..64 {
             core::ptr::write_volatile(io_leds, n);
             timer_delay(500_000);
         }
-        uart_tx("boink\n");
+    }
+}
+
+// - core::fmt::Write ---------------------------------------------------------
+
+use core::fmt::Write;
+
+struct Writer;
+impl core::fmt::Write for Writer {
+    fn write_str(&mut self, s: &str) -> core::fmt::Result {
+        unsafe { uart_tx(s) };
+        Ok(())
     }
 }
 
@@ -64,7 +83,7 @@ pub unsafe fn uart_tx(string: &str) {
         while core::ptr::read_volatile(tx_ready) == 0 {
             asm::nop();
         }
-        core::ptr::write_volatile(tx_data, c as u32);
+        core::ptr::write_volatile(tx_data, c as u32 & 0b1111_1111);
     }
 }
 

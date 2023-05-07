@@ -16,6 +16,7 @@ rustflags = [
   # debug
   #"-C", "link-args=-Map=/tmp/firmware.map",
   #"-C", "target-feature=+relax",
+  #"-C", "target-feature=+norelax",
 
   # https://users.rust-lang.org/t/make-sure-function-address-is-4byte-aligned/49549/14
   #"-C", "llvm-args=-align-all-functions=1", # 2^5 = 32

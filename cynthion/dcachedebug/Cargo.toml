@@ -97,5 +97,5 @@ debug-assertions = false
 incremental = false
 lto = false
 #opt-level = "s"
-opt-level = 0
+opt-level = 1
 overflow-checks = false

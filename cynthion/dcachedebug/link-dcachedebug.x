@@ -4,7 +4,7 @@ PROVIDE(_max_hart_id = 0);
 PROVIDE(_hart_stack_size = 2K);
 PROVIDE(_heap_size = 0);
 
-/*PROVIDE(UserSoft = DefaultHandler);
+PROVIDE(UserSoft = DefaultHandler);
 PROVIDE(SupervisorSoft = DefaultHandler);
 PROVIDE(MachineSoft = DefaultHandler);
 PROVIDE(UserTimer = DefaultHandler);
@@ -12,9 +12,9 @@ PROVIDE(SupervisorTimer = DefaultHandler);
 PROVIDE(MachineTimer = DefaultHandler);
 PROVIDE(UserExternal = DefaultHandler);
 PROVIDE(SupervisorExternal = DefaultHandler);
-PROVIDE(MachineExternal = DefaultHandler);*/
+PROVIDE(MachineExternal = DefaultHandler);
 
-/* PROVIDE(DefaultHandler = DefaultInterruptHandler); */
+PROVIDE(DefaultHandler = DefaultInterruptHandler);
 PROVIDE(ExceptionHandler = DefaultExceptionHandler);
 
 /* # Pre-initialization function */
@@ -32,7 +32,7 @@ PROVIDE(_setup_interrupts = default_setup_interrupts);
    which will perform memory initialization. For other harts it must return false
    and implement wake-up in platform-dependent way (e.g. after waiting for a user interrupt).
 */
-PROVIDE(_mp_hook = default_mp_hook);
+/* PROVIDE(_mp_hook = default_mp_hook); */
 
 /* # Start trap function override
   By default uses the riscv crates default trap handler

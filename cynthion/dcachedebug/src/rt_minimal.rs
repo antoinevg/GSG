@@ -4,7 +4,8 @@
 //use riscv::register::{scause as xcause, stvec as xtvec, stvec::TrapMode as xTrapMode};
 
 //#[cfg(not(feature = "s-mode"))]
-use riscv::register::{mcause as xcause, mhartid, mtvec as xtvec, mtvec::TrapMode as xTrapMode};
+//use riscv::register::{mcause as xcause, mhartid, mtvec as xtvec, mtvec::TrapMode as xTrapMode};
+use riscv::register::{mcause as xcause, mtvec as xtvec, mtvec::TrapMode as xTrapMode};
 
 //pub use riscv_rt_macros::{entry, pre_init};
 
@@ -38,29 +39,38 @@ pub unsafe extern "C" fn start_rust(a0: usize, a1: usize, a2: usize) -> ! {
         fn main(a0: usize, a1: usize, a2: usize) -> !;
 
         // This symbol will be provided by the user via `#[pre_init]`
-        fn __pre_init();
+        //fn __pre_init();
 
         fn _setup_interrupts();
 
-        fn _mp_hook(hartid: usize) -> bool;
+        //fn _mp_hook(hartid: usize) -> bool;
     }
 
     // sbi passes hartid as first parameter (a0)
     /*#[cfg(feature = "s-mode")]
     let hartid = a0;
-    #[cfg(not(feature = "s-mode"))]*/
-    let hartid = mhartid::read();
+    #[cfg(not(feature = "s-mode"))]
+    let hartid = mhartid::read();*/
 
-    if _mp_hook(hartid) {
-        __pre_init();
+    //if _mp_hook(hartid) {
+        //__pre_init();
+
+        lunasoc_pac::cpu::vexriscv::flush_icache();
+        lunasoc_pac::cpu::vexriscv::flush_dcache();
 
         r0::zero_bss(&mut _sbss, &mut _ebss);
         r0::init_data(&mut _sdata, &mut _edata, &_sidata);
-    }
+    //}
 
     // TODO: Enable FPU when available
 
     _setup_interrupts();
+
+    /*unsafe { riscv::asm::nop() };
+    unsafe { riscv::asm::nop() };
+    unsafe { riscv::asm::nop() };
+    unsafe { riscv::asm::nop() };
+    unsafe { riscv::asm::nop() };*/
 
     main(a0, a1, a2);
 }
@@ -102,25 +112,25 @@ pub extern "C" fn start_trap_rust(trap_frame: *const TrapFrame) {
     }
 
     unsafe {
-        let cause = xcause::read();
+        //let cause = xcause::read();
 
-        if cause.is_exception() {
+        if true { //cause.is_exception() {
             ExceptionHandler(&*trap_frame)
         } else {
-            if cause.code() < __INTERRUPTS.len() {
+            /*if cause.code() < __INTERRUPTS.len() {
                 let h = &__INTERRUPTS[cause.code()];
                 if h.reserved == 0 {
                     DefaultHandler();
                 } else {
                     (h.handler)();
                 }
-            } else {
+            } else {*/
                 DefaultHandler();
-            }
+            //}
         }
     }
 }
-
+/*
 #[doc(hidden)]
 #[no_mangle]
 #[allow(unused_variables, non_snake_case)]
@@ -143,7 +153,7 @@ pub fn DefaultInterruptHandler() {
         continue;
     }
 }
-
+*/
 /* Interrupts */
 #[doc(hidden)]
 pub enum Interrupt {
@@ -214,7 +224,7 @@ pub static __INTERRUPTS: [Vector; 12] = [
 #[rustfmt::skip]
 pub unsafe extern "Rust" fn default_pre_init() {}
 
-#[doc(hidden)]
+/*#[doc(hidden)]
 #[no_mangle]
 #[rustfmt::skip]
 pub extern "Rust" fn default_mp_hook(hartid: usize) -> bool {
@@ -224,7 +234,7 @@ pub extern "Rust" fn default_mp_hook(hartid: usize) -> bool {
             unsafe { riscv::asm::wfi() }
         },
     }
-}
+}*/
 
 
 /// Default implementation of `_setup_interrupts` that sets `mtvec`/`stvec` to a trap handler address.

@@ -4,13 +4,14 @@
 
 // - modules ------------------------------------------------------------------
 
-pub mod class;
-pub mod error;
-pub mod log;
-pub mod macros;
+//pub mod class;
+//pub mod error;
+//pub mod log;
+//pub mod macros;
 //pub mod panic_log;
 
-pub mod rt;
+//pub mod rt;
+pub mod rt_minimal;
 
 // - aliases ------------------------------------------------------------------
 
@@ -19,14 +20,14 @@ pub use lunasoc_pac as pac;
 
 // - re-exports ---------------------------------------------------------------
 
-pub use error::FirmwareError;
-pub use libgreat::error::GreatResult;
-pub use libgreat::firmware::BoardInformation;
+//pub use error::FirmwareError;
+//pub use libgreat::error::GreatResult;
+//pub use libgreat::firmware::BoardInformation;
 
 // - constants ----------------------------------------------------------------
 
 pub const SYSTEM_CLOCK_FREQUENCY: u32 = pac::clock::sysclk();
-pub const BOARD_INFORMATION: BoardInformation = BoardInformation {
+/*pub const BOARD_INFORMATION: BoardInformation = BoardInformation {
     board_id: [0x00, 0x00, 0x00, 0x00],
     version_string: "v2023.0.1\0",
     part_id: [0x30, 0xa, 0x00, 0xa0, 0x5e, 0x4f, 0x60, 0x00],
@@ -38,9 +39,9 @@ pub const BOARD_INFORMATION: BoardInformation = BoardInformation {
 
 pub const EP_MAX_ENDPOINTS: usize = 16;
 pub const EP_MAX_RECEIVE_LENGTH: usize = 64;
-
+*/
 // - messages -----------------------------------------------------------------
-
+/*
 // TODO use these instead of u8 in messages
 #[derive(Debug)]
 pub enum UsbInterface {
@@ -121,3 +122,4 @@ impl core::fmt::Debug for Message {
         }
     }
 }
+*/

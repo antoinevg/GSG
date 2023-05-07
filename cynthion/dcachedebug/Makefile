@@ -18,11 +18,12 @@ headers:
 	cargo readobj --release --bin $(BIN) -- --file-headers
 
 disasm:
-	@# iscv64-unknown-elf-objdump --disassemble $(BIN)
+	@# riscv64-unknown-elf-objdump --disassemble --demangle $(BIN)
 	@# cargo objdump --release --bin $(BIN) -- --disassemble --no-show-raw-insn --print-imm-hex
 	cargo objdump --release --bin $(BIN) -- --disassemble
 
 disasm-src:
+	@# riscv64-unknown-elf-objdump --disassemble --demangle --source $(BIN)
 	@# cargo objdump --release --bin $(BIN) -- --disassemble --source --no-show-raw-insn --print-imm-hex
 	cargo objdump --release --bin $(BIN) -- --disassemble  --source
 

@@ -64,7 +64,7 @@ fn riscvrt() {
         include_bytes!("link-riscvrt.x"),
     ).unwrap();
     println!("cargo:rustc-link-search={}", out_dir.display());
-    println!("cargo:rerun-if-changed=link-diag.x");
+    println!("cargo:rerun-if-changed=link-riscvrt.x");
 
     // build.rs
     println!("cargo:rerun-if-changed=build.rs");

@@ -1,4 +1,4 @@
-#![allow(unused_imports, unused_mut, unused_variables)]
+#![allow(dead_code, non_snake_case, unused_imports, unused_mut, unused_variables)]
 #![no_std]
 #![no_main]
 
@@ -17,68 +17,85 @@ use core::panic::PanicInfo;
 #[no_mangle]
 #[inline(never)]
 fn panic(_info: &PanicInfo) -> ! {
-    loop {}
+    let leds = IO_LEDS as *mut _;
+    unsafe { core::ptr::write_volatile(leds, 0b11_0000) };
+    loop {
+    }
 }
 
-// - __pre_init________________________________________________________________
+use cynthion::rt_minimal::TrapFrame;
 
-/*#[no_mangle]
-#[inline(never)]
-pub unsafe fn __pre_init() {
-    pac::cpu::vexriscv::flush_icache();
-    pac::cpu::vexriscv::flush_dcache();
-}*/
+#[no_mangle]
+pub fn ExceptionHandler(trap_frame: &TrapFrame) -> ! {
+    let leds = IO_LEDS as *mut _;
+    unsafe { core::ptr::write_volatile(leds, 0b11_1100) };
+    uart_tx("trap\n");
+
+    let mut s = heapless::String::<32>::new();
+    let _ = write!(s, "ra: 0x{:08x}", trap_frame.ra).unwrap();
+    uart_tx(s.as_str());
+    uart_tx("trap\n");
+
+    loop { }
+}
+
+#[no_mangle]
+pub fn DefaultHandler() {
+    let leds = IO_LEDS as *mut _;
+    unsafe { core::ptr::write_volatile(leds, 0b11_1111) };
+}
 
 // - main ---------------------------------------------------------------------
 
-const BUF8_SIZE: usize = 512;
-static mut BUF8: [u8; BUF8_SIZE] = [0; BUF8_SIZE];
+const IO_BASE: usize = 0x8000_0000;
+const IO_LEDS: usize = IO_BASE + 0x0080;
+const IO_UART_TX_DATA: usize = IO_BASE + 0x0010;
+const IO_UART_TX_RDY: usize = IO_BASE + 0x0014;
 
 #[no_mangle]
 #[inline(never)]
 pub unsafe extern "C" fn main() -> ! {
-    pac::cpu::vexriscv::flush_icache();
-    pac::cpu::vexriscv::flush_dcache();
+    //pac::cpu::vexriscv::flush_icache();
+    //pac::cpu::vexriscv::flush_dcache();
 
     let peripherals = pac::Peripherals::steal();
-    let leds = &peripherals.LEDS;
+    let leds = IO_LEDS as *mut _;
     let mut serial = Writer { uart: peripherals.UART };
 
-    let buf8_ptr = BUF8.as_ptr() as usize;
-
-    //writeln!(serial, "0x{:08x}", buf8_ptr).unwrap();
-
-    //unsafe { riscv::asm::nop() };
+    writeln!(serial, "0x{:08x}", IO_LEDS).unwrap();
+    //writeln!(serial, "oh hai, here we go already!\n").unwrap();
+    //uart_tx("oh hai, here we go already!\n");
 
     let mut counter: usize = 0;
     loop {
-        leds.output.write(|w| unsafe { w.output().bits((counter % 63) as u8) });
+        core::ptr::write_volatile(leds, counter & 0b0011_1111);
         unsafe { riscv::asm::delay(1_000_000) };
         counter += 1;
     }
 }
 
+
+
 // - core::fmt::Write ---------------------------------------------------------
+
+#[inline(never)]
+fn uart_tx(s: &str) {
+    let tx_data = IO_UART_TX_DATA as *mut u32;
+    let tx_ready = IO_UART_TX_RDY as *mut u32;
+    for &c in s.as_bytes() {
+        while unsafe { core::ptr::read_volatile(tx_ready) } == 0 { }
+        unsafe { core::ptr::write_volatile(tx_data, c as u32 & 0b1111_1111) };
+    }
+}
 
 struct Writer {
     uart: pac::UART,
 }
 
 impl core::fmt::Write for Writer {
+    #[inline(never)]
     fn write_str(&mut self, s: &str) -> core::fmt::Result {
-        for &byte in s.as_bytes() {
-            self.uart.tx_data.write(|w| unsafe {
-                w.tx_data().bits(byte.into())
-            });
-            let mut timeout = 0;
-            while self.uart.tx_rdy.read().tx_rdy().bit() == false {
-                unsafe { riscv::asm::delay(1) };
-                if timeout > 1_000 {
-                    break;
-                }
-                timeout += 1;
-            }
-        }
+        uart_tx(s);
         Ok(())
     }
 }
