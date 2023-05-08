@@ -29,12 +29,14 @@ use cynthion::rt_minimal::TrapFrame;
 pub fn ExceptionHandler(trap_frame: &TrapFrame) -> ! {
     let leds = IO_LEDS as *mut _;
     unsafe { core::ptr::write_volatile(leds, 0b11_1100) };
-    uart_tx("trap\n");
 
-    let mut s = heapless::String::<32>::new();
-    let _ = write!(s, "ra: 0x{:08x}", trap_frame.ra).unwrap();
-    uart_tx(s.as_str());
-    uart_tx("trap\n");
+    if false {
+        uart_tx("trap\n");
+        let mut s = heapless::String::<32>::new();
+        let _ = write!(s, "ra: 0x{:08x}", trap_frame.ra).unwrap();
+        uart_tx(s.as_str());
+        uart_tx("trap\n");
+    }
 
     loop { }
 }
@@ -52,6 +54,10 @@ const IO_LEDS: usize = IO_BASE + 0x0080;
 const IO_UART_TX_DATA: usize = IO_BASE + 0x0010;
 const IO_UART_TX_RDY: usize = IO_BASE + 0x0014;
 
+fn log(msg: &str) {
+    uart_tx(msg);
+}
+
 #[no_mangle]
 #[inline(never)]
 pub unsafe extern "C" fn main() -> ! {
@@ -62,8 +68,140 @@ pub unsafe extern "C" fn main() -> ! {
     let leds = IO_LEDS as *mut _;
     let mut serial = Writer { uart: peripherals.UART };
 
-    writeln!(serial, "0x{:08x}", IO_LEDS).unwrap();
-    //writeln!(serial, "oh hai, here we go already!\n").unwrap();
+    // x: can't get this to break
+    /*{
+        log("bar12345\n");
+    }*/
+
+    // 0: breaks
+    {
+        writeln!(serial, "0x{:08x} foo", IO_LEDS).unwrap();
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+    }
+
+    // 1: works
+    /*{
+        writeln!(serial, "0x{:08x} foo", IO_LEDS).unwrap();
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+    }*/
+
+    // 2: works
+    /*{
+        writeln!(serial, "0x{:08x} foo", IO_LEDS).unwrap();
+        writeln!(serial, "bar").unwrap();
+    }*/
+
+    // 3: works
+    /*{
+        writeln!(serial, "0x{:08x} foo", IO_LEDS).unwrap();
+        writeln!(serial, "bar").unwrap();
+        writeln!(serial, "bar").unwrap();
+    }*/
+
+    // 4: breaks
+    /*{
+        writeln!(serial, "0x{:08x} foo", IO_LEDS).unwrap();
+        writeln!(serial, "bar").unwrap();
+        writeln!(serial, "bar").unwrap();
+        writeln!(serial, "bar").unwrap();
+    }*/
+
+    // 5: works
+    /*{
+        writeln!(serial, "0x{:08x} foo", IO_LEDS).unwrap();
+        // + 16 bytes
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+
+        // + 32 breaks
+        /*unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+
+        // + 48 works
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+
+        // + 64 breaks
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+
+        // + 80 works
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };*/
+    }*/
+
+    // 6: works
+    /*{
+        writeln!(serial, "0x{:08x} foo", IO_LEDS).unwrap();
+        // + 48 bytes
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+    }*/
+
+    // 7: works
+    /*{
+        writeln!(serial, "0x{:08x} foo", IO_LEDS).unwrap();
+        // + 112 bytes
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
+    }*/
+
+
+    //let mut s = heapless::String::<32>::new();
+    //let _ = write!(s, "0x{:08x}", IO_LEDS).unwrap();
+    //let _ = write!(s, "0d{}", IO_LEDS).unwrap();
+    //uart_tx(s.as_str());
     //uart_tx("oh hai, here we go already!\n");
 
     let mut counter: usize = 0;

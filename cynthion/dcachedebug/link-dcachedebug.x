@@ -42,12 +42,13 @@ PROVIDE(_start_trap = default_start_trap);
 
 SECTIONS
 {
+/*
   .text.dummy (NOLOAD) :
-  {
+  {*/
     /* This section is intended to make _stext address work */
-    . = ABSOLUTE(_stext);
+    /*. = ABSOLUTE(_stext);
   } > REGION_TEXT
-
+*/
   .text _stext :
   {
     /* Put reset handler first in .text section so it ends up as the entry */

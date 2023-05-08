@@ -75,7 +75,7 @@ fn dcachedebug() {
 
     // asm.S
     cc::Build::new()
-        .file("asm.S")
+        .file("asm-dcachedebug.S")
         .compile("my_asm");
     println!("cargo:rerun-if-changed=asm-dcachedebug.S");
 

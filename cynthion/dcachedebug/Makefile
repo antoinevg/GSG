@@ -38,7 +38,8 @@ data:
 
 nm:
 	@# cargo nm --release --bin $(BIN) -- --debug-syms --format=bsd --print-size --size-sort --radix=d
-	cargo nm --release --bin $(BIN) -- --size-sort --radix=d | grep -v Lanon | grep -v 00000000
+	@# cargo nm --release --bin $(BIN) -- --size-sort --radix=d | grep -v Lanon | grep -v 00000000
+	cargo nm --release --bin $(BIN) -- --size-sort | grep -v Lanon | grep -v 00000000
 
 elf-size-analyze:
 	@# https://github.com/jedrzejboczar/elf-size-analyze

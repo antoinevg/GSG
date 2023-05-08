@@ -21,39 +21,11 @@
 .global _start
 
 _start:
-    /* Jump to the absolute address defined by the linker script. */
-    // for 32bit
-    .if __riscv_xlen == 32
-    lui ra, %hi(_abs_start)
-    jr %lo(_abs_start)(ra)
-    .endif
-
-    // for 64bit
-    .if __riscv_xlen == 64
-.option push
-.option norelax // to prevent an unsupported R_RISCV_ALIGN relocation from being generated
-1:
-    auipc ra, %pcrel_hi(1f)
-    ld ra, %pcrel_lo(1b)(ra)
-    jr ra
-    .align  3
-1:
-    .dword _abs_start
-.option pop
-    .endif
-
-_abs_start:
     .cfi_startproc
     .cfi_undefined ra
 
-    #ifdef SMODE
-    csrw sie, 0     // interrupt disable
-    csrw sip, 0     // no pending interrupts
-    #else
     csrw mie, 0
     csrw mip, 0
-    #endif
-
 
     li  x1, 0
     li  x2, 0
@@ -90,13 +62,7 @@ _abs_start:
     la gp, __global_pointer$
     .option pop
 
-    #ifdef SMODE
-    // there is no equivalent of mhartid in supervisor mode.
-    // instead, the hartid is passed as paramter by SMODE
-    mv t2, a0
-    #else
     csrr t2, mhartid
-    #endif
     lui t0, %hi(_max_hart_id)
     add t0, t0, %lo(_max_hart_id)
     bgtu t2, t0, abort
@@ -105,9 +71,7 @@ _abs_start:
     la sp, _stack_start
     lui t0, %hi(_hart_stack_size)
     add t0, t0, %lo(_hart_stack_size)
-#ifdef __riscv_mul
-    mul t0, t2, t0
-#else
+
     beqz t2, 2f  // Jump if single-hart
     mv t1, t2
     mv t3, t0
@@ -116,7 +80,6 @@ _abs_start:
     addi t1, t1, -1
     bnez t1, 1b
 2:
-#endif
     sub sp, sp, t0
 
     // Set frame pointer
@@ -125,6 +88,14 @@ _abs_start:
     jal zero, _start_rust
 
     .cfi_endproc
+
+
+/* = .init.rust ================================================================ */
+
+    // rt.rs
+
+
+/* = .trap ===================================================================== */
 
 /*
     Trap entry point (_start_trap)
@@ -181,6 +152,17 @@ default_start_trap:
     #else
     mret
     #endif
+
+
+/* = .trap.rust =============================================================== */
+
+    // From: rt.rs
+
+
+/* = .text ==================================================================== */
+
+
+/* = .text.abort ============================================================== */
 
 /* Make sure there is an abort when linking */
 .section .text.abort

@@ -8,7 +8,7 @@
 MEMORY {
     bootrom       : ORIGIN = 0x00000000, LENGTH = 0x00004000
     scratchpad    : ORIGIN = 0x00004000, LENGTH = 0x00001000
-    internal_sram : ORIGIN = 0x10000000, LENGTH = 0x00008000
+    internal_sram : ORIGIN = 0x10000000, LENGTH = 0x00010000
     /* the_stack     : ORIGIN = 0x10008000, LENGTH = 0x00002000 */
 }
 
