@@ -1,3 +1,17 @@
+## Linker sections
+
+    .text    --  program code
+
+    .rodata  --  strings, other read-only const data
+
+    .data    --  initialized data   - 0 bytes in our case
+    .bss     --  uninitialized data - 4 bytes of zeros in our case because it's ALIGN(4)
+
+    .heap    --  heap (0 because no alloc)
+
+    .stack   --  program stack
+
+
 ## Theory: rodata needs to be aligned to 64
 
     .rodata  0x10001a10   breaks  % 64 == 16

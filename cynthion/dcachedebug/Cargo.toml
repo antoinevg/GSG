@@ -1,5 +1,5 @@
 [package]
-name = "cynthion"
+name = "dcachedebug"
 version = "0.1.0"
 authors = ["Antoine van Gelder <antoine@greatscottgadgets.com>"]
 license-file = "LICENSE.txt"
@@ -90,12 +90,12 @@ name = "usb"
 
 # - profiles ------------------------------------------------------------------
 
-[profile.release]
-codegen-units = 1
-debug = true
-debug-assertions = false
-incremental = false
-lto = false
-#opt-level = "s"
-opt-level = 1
-overflow-checks = false
+#[profile.release]
+#codegen-units = 1
+#debug = true
+#debug-assertions = false
+#incremental = false
+#lto = false
+##opt-level = "s"
+#opt-level = 1
+#overflow-checks = false

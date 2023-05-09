@@ -27,9 +27,10 @@ fn main() {
     println!("cargo:rerun-if-changed=memory.x");
 
     // asm.S / link.x
-    //bare();
-    //riscvrt();
-    dcachedebug();
+    //link_bare();
+    //link_riscvrt();
+    link_dcachedebug();
+    //link_litex();
 
     // build.rs
     println!("cargo:rerun-if-changed=build.rs");
@@ -37,7 +38,7 @@ fn main() {
 
 // - link.x -------------------------------------------------------------------
 
-fn bare() {
+fn link_bare() {
     let out_dir = &PathBuf::from(env::var_os("OUT_DIR").unwrap());
 
     // link.x
@@ -49,7 +50,7 @@ fn bare() {
     println!("cargo:rerun-if-changed=link-bare.x");
 }
 
-fn riscvrt() {
+fn link_riscvrt() {
     let out_dir = &PathBuf::from(env::var_os("OUT_DIR").unwrap());
 
     // asm.S
@@ -65,12 +66,9 @@ fn riscvrt() {
     ).unwrap();
     println!("cargo:rustc-link-search={}", out_dir.display());
     println!("cargo:rerun-if-changed=link-riscvrt.x");
-
-    // build.rs
-    println!("cargo:rerun-if-changed=build.rs");
 }
 
-fn dcachedebug() {
+fn link_dcachedebug() {
     let out_dir = &PathBuf::from(env::var_os("OUT_DIR").unwrap());
 
     // asm.S
@@ -86,9 +84,24 @@ fn dcachedebug() {
     ).unwrap();
     println!("cargo:rustc-link-search={}", out_dir.display());
     println!("cargo:rerun-if-changed=link-dcachedebug.x");
+}
 
-    // build.rs
-    println!("cargo:rerun-if-changed=build.rs");
+fn link_litex() {
+    let out_dir = &PathBuf::from(env::var_os("OUT_DIR").unwrap());
+
+    // asm.S
+    cc::Build::new()
+        .file("asm-litex.S")
+        .compile("my_asm");
+    println!("cargo:rerun-if-changed=asm-litex.S");
+
+    // link.x
+    fs::write(
+        out_dir.join("link.x"),
+        include_bytes!("link-litex.x"),
+    ).unwrap();
+    println!("cargo:rustc-link-search={}", out_dir.display());
+    println!("cargo:rerun-if-changed=link-litex.x");
 }
 
 // - target -------------------------------------------------------------------

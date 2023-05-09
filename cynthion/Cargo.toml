@@ -1,13 +1,13 @@
 [workspace]
 members = [
     "cynthion",
+    "dcachedebug",
     "libgreat",
     "lunasoc-hal",
     "lunasoc-pac",
 ]
 
 exclude = [
-    "dcachedebug",
     "design",
     "hello-bios",
     "hello-lunasoc",
@@ -23,6 +23,8 @@ codegen-units = 1
 debug = true
 debug-assertions = false
 incremental = false
-lto = true
-opt-level = "s"
+#lto = true
+lto = false
+#opt-level = "s"
+opt-level = 1
 overflow-checks = false

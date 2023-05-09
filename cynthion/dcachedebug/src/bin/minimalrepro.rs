@@ -3,7 +3,8 @@
 #![no_main]
 
 use core::fmt::Write;
-use cynthion::pac;
+use dcachedebug::pac;
+use dcachedebug::rt_minimal::TrapFrame;
 
 // - asm.S --------------------------------------------------------------------
 
@@ -23,7 +24,6 @@ fn panic(_info: &PanicInfo) -> ! {
     }
 }
 
-use cynthion::rt_minimal::TrapFrame;
 
 #[no_mangle]
 pub fn ExceptionHandler(trap_frame: &TrapFrame) -> ! {
@@ -74,21 +74,21 @@ pub unsafe extern "C" fn main() -> ! {
     }*/
 
     // 0: breaks
+    /*{
+        writeln!(serial, "0x{:08x} foo", IO_LEDS).unwrap();
+        //unsafe { riscv::asm::nop() };
+        //unsafe { riscv::asm::nop() };
+        //unsafe { riscv::asm::nop() };
+    }*/
+
+    // 1: works
     {
         writeln!(serial, "0x{:08x} foo", IO_LEDS).unwrap();
         unsafe { riscv::asm::nop() };
         unsafe { riscv::asm::nop() };
         unsafe { riscv::asm::nop() };
+        unsafe { riscv::asm::nop() };
     }
-
-    // 1: works
-    /*{
-        writeln!(serial, "0x{:08x} foo", IO_LEDS).unwrap();
-        unsafe { riscv::asm::nop() };
-        unsafe { riscv::asm::nop() };
-        unsafe { riscv::asm::nop() };
-        unsafe { riscv::asm::nop() };
-    }*/
 
     // 2: works
     /*{

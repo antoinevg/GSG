@@ -1,10 +1,10 @@
 # - helpful -------------------------------------------------------------------
 
 #BIN=firmware
-#TARGET=riscv32imac-unknown-none-elf
+#TARGET=target/riscv32imac-unknown-none-elf
 
 BIN=minimalrepro
-TARGET=riscv32i-unknown-none-elf
+TARGET=../target/riscv32i-unknown-none-elf/release
 
 size:
 	cargo size --release --bin $(BIN) -- -A
@@ -46,33 +46,33 @@ elf-size-analyze:
 	elf-size-analyze -t riscv64-unknown-elf- \
 		--human-readable --alternating-colors --max-width 240 \
 		--ram --rom --print-sections \
-		target/$(TARGET)/release/$(BIN)
+		$(TARGET)/$(BIN)
 
 elf-ram:
 	@# https://github.com/jedrzejboczar/elf-size-analyze
 	elf-size-analyze -t riscv64-unknown-elf- \
 		--human-readable --alternating-colors --max-width 240 \
 		--ram \
-		target/$(TARGET)/release/$(BIN)
+		$(TARGET)/$(BIN)
 
 elf-rom:
 	@# https://github.com/jedrzejboczar/elf-size-analyze
 	elf-size-analyze -t riscv64-unknown-elf- \
 		--human-readable --alternating-colors --max-width 240 \
 		--rom \
-		target/$(TARGET)/release/$(BIN)
+		$(TARGET)/$(BIN)
 
 elf-sections:
 	elf-size-analyze -t riscv64-unknown-elf- \
 		--human-readable \
 		--print-sections \
-		target/$(TARGET)/release/$(BIN)
+		$(TARGET)/$(BIN)
 
 elf-text:
 	elf-size-analyze -t riscv64-unknown-elf- \
 		--human-readable \
 		-S2 \
-		target/$(TARGET)/release/$(BIN)
+		$(TARGET)/$(BIN)
 
 
 # .text	 + 2.4k
