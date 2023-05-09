@@ -23,6 +23,6 @@ rustflags = [
 
 
 [build]
-#target = "riscv32i-unknown-none-elf"
+target = "riscv32i-unknown-none-elf"
 #target = "riscv32imac-unknown-none-elf"
-target = "riscv32imc-unknown-none-elf"
+#target = "riscv32imc-unknown-none-elf"
