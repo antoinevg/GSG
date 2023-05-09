@@ -48,9 +48,9 @@ class CoreSoC(CPUSoC, Elaboratable):
         from vexriscv import VexRiscv
         cpu = VexRiscv(
             reset_addr=0x00000000,
-            variant="cynthion",
+            #variant="cynthion",
             #variant="imac",
-            #variant="imac+dcache", # TODO significant corruption of memory occurs
+            variant="imac+dcache", # TODO significant corruption of memory occurs
         )
 
         # create system bus
