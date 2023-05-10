@@ -6,10 +6,11 @@ edition = "2021"
 [dependencies]
 
 [profile.release]
-opt-level = "s"
-debug-assertions = false
-overflow-checks = false
 codegen-units = 1
-incremental = false
 debug = true
-lto = true
+debug-assertions = false
+incremental = false
+lto = false
+#opt-level = "s"
+opt-level = 0
+overflow-checks = false

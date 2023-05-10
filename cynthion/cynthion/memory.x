@@ -10,6 +10,12 @@ MEMORY {
     scratchpad : ORIGIN = 0x00004000, LENGTH = 0x00001000
     internal_srom   : ORIGIN = 0x10000000, LENGTH = 0x00002000
     internal_rodata : ORIGIN = 0x10002000, LENGTH = 0x00001000
-    internal_sram   : ORIGIN = 0x10003000, LENGTH = 0x00001000
-    internal_stack  : ORIGIN = 0x10004000, LENGTH = 0x00006000
+    internal_sram   : ORIGIN = 0x10003000, LENGTH = 0x00007000
 }
+
+REGION_ALIAS("REGION_TEXT", internal_srom);
+REGION_ALIAS("REGION_RODATA", internal_rodata);
+REGION_ALIAS("REGION_DATA", internal_sram);
+REGION_ALIAS("REGION_BSS", internal_sram);
+REGION_ALIAS("REGION_HEAP", internal_sram);
+REGION_ALIAS("REGION_STACK", internal_sram);
