@@ -1,6 +1,6 @@
 // Generator : SpinalHDL v1.8.1    git head : 2a7592004363e5b40ec43e1f122ed8641cd8965b
 // Component : VexRiscv
-// Git hash  : 960cb4af58006392b343172082a80604b45a5c63
+// Git hash  : 2551ceee366cef446ac685b87db11ff198abe7d4
 
 `timescale 1ns/1ps
 
@@ -9,13 +9,6 @@ module VexRiscv (
   input               timerInterrupt,
   input               softwareInterrupt,
   input      [31:0]   externalInterruptArray,
-  input               debug_bus_cmd_valid,
-  output reg          debug_bus_cmd_ready,
-  input               debug_bus_cmd_payload_wr,
-  input      [7:0]    debug_bus_cmd_payload_address,
-  input      [31:0]   debug_bus_cmd_payload_data,
-  output reg [31:0]   debug_bus_rsp_data,
-  output              debug_resetOut,
   output reg          iBusWishbone_CYC,
   output reg          iBusWishbone_STB,
   input               iBusWishbone_ACK,
@@ -39,8 +32,7 @@ module VexRiscv (
   output     [2:0]    dBusWishbone_CTI,
   output     [1:0]    dBusWishbone_BTE,
   input               clk,
-  input               reset,
-  input               debugReset
+  input               reset
 );
   localparam ShiftCtrlEnum_DISABLE_1 = 2'd0;
   localparam ShiftCtrlEnum_SLL_1 = 2'd1;
@@ -212,14 +204,14 @@ module VexRiscv (
   wire                _zz__zz_decode_IS_RS2_SIGNED_2;
   wire       [0:0]    _zz__zz_decode_IS_RS2_SIGNED_3;
   wire                _zz__zz_decode_IS_RS2_SIGNED_4;
-  wire       [0:0]    _zz__zz_decode_IS_RS2_SIGNED_5;
+  wire       [31:0]   _zz__zz_decode_IS_RS2_SIGNED_5;
   wire       [31:0]   _zz__zz_decode_IS_RS2_SIGNED_6;
   wire       [31:0]   _zz__zz_decode_IS_RS2_SIGNED_7;
   wire       [31:0]   _zz__zz_decode_IS_RS2_SIGNED_8;
-  wire       [31:0]   _zz__zz_decode_IS_RS2_SIGNED_9;
-  wire       [28:0]   _zz__zz_decode_IS_RS2_SIGNED_10;
+  wire       [0:0]    _zz__zz_decode_IS_RS2_SIGNED_9;
+  wire       [31:0]   _zz__zz_decode_IS_RS2_SIGNED_10;
   wire       [31:0]   _zz__zz_decode_IS_RS2_SIGNED_11;
-  wire       [31:0]   _zz__zz_decode_IS_RS2_SIGNED_12;
+  wire       [27:0]   _zz__zz_decode_IS_RS2_SIGNED_12;
   wire       [0:0]    _zz__zz_decode_IS_RS2_SIGNED_13;
   wire       [31:0]   _zz__zz_decode_IS_RS2_SIGNED_14;
   wire       [0:0]    _zz__zz_decode_IS_RS2_SIGNED_15;
@@ -433,7 +425,6 @@ module VexRiscv (
   wire       [31:0]   execute_REGFILE_WRITE_DATA;
   wire       [31:0]   memory_MEMORY_STORE_DATA_RF;
   wire       [31:0]   execute_MEMORY_STORE_DATA_RF;
-  wire                decode_DO_EBREAK;
   wire                decode_CSR_READ_OPCODE;
   wire                decode_CSR_WRITE_OPCODE;
   wire                decode_PREDICTION_HAD_BRANCHED2;
@@ -491,8 +482,6 @@ module VexRiscv (
   wire       [31:0]   execute_FORMAL_PC_NEXT;
   wire       [31:0]   decode_FORMAL_PC_NEXT;
   wire       [31:0]   memory_PC;
-  wire                execute_DO_EBREAK;
-  wire                decode_IS_EBREAK;
   wire                execute_IS_RS1_SIGNED;
   wire                execute_IS_DIV;
   wire                execute_IS_RS2_SIGNED;
@@ -618,7 +607,7 @@ module VexRiscv (
   reg                 execute_arbitration_haltItself;
   reg                 execute_arbitration_haltByOther;
   reg                 execute_arbitration_removeIt;
-  reg                 execute_arbitration_flushIt;
+  wire                execute_arbitration_flushIt;
   reg                 execute_arbitration_flushNext;
   reg                 execute_arbitration_isValid;
   wire                execute_arbitration_isStuck;
@@ -653,7 +642,7 @@ module VexRiscv (
   wire                lastStageIsValid /* verilator public */ ;
   wire                lastStageIsFiring /* verilator public */ ;
   reg                 IBusCachedPlugin_fetcherHalt;
-  reg                 IBusCachedPlugin_forceNoDecodeCond;
+  wire                IBusCachedPlugin_forceNoDecodeCond;
   reg                 IBusCachedPlugin_incomingInstruction;
   wire                IBusCachedPlugin_predictionJumpInterface_valid;
   (* keep , syn_keep *) wire       [31:0]   IBusCachedPlugin_predictionJumpInterface_payload /* synthesis syn_keep = 1 */ ;
@@ -714,13 +703,12 @@ module VexRiscv (
   reg                 DBusCachedPlugin_exceptionBus_valid;
   reg        [3:0]    DBusCachedPlugin_exceptionBus_payload_code;
   wire       [31:0]   DBusCachedPlugin_exceptionBus_payload_badAddr;
-  reg                 _zz_when_DBusCachedPlugin_l460;
   wire                decodeExceptionPort_valid;
   wire       [3:0]    decodeExceptionPort_payload_code;
   wire       [31:0]   decodeExceptionPort_payload_badAddr;
   wire                BranchPlugin_jumpInterface_valid;
   wire       [31:0]   BranchPlugin_jumpInterface_payload;
-  reg                 BranchPlugin_inDebugNoFetchFlag;
+  wire                BranchPlugin_inDebugNoFetchFlag;
   wire       [31:0]   CsrPlugin_csrMapping_readDataSignal;
   wire       [31:0]   CsrPlugin_csrMapping_readDataInit;
   wire       [31:0]   CsrPlugin_csrMapping_writeDataSignal;
@@ -728,7 +716,7 @@ module VexRiscv (
   wire                CsrPlugin_csrMapping_hazardFree;
   wire                CsrPlugin_csrMapping_doForceFailCsr;
   reg                 CsrPlugin_inWfi /* verilator public */ ;
-  reg                 CsrPlugin_thirdPartyWake;
+  wire                CsrPlugin_thirdPartyWake;
   reg                 CsrPlugin_jumpInterface_valid;
   reg        [31:0]   CsrPlugin_jumpInterface_payload;
   wire                CsrPlugin_exceptionPendings_0;
@@ -738,17 +726,14 @@ module VexRiscv (
   wire                externalInterrupt;
   wire                contextSwitching;
   reg        [1:0]    CsrPlugin_privilege;
-  reg                 CsrPlugin_forceMachineWire;
+  wire                CsrPlugin_forceMachineWire;
   reg                 CsrPlugin_selfException_valid;
   reg        [3:0]    CsrPlugin_selfException_payload_code;
   wire       [31:0]   CsrPlugin_selfException_payload_badAddr;
-  reg                 CsrPlugin_allowInterrupts;
-  reg                 CsrPlugin_allowException;
-  reg                 CsrPlugin_allowEbreakException;
+  wire                CsrPlugin_allowInterrupts;
+  wire                CsrPlugin_allowException;
+  wire                CsrPlugin_allowEbreakException;
   wire                CsrPlugin_xretAwayFromMachine;
-  reg                 DebugPlugin_injectionPort_valid;
-  reg                 DebugPlugin_injectionPort_ready;
-  wire       [31:0]   DebugPlugin_injectionPort_payload;
   wire                IBusCachedPlugin_externalFlush;
   wire                IBusCachedPlugin_jump_pcLoad_valid;
   wire       [31:0]   IBusCachedPlugin_jump_pcLoad_payload;
@@ -779,7 +764,7 @@ module VexRiscv (
   reg                 IBusCachedPlugin_decodePc_flushed;
   reg        [31:0]   IBusCachedPlugin_decodePc_pcReg /* verilator public */ ;
   wire       [31:0]   IBusCachedPlugin_decodePc_pcPlus;
-  reg                 IBusCachedPlugin_decodePc_injectedDecode;
+  wire                IBusCachedPlugin_decodePc_injectedDecode;
   wire                when_Fetcher_l182;
   wire                when_Fetcher_l194;
   reg                 IBusCachedPlugin_iBusRsp_redoFetch;
@@ -979,7 +964,7 @@ module VexRiscv (
   reg        [31:0]   _zz_writeBack_DBusCachedPlugin_rspFormated_3;
   reg        [31:0]   writeBack_DBusCachedPlugin_rspFormated;
   wire                when_DBusCachedPlugin_l568;
-  wire       [35:0]   _zz_decode_IS_RS2_SIGNED;
+  wire       [34:0]   _zz_decode_IS_RS2_SIGNED;
   wire                _zz_decode_IS_RS2_SIGNED_1;
   wire                _zz_decode_IS_RS2_SIGNED_2;
   wire                _zz_decode_IS_RS2_SIGNED_3;
@@ -988,7 +973,6 @@ module VexRiscv (
   wire                _zz_decode_IS_RS2_SIGNED_6;
   wire                _zz_decode_IS_RS2_SIGNED_7;
   wire                _zz_decode_IS_RS2_SIGNED_8;
-  wire                _zz_decode_IS_RS2_SIGNED_9;
   wire       [1:0]    _zz_decode_SRC1_CTRL_2;
   wire       [1:0]    _zz_decode_ALU_CTRL_2;
   wire       [1:0]    _zz_decode_SRC2_CTRL_2;
@@ -1203,36 +1187,6 @@ module VexRiscv (
   reg        [31:0]   externalInterruptArray_regNext;
   reg        [31:0]   _zz_CsrPlugin_csrMapping_readDataInit;
   wire       [31:0]   _zz_externalInterrupt;
-  reg                 DebugPlugin_firstCycle;
-  reg                 DebugPlugin_secondCycle;
-  reg                 DebugPlugin_resetIt;
-  reg                 DebugPlugin_haltIt;
-  reg                 DebugPlugin_stepIt;
-  reg                 DebugPlugin_isPipBusy;
-  reg                 DebugPlugin_godmode;
-  wire                when_DebugPlugin_l238;
-  reg                 DebugPlugin_haltedByBreak;
-  reg                 DebugPlugin_debugUsed /* verilator public */ ;
-  reg                 DebugPlugin_disableEbreak;
-  wire                DebugPlugin_allowEBreak;
-  reg        [31:0]   DebugPlugin_busReadDataReg;
-  reg                 _zz_when_DebugPlugin_l257;
-  wire                when_DebugPlugin_l257;
-  wire       [5:0]    switch_DebugPlugin_l280;
-  wire                when_DebugPlugin_l284;
-  wire                when_DebugPlugin_l284_1;
-  wire                when_DebugPlugin_l285;
-  wire                when_DebugPlugin_l285_1;
-  wire                when_DebugPlugin_l286;
-  wire                when_DebugPlugin_l287;
-  wire                when_DebugPlugin_l288;
-  wire                when_DebugPlugin_l288_1;
-  wire                when_DebugPlugin_l308;
-  wire                when_DebugPlugin_l311;
-  wire                when_DebugPlugin_l324;
-  reg                 _zz_3;
-  reg                 DebugPlugin_resetIt_regNext;
-  wire                when_DebugPlugin_l344;
   wire                when_Pipeline_l124;
   reg        [31:0]   decode_to_execute_PC;
   wire                when_Pipeline_l124_1;
@@ -1342,32 +1296,30 @@ module VexRiscv (
   wire                when_Pipeline_l124_53;
   reg                 decode_to_execute_CSR_READ_OPCODE;
   wire                when_Pipeline_l124_54;
-  reg                 decode_to_execute_DO_EBREAK;
-  wire                when_Pipeline_l124_55;
   reg        [31:0]   execute_to_memory_MEMORY_STORE_DATA_RF;
-  wire                when_Pipeline_l124_56;
+  wire                when_Pipeline_l124_55;
   reg        [31:0]   memory_to_writeBack_MEMORY_STORE_DATA_RF;
-  wire                when_Pipeline_l124_57;
+  wire                when_Pipeline_l124_56;
   reg        [31:0]   execute_to_memory_REGFILE_WRITE_DATA;
-  wire                when_Pipeline_l124_58;
+  wire                when_Pipeline_l124_57;
   reg        [31:0]   memory_to_writeBack_REGFILE_WRITE_DATA;
-  wire                when_Pipeline_l124_59;
+  wire                when_Pipeline_l124_58;
   reg        [31:0]   execute_to_memory_SHIFT_RIGHT;
-  wire                when_Pipeline_l124_60;
+  wire                when_Pipeline_l124_59;
   reg                 execute_to_memory_BRANCH_DO;
-  wire                when_Pipeline_l124_61;
+  wire                when_Pipeline_l124_60;
   reg        [31:0]   execute_to_memory_BRANCH_CALC;
-  wire                when_Pipeline_l124_62;
+  wire                when_Pipeline_l124_61;
   reg        [31:0]   execute_to_memory_MUL_LL;
-  wire                when_Pipeline_l124_63;
+  wire                when_Pipeline_l124_62;
   reg        [33:0]   execute_to_memory_MUL_LH;
-  wire                when_Pipeline_l124_64;
+  wire                when_Pipeline_l124_63;
   reg        [33:0]   execute_to_memory_MUL_HL;
-  wire                when_Pipeline_l124_65;
+  wire                when_Pipeline_l124_64;
   reg        [33:0]   execute_to_memory_MUL_HH;
-  wire                when_Pipeline_l124_66;
+  wire                when_Pipeline_l124_65;
   reg        [33:0]   memory_to_writeBack_MUL_HH;
-  wire                when_Pipeline_l124_67;
+  wire                when_Pipeline_l124_66;
   reg        [51:0]   memory_to_writeBack_MUL_LOW;
   wire                when_Pipeline_l151;
   wire                when_Pipeline_l154;
@@ -1375,10 +1327,6 @@ module VexRiscv (
   wire                when_Pipeline_l154_1;
   wire                when_Pipeline_l151_2;
   wire                when_Pipeline_l154_2;
-  reg        [2:0]    IBusCachedPlugin_injector_port_state;
-  wire                when_Fetcher_l373;
-  wire                when_Fetcher_l391;
-  wire                when_Fetcher_l411;
   wire                when_CsrPlugin_l1669;
   reg                 execute_CsrPlugin_csr_3264;
   wire                when_CsrPlugin_l1669_1;
@@ -1655,16 +1603,16 @@ module VexRiscv (
   assign _zz__zz_decode_IS_RS2_SIGNED = (decode_INSTRUCTION & 32'h02004064);
   assign _zz__zz_decode_IS_RS2_SIGNED_1 = 32'h02004020;
   assign _zz__zz_decode_IS_RS2_SIGNED_2 = ((decode_INSTRUCTION & 32'h02004074) == 32'h02000030);
-  assign _zz__zz_decode_IS_RS2_SIGNED_3 = _zz_decode_IS_RS2_SIGNED_8;
-  assign _zz__zz_decode_IS_RS2_SIGNED_4 = (|_zz_decode_IS_RS2_SIGNED_8);
-  assign _zz__zz_decode_IS_RS2_SIGNED_5 = (|{(_zz__zz_decode_IS_RS2_SIGNED_6 == _zz__zz_decode_IS_RS2_SIGNED_7),(_zz__zz_decode_IS_RS2_SIGNED_8 == _zz__zz_decode_IS_RS2_SIGNED_9)});
-  assign _zz__zz_decode_IS_RS2_SIGNED_10 = {(|(_zz__zz_decode_IS_RS2_SIGNED_11 == _zz__zz_decode_IS_RS2_SIGNED_12)),{(|{_zz__zz_decode_IS_RS2_SIGNED_13,_zz__zz_decode_IS_RS2_SIGNED_15}),{(|_zz__zz_decode_IS_RS2_SIGNED_17),{_zz__zz_decode_IS_RS2_SIGNED_20,{_zz__zz_decode_IS_RS2_SIGNED_23,_zz__zz_decode_IS_RS2_SIGNED_25}}}}};
-  assign _zz__zz_decode_IS_RS2_SIGNED_6 = (decode_INSTRUCTION & 32'h10203050);
-  assign _zz__zz_decode_IS_RS2_SIGNED_7 = 32'h10000050;
-  assign _zz__zz_decode_IS_RS2_SIGNED_8 = (decode_INSTRUCTION & 32'h10103050);
-  assign _zz__zz_decode_IS_RS2_SIGNED_9 = 32'h00000050;
-  assign _zz__zz_decode_IS_RS2_SIGNED_11 = (decode_INSTRUCTION & 32'h00103050);
-  assign _zz__zz_decode_IS_RS2_SIGNED_12 = 32'h00000050;
+  assign _zz__zz_decode_IS_RS2_SIGNED_3 = ((decode_INSTRUCTION & 32'h10103050) == 32'h00100050);
+  assign _zz__zz_decode_IS_RS2_SIGNED_4 = (|{(_zz__zz_decode_IS_RS2_SIGNED_5 == _zz__zz_decode_IS_RS2_SIGNED_6),(_zz__zz_decode_IS_RS2_SIGNED_7 == _zz__zz_decode_IS_RS2_SIGNED_8)});
+  assign _zz__zz_decode_IS_RS2_SIGNED_9 = (|(_zz__zz_decode_IS_RS2_SIGNED_10 == _zz__zz_decode_IS_RS2_SIGNED_11));
+  assign _zz__zz_decode_IS_RS2_SIGNED_12 = {(|{_zz__zz_decode_IS_RS2_SIGNED_13,_zz__zz_decode_IS_RS2_SIGNED_15}),{(|_zz__zz_decode_IS_RS2_SIGNED_17),{_zz__zz_decode_IS_RS2_SIGNED_20,{_zz__zz_decode_IS_RS2_SIGNED_23,_zz__zz_decode_IS_RS2_SIGNED_25}}}};
+  assign _zz__zz_decode_IS_RS2_SIGNED_5 = (decode_INSTRUCTION & 32'h10203050);
+  assign _zz__zz_decode_IS_RS2_SIGNED_6 = 32'h10000050;
+  assign _zz__zz_decode_IS_RS2_SIGNED_7 = (decode_INSTRUCTION & 32'h10103050);
+  assign _zz__zz_decode_IS_RS2_SIGNED_8 = 32'h00000050;
+  assign _zz__zz_decode_IS_RS2_SIGNED_10 = (decode_INSTRUCTION & 32'h00103050);
+  assign _zz__zz_decode_IS_RS2_SIGNED_11 = 32'h00000050;
   assign _zz__zz_decode_IS_RS2_SIGNED_13 = ((decode_INSTRUCTION & _zz__zz_decode_IS_RS2_SIGNED_14) == 32'h00001050);
   assign _zz__zz_decode_IS_RS2_SIGNED_15 = ((decode_INSTRUCTION & _zz__zz_decode_IS_RS2_SIGNED_16) == 32'h00002050);
   assign _zz__zz_decode_IS_RS2_SIGNED_17 = {_zz_decode_IS_RS2_SIGNED_2,(_zz__zz_decode_IS_RS2_SIGNED_18 == _zz__zz_decode_IS_RS2_SIGNED_19)};
@@ -2698,17 +2646,16 @@ module VexRiscv (
   assign execute_REGFILE_WRITE_DATA = _zz_execute_REGFILE_WRITE_DATA;
   assign memory_MEMORY_STORE_DATA_RF = execute_to_memory_MEMORY_STORE_DATA_RF;
   assign execute_MEMORY_STORE_DATA_RF = _zz_execute_MEMORY_STORE_DATA_RF;
-  assign decode_DO_EBREAK = (((! DebugPlugin_haltIt) && (decode_IS_EBREAK || 1'b0)) && DebugPlugin_allowEBreak);
   assign decode_CSR_READ_OPCODE = (decode_INSTRUCTION[13 : 7] != 7'h20);
   assign decode_CSR_WRITE_OPCODE = (! (((decode_INSTRUCTION[14 : 13] == 2'b01) && (decode_INSTRUCTION[19 : 15] == 5'h0)) || ((decode_INSTRUCTION[14 : 13] == 2'b11) && (decode_INSTRUCTION[19 : 15] == 5'h0))));
   assign decode_PREDICTION_HAD_BRANCHED2 = IBusCachedPlugin_decodePrediction_cmd_hadBranch;
   assign decode_SRC2_FORCE_ZERO = (decode_SRC_ADD_ZERO && (! decode_SRC_USE_SUB_LESS));
-  assign decode_IS_RS2_SIGNED = _zz_decode_IS_RS2_SIGNED[35];
-  assign decode_IS_RS1_SIGNED = _zz_decode_IS_RS2_SIGNED[34];
-  assign decode_IS_DIV = _zz_decode_IS_RS2_SIGNED[33];
+  assign decode_IS_RS2_SIGNED = _zz_decode_IS_RS2_SIGNED[34];
+  assign decode_IS_RS1_SIGNED = _zz_decode_IS_RS2_SIGNED[33];
+  assign decode_IS_DIV = _zz_decode_IS_RS2_SIGNED[32];
   assign memory_IS_MUL = execute_to_memory_IS_MUL;
   assign execute_IS_MUL = decode_to_execute_IS_MUL;
-  assign decode_IS_MUL = _zz_decode_IS_RS2_SIGNED[32];
+  assign decode_IS_MUL = _zz_decode_IS_RS2_SIGNED[31];
   assign _zz_memory_to_writeBack_ENV_CTRL = _zz_memory_to_writeBack_ENV_CTRL_1;
   assign _zz_execute_to_memory_ENV_CTRL = _zz_execute_to_memory_ENV_CTRL_1;
   assign decode_ENV_CTRL = _zz_decode_ENV_CTRL;
@@ -2740,8 +2687,6 @@ module VexRiscv (
   assign execute_FORMAL_PC_NEXT = decode_to_execute_FORMAL_PC_NEXT;
   assign decode_FORMAL_PC_NEXT = (decode_PC + _zz_decode_FORMAL_PC_NEXT);
   assign memory_PC = execute_to_memory_PC;
-  assign execute_DO_EBREAK = decode_to_execute_DO_EBREAK;
-  assign decode_IS_EBREAK = _zz_decode_IS_RS2_SIGNED[31];
   assign execute_IS_RS1_SIGNED = decode_to_execute_IS_RS1_SIGNED;
   assign execute_IS_DIV = decode_to_execute_IS_DIV;
   assign execute_IS_RS2_SIGNED = decode_to_execute_IS_RS2_SIGNED;
@@ -2985,13 +2930,6 @@ module VexRiscv (
     if(when_DBusCachedPlugin_l341) begin
       decode_arbitration_haltItself = 1'b1;
     end
-    case(IBusCachedPlugin_injector_port_state)
-      3'b010 : begin
-        decode_arbitration_haltItself = 1'b1;
-      end
-      default : begin
-      end
-    endcase
   end
 
   always @(*) begin
@@ -3050,9 +2988,6 @@ module VexRiscv (
     if(when_DBusCachedPlugin_l399) begin
       execute_arbitration_haltByOther = 1'b1;
     end
-    if(when_DebugPlugin_l308) begin
-      execute_arbitration_haltByOther = 1'b1;
-    end
   end
 
   always @(*) begin
@@ -3065,29 +3000,10 @@ module VexRiscv (
     end
   end
 
-  always @(*) begin
-    execute_arbitration_flushIt = 1'b0;
-    if(when_DebugPlugin_l308) begin
-      if(when_DebugPlugin_l311) begin
-        execute_arbitration_flushIt = 1'b1;
-      end
-    end
-  end
-
+  assign execute_arbitration_flushIt = 1'b0;
   always @(*) begin
     execute_arbitration_flushNext = 1'b0;
     if(CsrPlugin_selfException_valid) begin
-      execute_arbitration_flushNext = 1'b1;
-    end
-    if(when_DebugPlugin_l308) begin
-      if(when_DebugPlugin_l311) begin
-        execute_arbitration_flushNext = 1'b1;
-      end
-    end
-    if(_zz_3) begin
-      execute_arbitration_flushNext = 1'b1;
-    end
-    if(_zz_3) begin
       execute_arbitration_flushNext = 1'b1;
     end
   end
@@ -3173,26 +3089,9 @@ module VexRiscv (
     if(when_CsrPlugin_l1456) begin
       IBusCachedPlugin_fetcherHalt = 1'b1;
     end
-    if(when_DebugPlugin_l308) begin
-      if(when_DebugPlugin_l311) begin
-        IBusCachedPlugin_fetcherHalt = 1'b1;
-      end
-    end
-    if(DebugPlugin_haltIt) begin
-      IBusCachedPlugin_fetcherHalt = 1'b1;
-    end
-    if(when_DebugPlugin_l324) begin
-      IBusCachedPlugin_fetcherHalt = 1'b1;
-    end
   end
 
-  always @(*) begin
-    IBusCachedPlugin_forceNoDecodeCond = 1'b0;
-    if(_zz_3) begin
-      IBusCachedPlugin_forceNoDecodeCond = 1'b1;
-    end
-  end
-
+  assign IBusCachedPlugin_forceNoDecodeCond = 1'b0;
   always @(*) begin
     IBusCachedPlugin_incomingInstruction = 1'b0;
     if(IBusCachedPlugin_iBusRsp_stages_1_input_valid) begin
@@ -3203,20 +3102,7 @@ module VexRiscv (
     end
   end
 
-  always @(*) begin
-    _zz_when_DBusCachedPlugin_l460 = 1'b0;
-    if(DebugPlugin_godmode) begin
-      _zz_when_DBusCachedPlugin_l460 = 1'b1;
-    end
-  end
-
-  always @(*) begin
-    BranchPlugin_inDebugNoFetchFlag = 1'b0;
-    if(DebugPlugin_godmode) begin
-      BranchPlugin_inDebugNoFetchFlag = 1'b1;
-    end
-  end
-
+  assign BranchPlugin_inDebugNoFetchFlag = 1'b0;
   always @(*) begin
     CsrPlugin_csrMapping_allowCsrSignal = 1'b0;
     if(when_CsrPlugin_l1702) begin
@@ -3233,13 +3119,7 @@ module VexRiscv (
     end
   end
 
-  always @(*) begin
-    CsrPlugin_thirdPartyWake = 1'b0;
-    if(DebugPlugin_haltIt) begin
-      CsrPlugin_thirdPartyWake = 1'b1;
-    end
-  end
-
+  assign CsrPlugin_thirdPartyWake = 1'b0;
   always @(*) begin
     CsrPlugin_jumpInterface_valid = 1'b0;
     if(when_CsrPlugin_l1390) begin
@@ -3266,34 +3146,10 @@ module VexRiscv (
     end
   end
 
-  always @(*) begin
-    CsrPlugin_forceMachineWire = 1'b0;
-    if(DebugPlugin_godmode) begin
-      CsrPlugin_forceMachineWire = 1'b1;
-    end
-  end
-
-  always @(*) begin
-    CsrPlugin_allowInterrupts = 1'b1;
-    if(when_DebugPlugin_l344) begin
-      CsrPlugin_allowInterrupts = 1'b0;
-    end
-  end
-
-  always @(*) begin
-    CsrPlugin_allowException = 1'b1;
-    if(DebugPlugin_godmode) begin
-      CsrPlugin_allowException = 1'b0;
-    end
-  end
-
-  always @(*) begin
-    CsrPlugin_allowEbreakException = 1'b1;
-    if(DebugPlugin_allowEBreak) begin
-      CsrPlugin_allowEbreakException = 1'b0;
-    end
-  end
-
+  assign CsrPlugin_forceMachineWire = 1'b0;
+  assign CsrPlugin_allowInterrupts = 1'b1;
+  assign CsrPlugin_allowException = 1'b1;
+  assign CsrPlugin_allowEbreakException = 1'b1;
   assign CsrPlugin_xretAwayFromMachine = 1'b0;
   assign IBusCachedPlugin_externalFlush = ({writeBack_arbitration_flushNext,{memory_arbitration_flushNext,{execute_arbitration_flushNext,decode_arbitration_flushNext}}} != 4'b0000);
   assign IBusCachedPlugin_jump_pcLoad_valid = ({CsrPlugin_jumpInterface_valid,{BranchPlugin_jumpInterface_valid,{DBusCachedPlugin_redoBranch_valid,IBusCachedPlugin_predictionJumpInterface_valid}}} != 4'b0000);
@@ -3360,13 +3216,7 @@ module VexRiscv (
   end
 
   assign IBusCachedPlugin_decodePc_pcPlus = (IBusCachedPlugin_decodePc_pcReg + _zz_IBusCachedPlugin_decodePc_pcPlus);
-  always @(*) begin
-    IBusCachedPlugin_decodePc_injectedDecode = 1'b0;
-    if(when_Fetcher_l373) begin
-      IBusCachedPlugin_decodePc_injectedDecode = 1'b1;
-    end
-  end
-
+  assign IBusCachedPlugin_decodePc_injectedDecode = 1'b0;
   assign when_Fetcher_l182 = (decode_arbitration_isFiring && (! IBusCachedPlugin_decodePc_injectedDecode));
   assign when_Fetcher_l194 = (IBusCachedPlugin_jump_pcLoad_valid && ((! decode_arbitration_isStuck) || decode_arbitration_removeIt));
   always @(*) begin
@@ -3659,16 +3509,6 @@ module VexRiscv (
   assign IBusCachedPlugin_injector_decodeInput_ready = (! decode_arbitration_isStuck);
   always @(*) begin
     decode_arbitration_isValid = IBusCachedPlugin_injector_decodeInput_valid;
-    case(IBusCachedPlugin_injector_port_state)
-      3'b010 : begin
-        decode_arbitration_isValid = 1'b1;
-      end
-      3'b011 : begin
-        decode_arbitration_isValid = 1'b1;
-      end
-      default : begin
-      end
-    endcase
     if(IBusCachedPlugin_forceNoDecodeCond) begin
       decode_arbitration_isValid = 1'b0;
     end
@@ -3899,7 +3739,7 @@ module VexRiscv (
     end
   end
 
-  assign when_DBusCachedPlugin_l460 = (_zz_when_DBusCachedPlugin_l460 && (! dataCache_1_io_cpu_memory_isWrite));
+  assign when_DBusCachedPlugin_l460 = (1'b0 && (! dataCache_1_io_cpu_memory_isWrite));
   always @(*) begin
     dataCache_1_io_cpu_writeBack_isValid = (writeBack_arbitration_isValid && writeBack_MEMORY_ENABLE);
     if(writeBack_arbitration_haltByOther) begin
@@ -4046,7 +3886,7 @@ module VexRiscv (
   assign IBusCachedPlugin_mmuBus_rsp_allowRead = 1'b1;
   assign IBusCachedPlugin_mmuBus_rsp_allowWrite = 1'b1;
   assign IBusCachedPlugin_mmuBus_rsp_allowExecute = 1'b1;
-  assign IBusCachedPlugin_mmuBus_rsp_isIoAccess = IBusCachedPlugin_mmuBus_rsp_physicalAddress[31];
+  assign IBusCachedPlugin_mmuBus_rsp_isIoAccess = (32'h10010000 < IBusCachedPlugin_mmuBus_rsp_physicalAddress);
   assign IBusCachedPlugin_mmuBus_rsp_isPaging = 1'b0;
   assign IBusCachedPlugin_mmuBus_rsp_exception = 1'b0;
   assign IBusCachedPlugin_mmuBus_rsp_refilling = 1'b0;
@@ -4055,7 +3895,7 @@ module VexRiscv (
   assign DBusCachedPlugin_mmuBus_rsp_allowRead = 1'b1;
   assign DBusCachedPlugin_mmuBus_rsp_allowWrite = 1'b1;
   assign DBusCachedPlugin_mmuBus_rsp_allowExecute = 1'b1;
-  assign DBusCachedPlugin_mmuBus_rsp_isIoAccess = DBusCachedPlugin_mmuBus_rsp_physicalAddress[31];
+  assign DBusCachedPlugin_mmuBus_rsp_isIoAccess = (32'h10010000 < DBusCachedPlugin_mmuBus_rsp_physicalAddress);
   assign DBusCachedPlugin_mmuBus_rsp_isPaging = 1'b0;
   assign DBusCachedPlugin_mmuBus_rsp_exception = 1'b0;
   assign DBusCachedPlugin_mmuBus_rsp_refilling = 1'b0;
@@ -4067,9 +3907,8 @@ module VexRiscv (
   assign _zz_decode_IS_RS2_SIGNED_5 = ((decode_INSTRUCTION & 32'h00000004) == 32'h00000004);
   assign _zz_decode_IS_RS2_SIGNED_6 = ((decode_INSTRUCTION & 32'h0000000c) == 32'h00000004);
   assign _zz_decode_IS_RS2_SIGNED_7 = ((decode_INSTRUCTION & 32'h00002010) == 32'h00002000);
-  assign _zz_decode_IS_RS2_SIGNED_8 = ((decode_INSTRUCTION & 32'h10103050) == 32'h00100050);
-  assign _zz_decode_IS_RS2_SIGNED_9 = ((decode_INSTRUCTION & 32'h00001000) == 32'h0);
-  assign _zz_decode_IS_RS2_SIGNED = {(|_zz_decode_IS_RS2_SIGNED_9),{(|_zz_decode_IS_RS2_SIGNED_9),{(|(_zz__zz_decode_IS_RS2_SIGNED == _zz__zz_decode_IS_RS2_SIGNED_1)),{(|_zz__zz_decode_IS_RS2_SIGNED_2),{(|_zz__zz_decode_IS_RS2_SIGNED_3),{_zz__zz_decode_IS_RS2_SIGNED_4,{_zz__zz_decode_IS_RS2_SIGNED_5,_zz__zz_decode_IS_RS2_SIGNED_10}}}}}}};
+  assign _zz_decode_IS_RS2_SIGNED_8 = ((decode_INSTRUCTION & 32'h00001000) == 32'h0);
+  assign _zz_decode_IS_RS2_SIGNED = {(|_zz_decode_IS_RS2_SIGNED_8),{(|_zz_decode_IS_RS2_SIGNED_8),{(|(_zz__zz_decode_IS_RS2_SIGNED == _zz__zz_decode_IS_RS2_SIGNED_1)),{(|_zz__zz_decode_IS_RS2_SIGNED_2),{(|_zz__zz_decode_IS_RS2_SIGNED_3),{_zz__zz_decode_IS_RS2_SIGNED_4,{_zz__zz_decode_IS_RS2_SIGNED_9,_zz__zz_decode_IS_RS2_SIGNED_12}}}}}}};
   assign _zz_decode_SRC1_CTRL_2 = _zz_decode_IS_RS2_SIGNED[2 : 1];
   assign _zz_decode_SRC1_CTRL_1 = _zz_decode_SRC1_CTRL_2;
   assign _zz_decode_ALU_CTRL_2 = _zz_decode_IS_RS2_SIGNED[7 : 6];
@@ -4924,65 +4763,6 @@ module VexRiscv (
 
   assign _zz_externalInterrupt = (_zz_CsrPlugin_csrMapping_readDataInit & externalInterruptArray_regNext);
   assign externalInterrupt = (|_zz_externalInterrupt);
-  assign when_DebugPlugin_l238 = (DebugPlugin_haltIt && (! DebugPlugin_isPipBusy));
-  assign DebugPlugin_allowEBreak = (DebugPlugin_debugUsed && (! DebugPlugin_disableEbreak));
-  always @(*) begin
-    debug_bus_cmd_ready = 1'b1;
-    if(debug_bus_cmd_valid) begin
-      case(switch_DebugPlugin_l280)
-        6'h01 : begin
-          if(debug_bus_cmd_payload_wr) begin
-            debug_bus_cmd_ready = DebugPlugin_injectionPort_ready;
-          end
-        end
-        default : begin
-        end
-      endcase
-    end
-  end
-
-  always @(*) begin
-    debug_bus_rsp_data = DebugPlugin_busReadDataReg;
-    if(when_DebugPlugin_l257) begin
-      debug_bus_rsp_data[0] = DebugPlugin_resetIt;
-      debug_bus_rsp_data[1] = DebugPlugin_haltIt;
-      debug_bus_rsp_data[2] = DebugPlugin_isPipBusy;
-      debug_bus_rsp_data[3] = DebugPlugin_haltedByBreak;
-      debug_bus_rsp_data[4] = DebugPlugin_stepIt;
-    end
-  end
-
-  assign when_DebugPlugin_l257 = (! _zz_when_DebugPlugin_l257);
-  always @(*) begin
-    DebugPlugin_injectionPort_valid = 1'b0;
-    if(debug_bus_cmd_valid) begin
-      case(switch_DebugPlugin_l280)
-        6'h01 : begin
-          if(debug_bus_cmd_payload_wr) begin
-            DebugPlugin_injectionPort_valid = 1'b1;
-          end
-        end
-        default : begin
-        end
-      endcase
-    end
-  end
-
-  assign DebugPlugin_injectionPort_payload = debug_bus_cmd_payload_data;
-  assign switch_DebugPlugin_l280 = debug_bus_cmd_payload_address[7 : 2];
-  assign when_DebugPlugin_l284 = debug_bus_cmd_payload_data[16];
-  assign when_DebugPlugin_l284_1 = debug_bus_cmd_payload_data[24];
-  assign when_DebugPlugin_l285 = debug_bus_cmd_payload_data[17];
-  assign when_DebugPlugin_l285_1 = debug_bus_cmd_payload_data[25];
-  assign when_DebugPlugin_l286 = debug_bus_cmd_payload_data[25];
-  assign when_DebugPlugin_l287 = debug_bus_cmd_payload_data[25];
-  assign when_DebugPlugin_l288 = debug_bus_cmd_payload_data[18];
-  assign when_DebugPlugin_l288_1 = debug_bus_cmd_payload_data[26];
-  assign when_DebugPlugin_l308 = (execute_arbitration_isValid && execute_DO_EBREAK);
-  assign when_DebugPlugin_l311 = (({writeBack_arbitration_isValid,memory_arbitration_isValid} != 2'b00) == 1'b0);
-  assign when_DebugPlugin_l324 = (DebugPlugin_stepIt && IBusCachedPlugin_incomingInstruction);
-  assign debug_resetOut = DebugPlugin_resetIt_regNext;
-  assign when_DebugPlugin_l344 = (DebugPlugin_haltIt || DebugPlugin_stepIt);
   assign when_Pipeline_l124 = (! execute_arbitration_isStuck);
   assign when_Pipeline_l124_1 = (! memory_arbitration_isStuck);
   assign when_Pipeline_l124_2 = ((! writeBack_arbitration_isStuck) && (! CsrPlugin_exceptionPortCtrl_exceptionValids_writeBack));
@@ -5064,20 +4844,19 @@ module VexRiscv (
   assign when_Pipeline_l124_51 = (! execute_arbitration_isStuck);
   assign when_Pipeline_l124_52 = (! execute_arbitration_isStuck);
   assign when_Pipeline_l124_53 = (! execute_arbitration_isStuck);
-  assign when_Pipeline_l124_54 = (! execute_arbitration_isStuck);
-  assign when_Pipeline_l124_55 = (! memory_arbitration_isStuck);
-  assign when_Pipeline_l124_56 = (! writeBack_arbitration_isStuck);
-  assign when_Pipeline_l124_57 = (! memory_arbitration_isStuck);
-  assign when_Pipeline_l124_58 = (! writeBack_arbitration_isStuck);
+  assign when_Pipeline_l124_54 = (! memory_arbitration_isStuck);
+  assign when_Pipeline_l124_55 = (! writeBack_arbitration_isStuck);
+  assign when_Pipeline_l124_56 = (! memory_arbitration_isStuck);
+  assign when_Pipeline_l124_57 = (! writeBack_arbitration_isStuck);
+  assign when_Pipeline_l124_58 = (! memory_arbitration_isStuck);
   assign when_Pipeline_l124_59 = (! memory_arbitration_isStuck);
   assign when_Pipeline_l124_60 = (! memory_arbitration_isStuck);
   assign when_Pipeline_l124_61 = (! memory_arbitration_isStuck);
   assign when_Pipeline_l124_62 = (! memory_arbitration_isStuck);
   assign when_Pipeline_l124_63 = (! memory_arbitration_isStuck);
   assign when_Pipeline_l124_64 = (! memory_arbitration_isStuck);
-  assign when_Pipeline_l124_65 = (! memory_arbitration_isStuck);
+  assign when_Pipeline_l124_65 = (! writeBack_arbitration_isStuck);
   assign when_Pipeline_l124_66 = (! writeBack_arbitration_isStuck);
-  assign when_Pipeline_l124_67 = (! writeBack_arbitration_isStuck);
   assign decode_arbitration_isFlushed = (({writeBack_arbitration_flushNext,{memory_arbitration_flushNext,execute_arbitration_flushNext}} != 3'b000) || ({writeBack_arbitration_flushIt,{memory_arbitration_flushIt,{execute_arbitration_flushIt,decode_arbitration_flushIt}}} != 4'b0000));
   assign execute_arbitration_isFlushed = (({writeBack_arbitration_flushNext,memory_arbitration_flushNext} != 2'b00) || ({writeBack_arbitration_flushIt,{memory_arbitration_flushIt,execute_arbitration_flushIt}} != 3'b000));
   assign memory_arbitration_isFlushed = ((writeBack_arbitration_flushNext != 1'b0) || ({writeBack_arbitration_flushIt,memory_arbitration_flushIt} != 2'b00));
@@ -5104,20 +4883,6 @@ module VexRiscv (
   assign when_Pipeline_l154_1 = ((! execute_arbitration_isStuck) && (! execute_arbitration_removeIt));
   assign when_Pipeline_l151_2 = ((! writeBack_arbitration_isStuck) || writeBack_arbitration_removeIt);
   assign when_Pipeline_l154_2 = ((! memory_arbitration_isStuck) && (! memory_arbitration_removeIt));
-  always @(*) begin
-    DebugPlugin_injectionPort_ready = 1'b0;
-    case(IBusCachedPlugin_injector_port_state)
-      3'b100 : begin
-        DebugPlugin_injectionPort_ready = 1'b1;
-      end
-      default : begin
-      end
-    endcase
-  end
-
-  assign when_Fetcher_l373 = (IBusCachedPlugin_injector_port_state != 3'b000);
-  assign when_Fetcher_l391 = (! decode_arbitration_isStuck);
-  assign when_Fetcher_l411 = (IBusCachedPlugin_injector_port_state != 3'b000);
   assign when_CsrPlugin_l1669 = (! execute_arbitration_isStuck);
   assign when_CsrPlugin_l1669_1 = (! execute_arbitration_isStuck);
   assign when_CsrPlugin_l1669_2 = (! execute_arbitration_isStuck);
@@ -5411,7 +5176,6 @@ module VexRiscv (
       execute_arbitration_isValid <= 1'b0;
       memory_arbitration_isValid <= 1'b0;
       writeBack_arbitration_isValid <= 1'b0;
-      IBusCachedPlugin_injector_port_state <= 3'b000;
       _zz_iBusWishbone_ADR <= 3'b000;
       _zz_iBus_rsp_valid <= 1'b0;
       _zz_dBusWishbone_ADR <= 3'b000;
@@ -5611,29 +5375,6 @@ module VexRiscv (
       if(when_Pipeline_l154_2) begin
         writeBack_arbitration_isValid <= memory_arbitration_isValid;
       end
-      case(IBusCachedPlugin_injector_port_state)
-        3'b000 : begin
-          if(DebugPlugin_injectionPort_valid) begin
-            IBusCachedPlugin_injector_port_state <= 3'b001;
-          end
-        end
-        3'b001 : begin
-          IBusCachedPlugin_injector_port_state <= 3'b010;
-        end
-        3'b010 : begin
-          IBusCachedPlugin_injector_port_state <= 3'b011;
-        end
-        3'b011 : begin
-          if(when_Fetcher_l391) begin
-            IBusCachedPlugin_injector_port_state <= 3'b100;
-          end
-        end
-        3'b100 : begin
-          IBusCachedPlugin_injector_port_state <= 3'b000;
-        end
-        default : begin
-        end
-      endcase
       if(execute_CsrPlugin_csr_768) begin
         if(execute_CsrPlugin_writeEnable) begin
           CsrPlugin_mstatus_MPIE <= CsrPlugin_csrMapping_writeDataSignal[7];
@@ -5967,49 +5708,43 @@ module VexRiscv (
       decode_to_execute_CSR_READ_OPCODE <= decode_CSR_READ_OPCODE;
     end
     if(when_Pipeline_l124_54) begin
-      decode_to_execute_DO_EBREAK <= decode_DO_EBREAK;
-    end
-    if(when_Pipeline_l124_55) begin
       execute_to_memory_MEMORY_STORE_DATA_RF <= execute_MEMORY_STORE_DATA_RF;
     end
-    if(when_Pipeline_l124_56) begin
+    if(when_Pipeline_l124_55) begin
       memory_to_writeBack_MEMORY_STORE_DATA_RF <= memory_MEMORY_STORE_DATA_RF;
     end
-    if(when_Pipeline_l124_57) begin
+    if(when_Pipeline_l124_56) begin
       execute_to_memory_REGFILE_WRITE_DATA <= _zz_decode_RS2;
     end
-    if(when_Pipeline_l124_58) begin
+    if(when_Pipeline_l124_57) begin
       memory_to_writeBack_REGFILE_WRITE_DATA <= _zz_decode_RS2_1;
     end
-    if(when_Pipeline_l124_59) begin
+    if(when_Pipeline_l124_58) begin
       execute_to_memory_SHIFT_RIGHT <= execute_SHIFT_RIGHT;
     end
-    if(when_Pipeline_l124_60) begin
+    if(when_Pipeline_l124_59) begin
       execute_to_memory_BRANCH_DO <= execute_BRANCH_DO;
     end
-    if(when_Pipeline_l124_61) begin
+    if(when_Pipeline_l124_60) begin
       execute_to_memory_BRANCH_CALC <= execute_BRANCH_CALC;
     end
-    if(when_Pipeline_l124_62) begin
+    if(when_Pipeline_l124_61) begin
       execute_to_memory_MUL_LL <= execute_MUL_LL;
     end
-    if(when_Pipeline_l124_63) begin
+    if(when_Pipeline_l124_62) begin
       execute_to_memory_MUL_LH <= execute_MUL_LH;
     end
-    if(when_Pipeline_l124_64) begin
+    if(when_Pipeline_l124_63) begin
       execute_to_memory_MUL_HL <= execute_MUL_HL;
     end
-    if(when_Pipeline_l124_65) begin
+    if(when_Pipeline_l124_64) begin
       execute_to_memory_MUL_HH <= execute_MUL_HH;
     end
-    if(when_Pipeline_l124_66) begin
+    if(when_Pipeline_l124_65) begin
       memory_to_writeBack_MUL_HH <= memory_MUL_HH;
     end
-    if(when_Pipeline_l124_67) begin
+    if(when_Pipeline_l124_66) begin
       memory_to_writeBack_MUL_LOW <= memory_MUL_LOW;
-    end
-    if(when_Fetcher_l411) begin
-      _zz_IBusCachedPlugin_injector_decodeInput_payload_rsp_inst <= DebugPlugin_injectionPort_payload;
     end
     if(when_CsrPlugin_l1669) begin
       execute_CsrPlugin_csr_3264 <= (decode_INSTRUCTION[31 : 20] == 12'hcc0);
@@ -6116,90 +5851,6 @@ module VexRiscv (
     end
     iBusWishbone_DAT_MISO_regNext <= iBusWishbone_DAT_MISO;
     dBusWishbone_DAT_MISO_regNext <= dBusWishbone_DAT_MISO;
-  end
-
-  always @(posedge clk) begin
-    DebugPlugin_firstCycle <= 1'b0;
-    if(debug_bus_cmd_ready) begin
-      DebugPlugin_firstCycle <= 1'b1;
-    end
-    DebugPlugin_secondCycle <= DebugPlugin_firstCycle;
-    DebugPlugin_isPipBusy <= (({writeBack_arbitration_isValid,{memory_arbitration_isValid,{execute_arbitration_isValid,decode_arbitration_isValid}}} != 4'b0000) || IBusCachedPlugin_incomingInstruction);
-    if(writeBack_arbitration_isValid) begin
-      DebugPlugin_busReadDataReg <= _zz_decode_RS2_2;
-    end
-    _zz_when_DebugPlugin_l257 <= debug_bus_cmd_payload_address[2];
-    if(when_DebugPlugin_l308) begin
-      DebugPlugin_busReadDataReg <= execute_PC;
-    end
-    DebugPlugin_resetIt_regNext <= DebugPlugin_resetIt;
-  end
-
-  always @(posedge clk) begin
-    if(debugReset) begin
-      DebugPlugin_resetIt <= 1'b0;
-      DebugPlugin_haltIt <= 1'b0;
-      DebugPlugin_stepIt <= 1'b0;
-      DebugPlugin_godmode <= 1'b0;
-      DebugPlugin_haltedByBreak <= 1'b0;
-      DebugPlugin_debugUsed <= 1'b0;
-      DebugPlugin_disableEbreak <= 1'b0;
-      _zz_3 <= 1'b0;
-    end else begin
-      if(when_DebugPlugin_l238) begin
-        DebugPlugin_godmode <= 1'b1;
-      end
-      if(debug_bus_cmd_valid) begin
-        DebugPlugin_debugUsed <= 1'b1;
-      end
-      if(debug_bus_cmd_valid) begin
-        case(switch_DebugPlugin_l280)
-          6'h0 : begin
-            if(debug_bus_cmd_payload_wr) begin
-              DebugPlugin_stepIt <= debug_bus_cmd_payload_data[4];
-              if(when_DebugPlugin_l284) begin
-                DebugPlugin_resetIt <= 1'b1;
-              end
-              if(when_DebugPlugin_l284_1) begin
-                DebugPlugin_resetIt <= 1'b0;
-              end
-              if(when_DebugPlugin_l285) begin
-                DebugPlugin_haltIt <= 1'b1;
-              end
-              if(when_DebugPlugin_l285_1) begin
-                DebugPlugin_haltIt <= 1'b0;
-              end
-              if(when_DebugPlugin_l286) begin
-                DebugPlugin_haltedByBreak <= 1'b0;
-              end
-              if(when_DebugPlugin_l287) begin
-                DebugPlugin_godmode <= 1'b0;
-              end
-              if(when_DebugPlugin_l288) begin
-                DebugPlugin_disableEbreak <= 1'b1;
-              end
-              if(when_DebugPlugin_l288_1) begin
-                DebugPlugin_disableEbreak <= 1'b0;
-              end
-            end
-          end
-          default : begin
-          end
-        endcase
-      end
-      if(when_DebugPlugin_l308) begin
-        if(when_DebugPlugin_l311) begin
-          DebugPlugin_haltIt <= 1'b1;
-          DebugPlugin_haltedByBreak <= 1'b1;
-        end
-      end
-      if(when_DebugPlugin_l324) begin
-        if(decode_arbitration_isValid) begin
-          DebugPlugin_haltIt <= 1'b1;
-        end
-      end
-      _zz_3 <= (DebugPlugin_stepIt && decode_arbitration_isFiring);
-    end
   end
 
 
