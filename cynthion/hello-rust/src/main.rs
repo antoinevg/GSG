@@ -53,6 +53,8 @@ pub unsafe extern "C" fn main() -> ! {
     //unsafe { core::arch::asm!("nop", options(nomem, nostack)) };
     for b in MSG.bytes() { }
 
+    //uart_tx(MSG);
+
     // repro #2 - doesn't work in this config, keeping as reference
     //for &b in MSG.as_bytes() { }
 

@@ -63,7 +63,8 @@ class CynthionSoC(Elaboratable):
         ])
 
         # Create our SoC...
-        self.soc = LunaSoC(clock_frequency, internal_sram_size=65536)
+        #self.soc = LunaSoC(clock_frequency, internal_sram_size=65536)
+        self.soc = LunaSoC(clock_frequency, internal_sram_size=32768)
 
         # Add bios and core peripherals
         self.soc.add_bios_and_peripherals(uart_pins=self.uart_pins)
@@ -72,42 +73,42 @@ class CynthionSoC(Elaboratable):
         # TODO soc.add_ram(0x4000, name="bulkram")
 
         # ... add a GpioPeripheral for the PMOD connectors ...
-        self.gpioa = GpioPeripheral(width=8)
-        self.gpiob = GpioPeripheral(width=8)
-        self.soc.add_peripheral(self.gpioa)
-        self.soc.add_peripheral(self.gpiob)
+        # self.gpioa = GpioPeripheral(width=8)
+        # self.gpiob = GpioPeripheral(width=8)
+        # self.soc.add_peripheral(self.gpioa)
+        # self.soc.add_peripheral(self.gpiob)
 
         # ... add our LED peripheral, for simple output.
         self.leds = LedPeripheral()
-        self.soc.add_peripheral(self.leds)
+        self.soc.add_peripheral(self.leds, addr=0xf0001000)
 
         # ... and the core USB controllers and eptri peripherals ...
-        self.usb0 = USBDeviceController()
-        self.usb0_ep_control = SetupFIFOInterface()
-        self.usb0_ep_in = InFIFOInterface()
-        self.usb0_ep_out = OutFIFOInterface()
-        self.soc.add_peripheral(self.usb0, addr=0x80002000)
-        self.soc.add_peripheral(self.usb0_ep_control, as_submodule=False)
-        self.soc.add_peripheral(self.usb0_ep_in, as_submodule=False)
-        self.soc.add_peripheral(self.usb0_ep_out, as_submodule=False)
+        # self.usb0 = USBDeviceController()
+        # self.usb0_ep_control = SetupFIFOInterface()
+        # self.usb0_ep_in = InFIFOInterface()
+        # self.usb0_ep_out = OutFIFOInterface()
+        # self.soc.add_peripheral(self.usb0, addr=0xf0003000)
+        # self.soc.add_peripheral(self.usb0_ep_control, as_submodule=False)
+        # self.soc.add_peripheral(self.usb0_ep_in, as_submodule=False)
+        # self.soc.add_peripheral(self.usb0_ep_out, as_submodule=False)
 
-        self.usb1 = USBDeviceController()
-        self.usb1_ep_control = SetupFIFOInterface()
-        self.usb1_ep_in = InFIFOInterface()
-        self.usb1_ep_out = OutFIFOInterface()
-        self.soc.add_peripheral(self.usb1, addr=0x80003000)
-        self.soc.add_peripheral(self.usb1_ep_control, as_submodule=False)
-        self.soc.add_peripheral(self.usb1_ep_in, as_submodule=False)
-        self.soc.add_peripheral(self.usb1_ep_out, as_submodule=False)
+        # self.usb1 = USBDeviceController()
+        # self.usb1_ep_control = SetupFIFOInterface()
+        # self.usb1_ep_in = InFIFOInterface()
+        # self.usb1_ep_out = OutFIFOInterface()
+        # self.soc.add_peripheral(self.usb1, addr=0xf0004000)
+        # self.soc.add_peripheral(self.usb1_ep_control, as_submodule=False)
+        # self.soc.add_peripheral(self.usb1_ep_in, as_submodule=False)
+        # self.soc.add_peripheral(self.usb1_ep_out, as_submodule=False)
 
-        self.usb2 = USBDeviceController()
-        self.usb2_ep_control = SetupFIFOInterface()
-        self.usb2_ep_in = InFIFOInterface()
-        self.usb2_ep_out = OutFIFOInterface()
-        self.soc.add_peripheral(self.usb2, addr=0x80004000)
-        self.soc.add_peripheral(self.usb2_ep_control, as_submodule=False)
-        self.soc.add_peripheral(self.usb2_ep_in, as_submodule=False)
-        self.soc.add_peripheral(self.usb2_ep_out, as_submodule=False)
+        # self.usb2 = USBDeviceController()
+        # self.usb2_ep_control = SetupFIFOInterface()
+        # self.usb2_ep_in = InFIFOInterface()
+        # self.usb2_ep_out = OutFIFOInterface()
+        # self.soc.add_peripheral(self.usb2, addr=0xf0005000)
+        # self.soc.add_peripheral(self.usb2_ep_control, as_submodule=False)
+        # self.soc.add_peripheral(self.usb2_ep_in, as_submodule=False)
+        # self.soc.add_peripheral(self.usb2_ep_out, as_submodule=False)
 
     def elaborate(self, platform):
         m = Module()
@@ -126,12 +127,12 @@ class CynthionSoC(Elaboratable):
             m.d.comb += uart_io.tx.oe.eq(~self.soc.uart._phy.tx.rdy),
 
         # connect the GpioPeripheral to the pmod ports
-        pmoda_io = platform.request("user_pmod", 0)
-        pmodb_io = platform.request("user_pmod", 1)
-        m.d.comb += [
-            self.gpioa.pins.connect(pmoda_io),
-            self.gpiob.pins.connect(pmodb_io)
-        ]
+        # pmoda_io = platform.request("user_pmod", 0)
+        # pmodb_io = platform.request("user_pmod", 1)
+        # m.d.comb += [
+        #     self.gpioa.pins.connect(pmoda_io),
+        #     self.gpiob.pins.connect(pmodb_io)
+        # ]
 
         # wire the cpu external reset signal up to a user port
         user1_io = platform.request("user_io", 1)
@@ -139,29 +140,29 @@ class CynthionSoC(Elaboratable):
         m.d.comb += self.soc.cpu.ext_reset.eq(user1_io.i)
 
         # create our USB devices, connect device controllers and add eptri endpoint handlers
-        ulpi0 = platform.request(platform.default_usb_connection) # target_phy
-        usb0_device = USBDevice(bus=ulpi0)
-        usb0_device.add_endpoint(self.usb0_ep_control)
-        usb0_device.add_endpoint(self.usb0_ep_in)
-        usb0_device.add_endpoint(self.usb0_ep_out)
-        m.d.comb += self.usb0.attach(usb0_device)
-        m.submodules.usb0_device = usb0_device
+        # ulpi0 = platform.request(platform.default_usb_connection) # target_phy
+        # usb0_device = USBDevice(bus=ulpi0)
+        # usb0_device.add_endpoint(self.usb0_ep_control)
+        # usb0_device.add_endpoint(self.usb0_ep_in)
+        # usb0_device.add_endpoint(self.usb0_ep_out)
+        # m.d.comb += self.usb0.attach(usb0_device)
+        # m.submodules.usb0_device = usb0_device
 
-        ulpi1 = platform.request("host_phy")
-        usb1_device = USBDevice(bus=ulpi1)
-        usb1_device.add_endpoint(self.usb1_ep_control)
-        usb1_device.add_endpoint(self.usb1_ep_in)
-        usb1_device.add_endpoint(self.usb1_ep_out)
-        m.d.comb += self.usb1.attach(usb1_device)
-        m.submodules.usb1_device = usb1_device
+        # ulpi1 = platform.request("host_phy")
+        # usb1_device = USBDevice(bus=ulpi1)
+        # usb1_device.add_endpoint(self.usb1_ep_control)
+        # usb1_device.add_endpoint(self.usb1_ep_in)
+        # usb1_device.add_endpoint(self.usb1_ep_out)
+        # m.d.comb += self.usb1.attach(usb1_device)
+        # m.submodules.usb1_device = usb1_device
 
-        ulpi2 = platform.request("sideband_phy")
-        usb2_device = USBDevice(bus=ulpi2)
-        usb2_device.add_endpoint(self.usb2_ep_control)
-        usb2_device.add_endpoint(self.usb2_ep_in)
-        usb2_device.add_endpoint(self.usb2_ep_out)
-        m.d.comb += self.usb2.attach(usb2_device)
-        m.submodules.usb2_device = usb2_device
+        # ulpi2 = platform.request("sideband_phy")
+        # usb2_device = USBDevice(bus=ulpi2)
+        # usb2_device.add_endpoint(self.usb2_ep_control)
+        # usb2_device.add_endpoint(self.usb2_ep_in)
+        # usb2_device.add_endpoint(self.usb2_ep_out)
+        # m.d.comb += self.usb2.attach(usb2_device)
+        # m.submodules.usb2_device = usb2_device
 
         return m
 
@@ -258,7 +259,7 @@ if __name__ == "__main__":
     with open(os.path.join(path, "memory.x"), "w") as f:
         generate.memory_x(file=f)
 
-    print("Build completed. Use 'make load' to load bitsream to device.")
+    print("Build completed. Use 'make load' to load bitstream to device.")
 
     # TODO
     #top_level_cli(design)

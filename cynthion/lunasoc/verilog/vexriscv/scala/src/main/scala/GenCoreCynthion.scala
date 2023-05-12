@@ -124,12 +124,12 @@ object GenCoreCynthion {
           machinePendingsCsrId = 0xfc0,
           supervisorMaskCsrId = 0x9c0,
           supervisorPendingsCsrId = 0xdc0
-        ),
+        )/*,
         // TODO make DebugPlugin optional
         new DebugPlugin(
            debugClockDomain = ClockDomain.current.clone(reset = Bool().setName("debugReset")),
            hardwareBreakpointCount = 0
-        )
+        )*/
       )
 
       // instantiate core

@@ -7,7 +7,7 @@
 
 from generate                import Introspect
 
-from luna.gateware.utils.cdc import synchronize
+#from luna.gateware.utils.cdc import synchronize
 
 from amaranth                import *
 from amaranth.build          import *
@@ -44,20 +44,22 @@ class CoreSoC(CPUSoC, Elaboratable):
 
         # create cpu
         self.internal_sram_size = internal_sram_size
-        self.internal_sram_addr = 0x10000000
+        self.internal_sram_addr = 0x40000000
         from vexriscv import VexRiscv
         cpu = VexRiscv(
             reset_addr=0x00000000,
             #variant="cynthion",
             #variant="imac",
-            variant="imac+dcache", # TODO significant corruption of memory occurs
+            #variant="imac+dcache", # TODO significant corruption of memory occurs
+            variant="imac+litex",
         )
 
         # create system bus
-        self._bus_decoder = wishbone.Decoder(addr_width=30, data_width=32, granularity=8,
-                                             features={"cti", "bte"})
         self._bus_arbiter = wishbone.Arbiter(addr_width=30, data_width=32, granularity=8,
-                                             features={"cti", "bte"})
+                                             features={"cti", "bte", "err"})
+        self._bus_decoder = wishbone.Decoder(addr_width=30, data_width=32, granularity=8,
+                                             alignment=0,
+                                             features={"cti", "bte", "err"})
         self._bus_arbiter.add(cpu.ibus)
         self._bus_arbiter.add(cpu.dbus)
 
@@ -165,13 +167,13 @@ class LunaSoC(CoreSoC):
         internal_sram_addr = self.internal_sram_addr
 
         # timer configuration
-        timer_addr  = 0x80001000
+        timer_addr  = 0xf0001800
         timer_width = 32
         timer_irqno = self._interrupt_index
         self._interrupt_index += 1
 
         # uart configuration
-        uart_addr  = 0x80000000
+        uart_addr  = 0xf0002000
         uart_irqno = self._interrupt_index
         self._interrupt_index += 1
         uart_core  = AsyncSerial(
@@ -187,16 +189,16 @@ class LunaSoC(CoreSoC):
         self.scratchpad = SRAMPeripheral(size=scratchpad_size)
         self._bus_decoder.add(self.scratchpad.bus, addr=scratchpad_addr)
 
+        self._internal_sram = SRAMPeripheral(size=internal_sram_size)
+        #self._internal_sram = SRAMPeripheral(size=internal_sram_size, init=data)
+        self._bus_decoder.add(self._internal_sram.bus, addr=internal_sram_addr)
+
         # load bootloader into sram
         #firmware_bin = "../target/riscv32i-unknown-none-elf/release/lunabios.bin"
         #data = get_mem_data(firmware_bin,
         #                    data_width = 32,
         #                    endianness = "little")
         #print(["0x{:08x}".format(i) for i in data[:128]])
-
-        self._internal_sram = SRAMPeripheral(size=internal_sram_size)
-        #self._internal_sram = SRAMPeripheral(size=internal_sram_size, init=data)
-        self._bus_decoder.add(self._internal_sram.bus, addr=internal_sram_addr)
 
         self.timer = TimerPeripheral(width=timer_width)
         self._bus_decoder.add(self.timer.bus, addr=timer_addr)
