@@ -13,25 +13,18 @@ from amaranth                import *
 from amaranth.build          import *
 
 import amaranth_soc
-
 from amaranth_soc            import wishbone
 from amaranth_soc.periph     import ConstantMap
 from amaranth_stdio.serial   import AsyncSerial
-from amaranth_boards.ulx3s   import ULX3S_85F_Platform
 
 import lambdasoc
-
-from lambdasoc.cores         import litedram, liteeth
-from lambdasoc.cpu.minerva   import MinervaCPU
-
 from lambdasoc.periph.intc   import GenericInterruptController
 from lambdasoc.periph.serial import AsyncSerialPeripheral
 from lambdasoc.periph.sram   import SRAMPeripheral
 from lambdasoc.periph.timer  import TimerPeripheral
-from lambdasoc.periph.sdram  import SDRAMPeripheral
-from lambdasoc.periph.eth    import EthernetMACPeripheral
-
 from lambdasoc.soc.cpu       import CPUSoC, BIOSBuilder
+
+from vexriscv                import VexRiscv
 
 import logging
 
@@ -45,7 +38,6 @@ class CoreSoC(CPUSoC, Elaboratable):
         # create cpu
         self.internal_sram_size = internal_sram_size
         self.internal_sram_addr = 0x40000000
-        from vexriscv import VexRiscv
         cpu = VexRiscv(
             reset_addr=0x00000000,
             #variant="cynthion",
@@ -161,7 +153,7 @@ class LunaSoC(CoreSoC):
         # memory configuration
         bootrom_addr       = 0x00000000
         bootrom_size       = 0x4000
-        scratchpad_addr    = 0x00004000
+        scratchpad_addr    = 0x10000000
         scratchpad_size    = 0x1000
         internal_sram_size = self.internal_sram_size
         internal_sram_addr = self.internal_sram_addr
@@ -182,8 +174,20 @@ class LunaSoC(CoreSoC):
             pins      = uart_pins,
         )
 
+        # load external firmware binary into bootrom
+        #firmware_bin = "../target/riscv32i-unknown-none-elf/release/lunabios.bin"
+        #firmware_bin = "/Users/antoine/GreatScott/cynthion-litex.git/hello-rust/hello-rust.bin"
+        #firmware_bin = "/Users/antoine/GreatScott/cynthion-litex.git/hello-rust/bios.bin"
+        #firmware_bin = "/Users/antoine/GreatScott/cynthion-litex.git/hello-c/main.bin"
+        #from bootloader import get_mem_data
+        #data = get_mem_data(firmware_bin,
+        #                    data_width = 32,
+        #                    endianness = "little")
+        #print(["0x{:08x}".format(i) for i in data[:128]])
+
         # add bootrom, scratchpad, uart, timer, _internal_sram
         self.bootrom = SRAMPeripheral(size=bootrom_size, writable=False)
+        #self.bootrom = SRAMPeripheral(size=bootrom_size, writable=False, init=data)
         self._bus_decoder.add(self.bootrom.bus, addr=bootrom_addr)
 
         self.scratchpad = SRAMPeripheral(size=scratchpad_size)
@@ -192,13 +196,6 @@ class LunaSoC(CoreSoC):
         self._internal_sram = SRAMPeripheral(size=internal_sram_size)
         #self._internal_sram = SRAMPeripheral(size=internal_sram_size, init=data)
         self._bus_decoder.add(self._internal_sram.bus, addr=internal_sram_addr)
-
-        # load bootloader into sram
-        #firmware_bin = "../target/riscv32i-unknown-none-elf/release/lunabios.bin"
-        #data = get_mem_data(firmware_bin,
-        #                    data_width = 32,
-        #                    endianness = "little")
-        #print(["0x{:08x}".format(i) for i in data[:128]])
 
         self.timer = TimerPeripheral(width=timer_width)
         self._bus_decoder.add(self.timer.bus, addr=timer_addr)

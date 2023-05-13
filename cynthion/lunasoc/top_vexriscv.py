@@ -7,6 +7,7 @@ from luna.gateware.usb.usb2.interfaces.eptri import SetupFIFOInterface, InFIFOIn
 
 from amaranth                                import Elaboratable, Module, Cat
 from amaranth.hdl.rec                        import Record
+
 from lambdasoc.periph                        import Peripheral
 
 import logging
@@ -172,6 +173,8 @@ class CynthionSoC(Elaboratable):
 import luna
 from luna.gateware.platform.ulx3s     import ULX3S_85F_Platform
 from luna.gateware.platform.luna_r0_4 import LUNAPlatformRev0D4
+
+from lambdasoc.sim.platform           import CXXRTLPlatform
 
 
 if __name__ == "__main__":
