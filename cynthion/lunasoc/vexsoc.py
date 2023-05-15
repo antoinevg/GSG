@@ -40,10 +40,10 @@ class CoreSoC(CPUSoC, Elaboratable):
         self.internal_sram_addr = 0x40000000
         cpu = VexRiscv(
             reset_addr=0x00000000,
-            #variant="cynthion",
+            variant="cynthion",
             #variant="imac",
             #variant="imac+dcache", # TODO significant corruption of memory occurs
-            variant="imac+litex",
+            #variant="imac+litex",
         )
 
         # create system bus
@@ -193,8 +193,13 @@ class LunaSoC(CoreSoC):
         self.scratchpad = SRAMPeripheral(size=scratchpad_size)
         self._bus_decoder.add(self.scratchpad.bus, addr=scratchpad_addr)
 
-        self._internal_sram = SRAMPeripheral(size=internal_sram_size)
+        #self._internal_sram = SRAMPeripheral(size=internal_sram_size)
         #self._internal_sram = SRAMPeripheral(size=internal_sram_size, init=data)
+        from luna.gateware.soc.memory import WishboneRAM
+        self._internal_sram = WishboneRAM(
+            name = "internal_sram",
+            addr_width = (self.internal_sram_size - 1).bit_length(),
+        )
         self._bus_decoder.add(self._internal_sram.bus, addr=internal_sram_addr)
 
         self.timer = TimerPeripheral(width=timer_width)

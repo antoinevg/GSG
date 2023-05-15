@@ -55,13 +55,13 @@ object GenCoreCynthion {
           )
         ),
 
-        new DBusSimplePlugin(
+        /*new DBusSimplePlugin(
           catchAddressMisaligned = true,
           catchAccessFault = true,
           withLrSc = true, // atomic instructions support
           memoryTranslatorPortConfig = null
-        ),
-        /*new DBusCachedPlugin(
+        ),*/
+        new DBusCachedPlugin(
           dBusCmdMasterPipe = true,
           dBusCmdSlavePipe = true,
           dBusRspSlavePipe = false,
@@ -82,7 +82,7 @@ object GenCoreCynthion {
           ),
           memoryTranslatorPortConfig = null,
           csrInfo = true
-        ),*/
+        ),
 
         new StaticMemoryTranslatorPlugin(
           ioRange = _.msb
