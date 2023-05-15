@@ -43,8 +43,8 @@ pub const EP_MAX_RECEIVE_LENGTH: usize = 64;
 #[derive(Debug)]
 pub enum UsbInterface {
     Target,   // Usb0
-    Host,     // Usb1
-    Sideband, // Usb2
+    Aux,      // Usb1
+    Control,  // Usb2
 }
 
 pub enum Message {
