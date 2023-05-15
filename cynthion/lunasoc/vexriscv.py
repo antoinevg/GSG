@@ -46,7 +46,6 @@ class VexRiscv(CPU, Elaboratable):
         if not variant in CPU_VARIANTS:
             raise(f"unsupported variant: {variant}")
         self._source_file = f"{CPU_VARIANTS[variant]}.v"
-        print("SOURCE FILE: " + self._source_file)
         self._source_path = os.path.join("verilog", "vexriscv", self._source_file)
         if not os.path.exists(self._source_path):
             raise(f"source file not found: {self._source_path}")
