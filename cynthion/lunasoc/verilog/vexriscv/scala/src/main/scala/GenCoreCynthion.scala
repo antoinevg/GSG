@@ -33,7 +33,7 @@ object GenCoreCynthion {
           compressedGen = true, // compressed instruction support
           memoryTranslatorPortConfig = null,
           config = InstructionCacheConfig(
-            cacheSize = 4096,
+            cacheSize = 2048,
             bytePerLine = 32,
             wayCount = 1,
             addressWidth = 32,
@@ -98,7 +98,7 @@ object GenCoreCynthion {
           catchAddressMisaligned = true
         ),
         new CsrPlugin(
-          CsrPluginConfig.all(mtvecInit = null).copy(ebreakGen = true, xtvecModeGen = true)
+          CsrPluginConfig.all(mtvecInit = null).copy(ebreakGen = true, xtvecModeGen = false)
         ),
         new YamlPlugin(outputFile + ".yaml"),
         new MulPlugin,

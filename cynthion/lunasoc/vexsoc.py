@@ -26,6 +26,7 @@ from lambdasoc.periph.timer  import TimerPeripheral
 from lambdasoc.soc.cpu       import CPUSoC, BIOSBuilder
 
 from luna.gateware.soc.memory import WishboneRAM
+from sram                     import SRAMPeripheral as SRAMPeripheralWithACK
 
 import logging
 
@@ -192,10 +193,11 @@ class LunaSoC(CoreSoC):
         self._bus_decoder.add(self.scratchpad.bus, addr=scratchpad_addr)
 
         # VexRiscv does not like LambdaSoC RAM for main program memory
-        self._internal_sram = WishboneRAM(
-            name = "internal_sram",
-            addr_width = (self.internal_sram_size - 1).bit_length(),
-        )
+        self._internal_sram = SRAMPeripheralWithACK(size=internal_sram_size)
+        # self._internal_sram = WishboneRAM_burst(
+        #     name = "internal_sram",
+        #     addr_width = (self.internal_sram_size - 1).bit_length(),
+        # )
         self._bus_decoder.add(self._internal_sram.bus, addr=internal_sram_addr)
 
         self.timer = TimerPeripheral(width=timer_width)
