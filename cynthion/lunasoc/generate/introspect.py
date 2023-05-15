@@ -51,7 +51,7 @@ class Introspect:
                 _local_granularity = resource_info.width
 
                 # TODO
-                if True: #self._soc._build_bios and omit_bios_mem:
+                if False: #self._soc._build_bios and omit_bios_mem:
                     # If we're omitting bios resources, skip the BIOS ram/rom.
                     if (self._soc.sram._mem is resource) or (self._soc.bootrom._mem is resource):
                         continue

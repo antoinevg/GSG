@@ -12,7 +12,7 @@ esac
 echo "Using Cynthion UART=$UART"
 
 # bitstream
-BASE_MEM=0x10000000
+BASE_MEM=0x40000000
 BITSTREAM=../lunasoc/build/top.bit
 
 # create bin file

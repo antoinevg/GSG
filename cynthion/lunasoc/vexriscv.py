@@ -14,6 +14,7 @@ CPU_VARIANTS = {
     "cynthion":     "vexriscv_cynthion",
     "imac":         "vexriscv_imac",
     "imac+dcache":  "vexriscv_imac+dcache",
+    "imac+litex":   "vexriscv_imac+litex",
 }
 
 # - VexRiscv ------------------------------------------------------------------
@@ -37,14 +38,15 @@ class VexRiscv(CPU, Elaboratable):
         self.irq_timer    = Signal()
         self.irq_software = Signal()
         self.ibus  = wishbone.Interface(addr_width=30, data_width=32, granularity=8,
-                                        features={"err", "cti", "bte"})
+                                        features={"cti", "bte", "err"})
         self.dbus  = wishbone.Interface(addr_width=30, data_width=32, granularity=8,
-                                        features={"err", "cti", "bte"})
+                                        features={"cti", "bte", "err"})
 
         # read source verilog
         if not variant in CPU_VARIANTS:
             raise(f"unsupported variant: {variant}")
         self._source_file = f"{CPU_VARIANTS[variant]}.v"
+        print("SOURCE FILE: " + self._source_file)
         self._source_path = os.path.join("verilog", "vexriscv", self._source_file)
         if not os.path.exists(self._source_path):
             raise(f"source file not found: {self._source_path}")
@@ -58,7 +60,7 @@ class VexRiscv(CPU, Elaboratable):
 
     @property
     def muldiv(self):
-        return "soft" # "hard" if self._cpu.with_muldiv else "soft"
+        return "hard" # "hard" if self._cpu.with_muldiv else "soft"
 
     @property
     def constant_map(self):

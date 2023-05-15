@@ -7,6 +7,7 @@ from luna.gateware.usb.usb2.interfaces.eptri import SetupFIFOInterface, InFIFOIn
 
 from amaranth                                import Elaboratable, Module, Cat
 from amaranth.hdl.rec                        import Record
+
 from lambdasoc.periph                        import Peripheral
 
 import logging
@@ -64,6 +65,7 @@ class CynthionSoC(Elaboratable):
 
         # Create our SoC...
         self.soc = LunaSoC(clock_frequency, internal_sram_size=65536)
+        #self.soc = LunaSoC(clock_frequency, internal_sram_size=32768)
 
         # Add bios and core peripherals
         self.soc.add_bios_and_peripherals(uart_pins=self.uart_pins)
@@ -79,14 +81,14 @@ class CynthionSoC(Elaboratable):
 
         # ... add our LED peripheral, for simple output.
         self.leds = LedPeripheral()
-        self.soc.add_peripheral(self.leds)
+        self.soc.add_peripheral(self.leds, addr=0xf0001000)
 
         # ... and the core USB controllers and eptri peripherals ...
         self.usb0 = USBDeviceController()
         self.usb0_ep_control = SetupFIFOInterface()
         self.usb0_ep_in = InFIFOInterface()
         self.usb0_ep_out = OutFIFOInterface()
-        self.soc.add_peripheral(self.usb0, addr=0x80002000)
+        self.soc.add_peripheral(self.usb0, addr=0xf0003000)
         self.soc.add_peripheral(self.usb0_ep_control, as_submodule=False)
         self.soc.add_peripheral(self.usb0_ep_in, as_submodule=False)
         self.soc.add_peripheral(self.usb0_ep_out, as_submodule=False)
@@ -95,7 +97,7 @@ class CynthionSoC(Elaboratable):
         self.usb1_ep_control = SetupFIFOInterface()
         self.usb1_ep_in = InFIFOInterface()
         self.usb1_ep_out = OutFIFOInterface()
-        self.soc.add_peripheral(self.usb1, addr=0x80003000)
+        self.soc.add_peripheral(self.usb1, addr=0xf0004000)
         self.soc.add_peripheral(self.usb1_ep_control, as_submodule=False)
         self.soc.add_peripheral(self.usb1_ep_in, as_submodule=False)
         self.soc.add_peripheral(self.usb1_ep_out, as_submodule=False)
@@ -104,7 +106,7 @@ class CynthionSoC(Elaboratable):
         self.usb2_ep_control = SetupFIFOInterface()
         self.usb2_ep_in = InFIFOInterface()
         self.usb2_ep_out = OutFIFOInterface()
-        self.soc.add_peripheral(self.usb2, addr=0x80004000)
+        self.soc.add_peripheral(self.usb2, addr=0xf0005000)
         self.soc.add_peripheral(self.usb2_ep_control, as_submodule=False)
         self.soc.add_peripheral(self.usb2_ep_in, as_submodule=False)
         self.soc.add_peripheral(self.usb2_ep_out, as_submodule=False)
@@ -171,6 +173,8 @@ class CynthionSoC(Elaboratable):
 import luna
 from luna.gateware.platform.ulx3s     import ULX3S_85F_Platform
 from luna.gateware.platform.luna_r0_4 import LUNAPlatformRev0D4
+
+from lambdasoc.sim.platform           import CXXRTLPlatform
 
 
 if __name__ == "__main__":
@@ -258,7 +262,7 @@ if __name__ == "__main__":
     with open(os.path.join(path, "memory.x"), "w") as f:
         generate.memory_x(file=f)
 
-    print("Build completed. Use 'make load' to load bitsream to device.")
+    print("Build completed. Use 'make load' to load bitstream to device.")
 
     # TODO
     #top_level_cli(design)

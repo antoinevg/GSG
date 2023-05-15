@@ -10,3 +10,20 @@ Cargo.lock
 /cynthion/**/build/
 /cynthion/toolchain
 /cynthion/**/*.off
+
+# scala
+.metals/
+.scalafmt.conf
+
+# junk
+cynthion/Makefile
+cynthion/cynthion/src/log_crit.rs
+cynthion/design/facedancer/NOTES.md
+cynthion/design/structure/hardware.svg
+cynthion/design/usb/gateware.d2
+cynthion/design/usb/gateware.svg
+cynthion/hello-rust/link-orig.x
+cynthion/libgreat/Makefile
+cynthion/lunasoc/verilog/femtorv/
+cynthion/lunasoc/verilog/vexriscv/scala/src/main/scala/DBusCynthionPlugin.scala
+cynthion/notes/

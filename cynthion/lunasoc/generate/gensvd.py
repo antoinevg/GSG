@@ -36,7 +36,7 @@ class GenSVD:
 
         window: MemoryMap
         for window, (start, stop, ratio) in self._soc.memory_map.windows():
-            if window.name in ["bootrom", "scratchpad", "internal_sram"]:
+            if window.name in ["bootrom", "scratchpad", "internal_sram", "ram", "rom"]:
                 logging.info("Skipping non-peripheral resource: {}".format(window.name))
                 continue
 

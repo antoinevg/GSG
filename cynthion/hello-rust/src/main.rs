@@ -1,75 +1,77 @@
+#![allow(dead_code, unused_imports, unused_mut, unused_variables)]
+
 #![no_std]
 #![no_main]
-
-// - entry point --------------------------------------------------------------
-
-#[export_name = "_start"]
-#[no_mangle]
-pub unsafe extern "C" fn main() -> ! {
-    let io_leds = IO_LEDS as *mut _;
-
-    loop {
-        for n in 0..64 {
-            core::ptr::write_volatile(io_leds, n);
-            timer_delay(500_000);
-        }
-        uart_tx("boink\n");
-    }
-}
 
 // - panic_handler ------------------------------------------------------------
 
 use core::panic::PanicInfo;
 
-#[panic_handler]
 #[no_mangle]
-fn panic(_info: &PanicInfo) -> ! {
-    loop {}
+#[panic_handler]
+fn panic(panic_info: &core::panic::PanicInfo) -> ! {
+    unsafe { core::ptr::write_volatile(IO_LEDS as *mut u32, 0b11_1100) };
+    loop { }
 }
 
-// - libnotquitegreatyet ------------------------------------------------------
+#[export_name = "ExceptionHandler"]
+fn custom_exception_handler(panic_info: &core::panic::PanicInfo) -> ! {
+    unsafe { core::ptr::write_volatile(IO_LEDS as *mut u32, 0b11_1110) };
+    loop { }
+}
 
-const IO_BASE: usize = 0x8000_0000;
+// - start of day -------------------------------------------------------------
 
-const IO_UART_TX_DATA: usize = IO_BASE + 0x0010;
-const IO_UART_TX_RDY: usize = IO_BASE + 0x0014;
+core::arch::global_asm!(r#"
+.section .init
+_start:
+    // flush icache
+    .word(0x100f)
+    nop
+    nop
+    nop
+    nop
+    nop
 
-const IO_TIMER_RELOAD: usize = IO_BASE + 0x1000;
-const IO_TIMER_EN: usize = IO_BASE + 0x1004;
-const IO_TIMER_CTR: usize = IO_BASE + 0x1008;
+    // flush dcache
+    .word(0x500f)
 
-const IO_LEDS: usize = IO_BASE + 0x0080;
+    // global pointer
+    .option push
+    .option norelax
+    la gp, __global_pointer$
+    .option pop
 
-pub unsafe fn timer_delay(cycles: u32) {
-    let reload = IO_TIMER_RELOAD as *mut u32;
-    let enable = IO_TIMER_EN as *mut u32;
-    let counter = IO_TIMER_CTR as *mut u32;
+    // stack pointer
+    la sp, __stack_top
+    add s0, sp, zero
 
-    core::ptr::write_volatile(enable, 1);
-    core::ptr::write_volatile(reload, cycles);
+    // jump to main
+    jal zero, main
 
-    while core::ptr::read_volatile(counter) > 0 {
-        asm::nop();
+    // either here or below
+    nop
+"#);
+
+
+// - main ---------------------------------------------------------------------
+#[link_section = ".text"]
+#[no_mangle]
+pub unsafe extern "C" fn main() -> ! {
+    const MSG: &'static str = "Entering main loop.";
+    uart_tx(MSG);
+
+    let mut counter = 0;
+    loop {
+        unsafe { asm::delay(1_000_000) };
+        unsafe { core::ptr::write_volatile(IO_LEDS as *mut u32, counter & 0b11_1111) };
+        counter += 1;
     }
-
-    core::ptr::write_volatile(enable, 0);
-    core::ptr::write_volatile(reload, 0);
 }
 
-pub unsafe fn uart_tx(string: &str) {
-    let tx_data = IO_UART_TX_DATA as *mut u32;
-    let tx_ready = IO_UART_TX_RDY as *mut u32;
-
-    for c in string.chars() {
-        while core::ptr::read_volatile(tx_ready) == 0 {
-            asm::nop();
-        }
-        core::ptr::write_volatile(tx_data, c as u32);
-    }
-}
+// - helpers ------------------------------------------------------------------
 
 mod asm {
-    #[inline]
     pub unsafe fn delay(cycles: u32) {
         let real_cyc = 1 + cycles / 2;
         core::arch::asm!(
@@ -80,9 +82,18 @@ mod asm {
             options(nomem, nostack),
         )
     }
+}
 
-    #[inline]
-    pub unsafe fn nop() {
-        core::arch::asm!("nop", options(nomem, nostack),)
+// - peripherals --------------------------------------------------------------
+
+const IO_BASE: usize = 0xf000_0000;
+const IO_LEDS: usize = IO_BASE + 0x1000;
+const IO_UART_TX_DAT: usize = IO_BASE + 0x2000 + 0x0010;
+const IO_UART_TX_RDY: usize = IO_BASE + 0x2000 + 0x0014;
+
+fn uart_tx(s: &str) {
+    for b in s.bytes() {
+        while unsafe { core::ptr::read_volatile(IO_UART_TX_RDY as *mut u32) } == 0 { }
+        unsafe { core::ptr::write_volatile(IO_UART_TX_DAT as *mut u32, b as u32 & 0b1111_1111) };
     }
 }

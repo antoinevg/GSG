@@ -6,32 +6,26 @@
 """VexRiscv SoC for LUNA firmware."""
 
 from generate                import Introspect
+from vexriscv                import VexRiscv
 
-from luna.gateware.utils.cdc import synchronize
+#from luna.gateware.utils.cdc import synchronize
 
 from amaranth                import *
 from amaranth.build          import *
 
 import amaranth_soc
-
 from amaranth_soc            import wishbone
 from amaranth_soc.periph     import ConstantMap
 from amaranth_stdio.serial   import AsyncSerial
-from amaranth_boards.ulx3s   import ULX3S_85F_Platform
 
 import lambdasoc
-
-from lambdasoc.cores         import litedram, liteeth
-from lambdasoc.cpu.minerva   import MinervaCPU
-
 from lambdasoc.periph.intc   import GenericInterruptController
 from lambdasoc.periph.serial import AsyncSerialPeripheral
 from lambdasoc.periph.sram   import SRAMPeripheral
 from lambdasoc.periph.timer  import TimerPeripheral
-from lambdasoc.periph.sdram  import SDRAMPeripheral
-from lambdasoc.periph.eth    import EthernetMACPeripheral
-
 from lambdasoc.soc.cpu       import CPUSoC, BIOSBuilder
+
+from luna.gateware.soc.memory import WishboneRAM
 
 import logging
 
@@ -44,20 +38,21 @@ class CoreSoC(CPUSoC, Elaboratable):
 
         # create cpu
         self.internal_sram_size = internal_sram_size
-        self.internal_sram_addr = 0x10000000
-        from vexriscv import VexRiscv
+        self.internal_sram_addr = 0x40000000
         cpu = VexRiscv(
             reset_addr=0x00000000,
             variant="cynthion",
             #variant="imac",
-            #variant="imac+dcache", # TODO significant corruption of memory occurs
+            #variant="imac+dcache",
+            #variant="imac+litex",
         )
 
         # create system bus
-        self._bus_decoder = wishbone.Decoder(addr_width=30, data_width=32, granularity=8,
-                                             features={"cti", "bte"})
         self._bus_arbiter = wishbone.Arbiter(addr_width=30, data_width=32, granularity=8,
-                                             features={"cti", "bte"})
+                                             features={"cti", "bte", "err"})
+        self._bus_decoder = wishbone.Decoder(addr_width=30, data_width=32, granularity=8,
+                                             alignment=0,
+                                             features={"cti", "bte", "err"})
         self._bus_arbiter.add(cpu.ibus)
         self._bus_arbiter.add(cpu.dbus)
 
@@ -159,19 +154,19 @@ class LunaSoC(CoreSoC):
         # memory configuration
         bootrom_addr       = 0x00000000
         bootrom_size       = 0x4000
-        scratchpad_addr    = 0x00004000
+        scratchpad_addr    = 0x10000000
         scratchpad_size    = 0x1000
         internal_sram_size = self.internal_sram_size
         internal_sram_addr = self.internal_sram_addr
 
         # timer configuration
-        timer_addr  = 0x80001000
+        timer_addr  = 0xf0001800
         timer_width = 32
         timer_irqno = self._interrupt_index
         self._interrupt_index += 1
 
         # uart configuration
-        uart_addr  = 0x80000000
+        uart_addr  = 0xf0002000
         uart_irqno = self._interrupt_index
         self._interrupt_index += 1
         uart_core  = AsyncSerial(
@@ -180,22 +175,27 @@ class LunaSoC(CoreSoC):
             pins      = uart_pins,
         )
 
-        # add bootrom, scratchpad, uart, timer, _internal_sram
-        self.bootrom = SRAMPeripheral(size=bootrom_size, writable=False)
-        self._bus_decoder.add(self.bootrom.bus, addr=bootrom_addr)
-
-        self.scratchpad = SRAMPeripheral(size=scratchpad_size)
-        self._bus_decoder.add(self.scratchpad.bus, addr=scratchpad_addr)
-
-        # load bootloader into sram
-        #firmware_bin = "../target/riscv32i-unknown-none-elf/release/lunabios.bin"
+        # load external firmware binary into bootrom
+        #firmware_bin = "/Users/antoine/GreatScott/cynthion-litex.git/hello-rust/hello-rust.bin"
+        #from bootloader import get_mem_data
         #data = get_mem_data(firmware_bin,
         #                    data_width = 32,
         #                    endianness = "little")
         #print(["0x{:08x}".format(i) for i in data[:128]])
 
-        self._internal_sram = SRAMPeripheral(size=internal_sram_size)
-        #self._internal_sram = SRAMPeripheral(size=internal_sram_size, init=data)
+        # add bootrom, scratchpad, uart, timer, _internal_sram
+        self.bootrom = SRAMPeripheral(size=bootrom_size, writable=False)
+        #self.bootrom = SRAMPeripheral(size=bootrom_size, writable=False, init=data)
+        self._bus_decoder.add(self.bootrom.bus, addr=bootrom_addr)
+
+        self.scratchpad = SRAMPeripheral(size=scratchpad_size)
+        self._bus_decoder.add(self.scratchpad.bus, addr=scratchpad_addr)
+
+        # VexRiscv does not like LambdaSoC RAM for main program memory
+        self._internal_sram = WishboneRAM(
+            name = "internal_sram",
+            addr_width = (self.internal_sram_size - 1).bit_length(),
+        )
         self._bus_decoder.add(self._internal_sram.bus, addr=internal_sram_addr)
 
         self.timer = TimerPeripheral(width=timer_width)
@@ -261,7 +261,6 @@ class LunaSoC(CoreSoC):
             self._peripherals.append(peripheral)
 
         return peripheral
-
 
 
     # - LambdaSoC @property overrides --

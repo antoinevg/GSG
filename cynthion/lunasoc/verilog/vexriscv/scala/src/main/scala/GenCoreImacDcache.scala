@@ -33,7 +33,7 @@ object GenCoreImacDcache {
           compressedGen = true, // compressed instruction support
           memoryTranslatorPortConfig = null,
           config = InstructionCacheConfig(
-            cacheSize = 2048,
+            cacheSize = 4096,
             bytePerLine = 32,
             wayCount = 1,
             addressWidth = 32,
@@ -52,7 +52,7 @@ object GenCoreImacDcache {
           dBusRspSlavePipe = false,
           relaxedMemoryTranslationRegister = false,
           config = new DataCacheConfig(
-            cacheSize = 2048,
+            cacheSize = 4096,
             bytePerLine = 32,
             wayCount = 1,
             addressWidth = 32,
@@ -69,7 +69,7 @@ object GenCoreImacDcache {
           csrInfo = true
         ),
         new StaticMemoryTranslatorPlugin(
-          ioRange = _.msb
+          ioRange = _.msb // address => address > 0xf0000000
         ),
         new DecoderSimplePlugin(
           catchIllegalInstruction = true
@@ -98,7 +98,7 @@ object GenCoreImacDcache {
           catchAddressMisaligned = true
         ),
         new CsrPlugin(
-          CsrPluginConfig.all(mtvecInit = null).copy(ebreakGen = true)
+          CsrPluginConfig.all(mtvecInit = null).copy(ebreakGen = true, xtvecModeGen = false)
         ),
         new YamlPlugin(outputFile + ".yaml"),
         new MulPlugin,
@@ -108,7 +108,12 @@ object GenCoreImacDcache {
           machinePendingsCsrId = 0xfc0,
           supervisorMaskCsrId = 0x9c0,
           supervisorPendingsCsrId = 0xdc0
-        )
+        )/*,
+        // TODO make DebugPlugin optional
+        new DebugPlugin(
+           debugClockDomain = ClockDomain.current.clone(reset = Bool().setName("debugReset")),
+           hardwareBreakpointCount = 0
+        )*/
       )
 
       // instantiate core
