@@ -29,7 +29,7 @@ static MESSAGE_QUEUE: Queue<Message, 128> = Queue::new();
 #[allow(non_snake_case)]
 #[no_mangle]
 fn MachineExternal() {
-    use cynthion::UsbInterface::{Host, Sideband, Target};
+    use cynthion::UsbInterface::{Aux, Control, Target};
 
     // peripherals
     let peripherals = unsafe { pac::Peripherals::steal() };
@@ -84,7 +84,7 @@ fn MachineExternal() {
             }
         };
         usb1.clear_pending(pac::Interrupt::USB1_EP_CONTROL);
-        Message::UsbReceiveSetupPacket(Host, setup_packet)
+        Message::UsbReceiveSetupPacket(Aux, setup_packet)
     } else if usb1.is_pending(pac::Interrupt::USB1_EP_IN) {
         usb1.clear_pending(pac::Interrupt::USB1_EP_IN);
         Message::HandleInterrupt(pac::Interrupt::USB1_EP_IN)
@@ -93,7 +93,7 @@ fn MachineExternal() {
         let mut buffer = [0_u8; 64];
         let bytes_read = usb1.read(endpoint, &mut buffer);
         usb1.clear_pending(pac::Interrupt::USB1_EP_OUT);
-        Message::UsbReceiveData(Host, endpoint, bytes_read, buffer)
+        Message::UsbReceiveData(Aux, endpoint, bytes_read, buffer)
 
     // - Usb2 interrupts --
     } else if usb2.is_pending(pac::Interrupt::USB2) {
@@ -110,7 +110,7 @@ fn MachineExternal() {
             }
         };
         usb2.clear_pending(pac::Interrupt::USB2_EP_CONTROL);
-        Message::UsbReceiveSetupPacket(Sideband, setup_packet)
+        Message::UsbReceiveSetupPacket(Control, setup_packet)
     } else if usb2.is_pending(pac::Interrupt::USB2_EP_IN) {
         usb2.clear_pending(pac::Interrupt::USB2_EP_IN);
         Message::HandleInterrupt(pac::Interrupt::USB2_EP_IN)
@@ -119,7 +119,7 @@ fn MachineExternal() {
         let mut buffer = [0_u8; 64];
         let bytes_read = usb2.read(endpoint, &mut buffer);
         usb2.clear_pending(pac::Interrupt::USB2_EP_OUT);
-        Message::UsbReceiveData(Sideband, endpoint, bytes_read, buffer)
+        Message::UsbReceiveData(Control, endpoint, bytes_read, buffer)
 
     // - Unknown Interrupt --
     } else {
@@ -235,7 +235,7 @@ fn main() -> ! {
 
     loop {
         if let Some(message) = MESSAGE_QUEUE.dequeue() {
-            use cynthion::UsbInterface::{Host, Sideband, Target};
+            use cynthion::UsbInterface::{Aux, Control, Target};
 
             match message {
                 // usb0 message handlers
@@ -263,13 +263,13 @@ fn main() -> ! {
                 }
 
                 // usb1 message handlers
-                Message::UsbReceiveSetupPacket(Host, packet) => {
+                Message::UsbReceiveSetupPacket(Aux, packet) => {
                     match usb1_device.handle_setup_request(&packet) {
                         Ok(()) => debug!("OK\n"),
                         Err(e) => panic!("  handle_setup_request: {:?}: {:?}", e, packet),
                     }
                 }
-                Message::UsbReceiveData(Host, endpoint, bytes_read, buffer) => {
+                Message::UsbReceiveData(Aux, endpoint, bytes_read, buffer) => {
                     if endpoint != 0 {
                         debug!(
                             "Received {} bytes on usb1 endpoint: {} - {:?}\n",
@@ -287,13 +287,13 @@ fn main() -> ! {
                 }
 
                 // usb2 message handlers
-                Message::UsbReceiveSetupPacket(Sideband, packet) => {
+                Message::UsbReceiveSetupPacket(Control, packet) => {
                     match usb2_device.handle_setup_request(&packet) {
                         Ok(()) => debug!("OK\n"),
                         Err(e) => panic!("  handle_setup_request: {:?}: {:?}", e, packet),
                     }
                 }
-                Message::UsbReceiveData(Sideband, endpoint, bytes_read, buffer) => {
+                Message::UsbReceiveData(Control, endpoint, bytes_read, buffer) => {
                     if endpoint != 0 {
                         debug!(
                             "Received {} bytes on usb2 endpoint: {} - {:?}\n",
