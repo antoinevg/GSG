@@ -65,13 +65,9 @@ class CynthionSoC(Elaboratable):
 
         # Create our SoC...
         self.soc = LunaSoC(clock_frequency, internal_sram_size=65536)
-        #self.soc = LunaSoC(clock_frequency, internal_sram_size=32768)
 
         # Add bios and core peripherals
         self.soc.add_bios_and_peripherals(uart_pins=self.uart_pins)
-
-        # ... add some bulk RAM ...
-        # TODO soc.add_ram(0x4000, name="bulkram")
 
         # ... add a GpioPeripheral for the PMOD connectors ...
         self.gpioa = GpioPeripheral(width=8)
@@ -135,10 +131,16 @@ class CynthionSoC(Elaboratable):
             self.gpiob.pins.connect(pmodb_io)
         ]
 
-        # wire the cpu external reset signal up to a user port
-        user1_io = platform.request("user_io", 1)
-        m.d.comb += user1_io.oe.eq(1)
-        m.d.comb += self.soc.cpu.ext_reset.eq(user1_io.i)
+        # wire up the cpu external reset signal
+        if isinstance(platform, CynthionPlatformRev0D4):
+            user1_io = platform.request("user_io", 1)
+            m.d.comb += user1_io.oe.eq(1)
+        elif isinstance(platform, CynthionPlatformRev0D7):
+            user1_io = platform.request("button_user")
+            m.d.comb += self.soc.cpu.ext_reset.eq(user1_io.i)
+        else:
+            logging.error("Unsupported platform: {}".format(platform))
+            sys.exit()
 
         # create our USB devices, connect device controllers and add eptri endpoint handlers
         ulpi0 = platform.request(platform.default_usb_connection) # target_phy
@@ -149,7 +151,7 @@ class CynthionSoC(Elaboratable):
         m.d.comb += self.usb0.attach(usb0_device)
         m.submodules.usb0_device = usb0_device
 
-        ulpi1 = platform.request("host_phy")
+        ulpi1 = platform.request("aux_phy")
         usb1_device = USBDevice(bus=ulpi1)
         usb1_device.add_endpoint(self.usb1_ep_control)
         usb1_device.add_endpoint(self.usb1_ep_in)
@@ -157,7 +159,7 @@ class CynthionSoC(Elaboratable):
         m.d.comb += self.usb1.attach(usb1_device)
         m.submodules.usb1_device = usb1_device
 
-        ulpi2 = platform.request("sideband_phy")
+        ulpi2 = platform.request("control_phy")
         usb2_device = USBDevice(bus=ulpi2)
         usb2_device.add_endpoint(self.usb2_ep_control)
         usb2_device.add_endpoint(self.usb2_ep_in)
@@ -171,10 +173,10 @@ class CynthionSoC(Elaboratable):
 # - main ----------------------------------------------------------------------
 
 import luna
-from luna.gateware.platform.ulx3s     import ULX3S_85F_Platform
-from luna.gateware.platform.luna_r0_4 import LUNAPlatformRev0D4
+from luna.gateware.platform.ulx3s  import ULX3S_85F_Platform
+from luna.gateware.platform        import CynthionPlatformRev0D4, CynthionPlatformRev0D7
 
-from lambdasoc.sim.platform           import CXXRTLPlatform
+from lambdasoc.sim.platform        import CXXRTLPlatform
 
 
 if __name__ == "__main__":
@@ -192,19 +194,26 @@ if __name__ == "__main__":
 
     # select platform
     platform = luna.gateware.platform.get_appropriate_platform()
-    #platform = LUNAPlatformRev0D4()
+    #platform = CynthionPlatformRev0D7()
     #platform = ULX3S_85F_Platform()
 
     # create design
-    if isinstance(platform, LUNAPlatformRev0D4):
-        logging.info("Building for Luna r04")
+    if isinstance(platform, CynthionPlatformRev0D4):
+        logging.info("Building for Cynthion revision 0.4")
+        design = CynthionSoC(clock_frequency=int(60e6))
+    elif isinstance(platform, CynthionPlatformRev0D7):
+        logging.info("Building for Cynthion revision 0.7")
         design = CynthionSoC(clock_frequency=int(60e6))
     elif isinstance(platform, ULX3S_85F_Platform):
         logging.info("Building for ULX3s")
         design = CynthionSoC(clock_frequency=int(48e6))
+    elif isinstance(platform, CXXRTLPlatform):
+        logging.info("Building for CXXRTLPlatform")
+        design = CynthionSoC(clock_frequency=int(48e6))
     else:
         logging.error("Unsupported platform: {}".format(platform))
         sys.exit()
+    design = CynthionSoC(clock_frequency=int(60e6))
 
     # TODO fix litex build
     thirdparty = os.path.join(build_dir, "lambdasoc.soc.cpu/bios/3rdparty/litex")
