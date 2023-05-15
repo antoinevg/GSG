@@ -13,7 +13,7 @@
     <peripheral>
       <name>TIMER</name>
       <groupName>TIMER</groupName>
-      <baseAddress>0x80001000</baseAddress>
+      <baseAddress>0xf0001800</baseAddress>
       <addressBlock>
         <offset>0</offset>
         <size>0x20</size>
@@ -119,7 +119,7 @@
     <peripheral>
       <name>UART</name>
       <groupName>UART</groupName>
-      <baseAddress>0x80000000</baseAddress>
+      <baseAddress>0xf0002000</baseAddress>
       <addressBlock>
         <offset>0</offset>
         <size>0x40</size>
@@ -270,7 +270,7 @@
     <peripheral>
       <name>GPIOA</name>
       <groupName>GPIOA</groupName>
-      <baseAddress>0x80000040</baseAddress>
+      <baseAddress>0xf0002040</baseAddress>
       <addressBlock>
         <offset>0</offset>
         <size>0x20</size>
@@ -376,7 +376,7 @@
     <peripheral>
       <name>GPIOB</name>
       <groupName>GPIOB</groupName>
-      <baseAddress>0x80000060</baseAddress>
+      <baseAddress>0xf0002060</baseAddress>
       <addressBlock>
         <offset>0</offset>
         <size>0x20</size>
@@ -482,7 +482,7 @@
     <peripheral>
       <name>LEDS</name>
       <groupName>LEDS</groupName>
-      <baseAddress>0x80000080</baseAddress>
+      <baseAddress>0xf0001000</baseAddress>
       <addressBlock>
         <offset>0</offset>
         <size>0x08</size>
@@ -509,7 +509,7 @@
     <peripheral>
       <name>USB0</name>
       <groupName>USB0</groupName>
-      <baseAddress>0x80002000</baseAddress>
+      <baseAddress>0xf0003000</baseAddress>
       <addressBlock>
         <offset>0</offset>
         <size>0x40</size>
@@ -605,7 +605,7 @@
     <peripheral>
       <name>USB0_EP_CONTROL</name>
       <groupName>USB0_EP_CONTROL</groupName>
-      <baseAddress>0x80002040</baseAddress>
+      <baseAddress>0xf0003040</baseAddress>
       <addressBlock>
         <offset>0</offset>
         <size>0x40</size>
@@ -765,7 +765,7 @@
     <peripheral>
       <name>USB0_EP_IN</name>
       <groupName>USB0_EP_IN</groupName>
-      <baseAddress>0x80002080</baseAddress>
+      <baseAddress>0xf0003080</baseAddress>
       <addressBlock>
         <offset>0</offset>
         <size>0x40</size>
@@ -962,7 +962,7 @@
     <peripheral>
       <name>USB0_EP_OUT</name>
       <groupName>USB0_EP_OUT</groupName>
-      <baseAddress>0x80002100</baseAddress>
+      <baseAddress>0xf0003100</baseAddress>
       <addressBlock>
         <offset>0</offset>
         <size>0x80</size>
@@ -1222,7 +1222,7 @@
     <peripheral>
       <name>USB1</name>
       <groupName>USB1</groupName>
-      <baseAddress>0x80003000</baseAddress>
+      <baseAddress>0xf0004000</baseAddress>
       <addressBlock>
         <offset>0</offset>
         <size>0x40</size>
@@ -1318,7 +1318,7 @@
     <peripheral>
       <name>USB1_EP_CONTROL</name>
       <groupName>USB1_EP_CONTROL</groupName>
-      <baseAddress>0x80003040</baseAddress>
+      <baseAddress>0xf0004040</baseAddress>
       <addressBlock>
         <offset>0</offset>
         <size>0x40</size>
@@ -1478,7 +1478,7 @@
     <peripheral>
       <name>USB1_EP_IN</name>
       <groupName>USB1_EP_IN</groupName>
-      <baseAddress>0x80003080</baseAddress>
+      <baseAddress>0xf0004080</baseAddress>
       <addressBlock>
         <offset>0</offset>
         <size>0x40</size>
@@ -1675,7 +1675,7 @@
     <peripheral>
       <name>USB1_EP_OUT</name>
       <groupName>USB1_EP_OUT</groupName>
-      <baseAddress>0x80003100</baseAddress>
+      <baseAddress>0xf0004100</baseAddress>
       <addressBlock>
         <offset>0</offset>
         <size>0x80</size>
@@ -1935,7 +1935,7 @@
     <peripheral>
       <name>USB2</name>
       <groupName>USB2</groupName>
-      <baseAddress>0x80004000</baseAddress>
+      <baseAddress>0xf0005000</baseAddress>
       <addressBlock>
         <offset>0</offset>
         <size>0x40</size>
@@ -2031,7 +2031,7 @@
     <peripheral>
       <name>USB2_EP_CONTROL</name>
       <groupName>USB2_EP_CONTROL</groupName>
-      <baseAddress>0x80004040</baseAddress>
+      <baseAddress>0xf0005040</baseAddress>
       <addressBlock>
         <offset>0</offset>
         <size>0x40</size>
@@ -2191,7 +2191,7 @@
     <peripheral>
       <name>USB2_EP_IN</name>
       <groupName>USB2_EP_IN</groupName>
-      <baseAddress>0x80004080</baseAddress>
+      <baseAddress>0xf0005080</baseAddress>
       <addressBlock>
         <offset>0</offset>
         <size>0x40</size>
@@ -2388,7 +2388,7 @@
     <peripheral>
       <name>USB2_EP_OUT</name>
       <groupName>USB2_EP_OUT</groupName>
-      <baseAddress>0x80004100</baseAddress>
+      <baseAddress>0xf0005100</baseAddress>
       <addressBlock>
         <offset>0</offset>
         <size>0x80</size>
@@ -2655,12 +2655,12 @@
       </memoryRegion>
       <memoryRegion>
         <name>SCRATCHPAD</name>
-        <baseAddress>0x00004000</baseAddress>
+        <baseAddress>0x10000000</baseAddress>
         <size>0x00001000</size>
       </memoryRegion>
       <memoryRegion>
         <name>INTERNAL_SRAM</name>
-        <baseAddress>0x10000000</baseAddress>
+        <baseAddress>0x40000000</baseAddress>
         <size>0x00010000</size>
       </memoryRegion>
     </memoryRegions>

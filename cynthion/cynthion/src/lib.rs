@@ -8,7 +8,7 @@ pub mod class;
 pub mod error;
 pub mod log;
 pub mod macros;
-//pub mod panic_log;
+pub mod panic_log;
 
 // - aliases ------------------------------------------------------------------
 

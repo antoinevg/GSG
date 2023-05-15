@@ -26,22 +26,14 @@ object GenCoreCynthion {
       // configure plugins
       val plugins = ArrayBuffer[Plugin[VexRiscv]]()
       plugins ++= List(
-        /*new IBusSimplePlugin(
-          resetVector = null,
-          prediction = STATIC,
-          cmdForkOnSecondStage = false,
-          cmdForkPersistence = false,
-          compressedGen = true,
-          memoryTranslatorPortConfig = null
-        ),*/
         new IBusCachedPlugin(
           resetVector = null,
           relaxedPcCalculation = false,
           prediction = STATIC,
-          compressedGen = true, // compressed instructions support
+          compressedGen = true, // compressed instruction support
           memoryTranslatorPortConfig = null,
           config = InstructionCacheConfig(
-            cacheSize = 2048,
+            cacheSize = 4096,
             bytePerLine = 32,
             wayCount = 1,
             addressWidth = 32,
@@ -54,13 +46,6 @@ object GenCoreCynthion {
             twoCycleCache = false // !compressedGen
           )
         ),
-
-        /*new DBusSimplePlugin(
-          catchAddressMisaligned = true,
-          catchAccessFault = true,
-          withLrSc = true, // atomic instructions support
-          memoryTranslatorPortConfig = null
-        ),*/
         new DBusCachedPlugin(
           dBusCmdMasterPipe = true,
           dBusCmdSlavePipe = true,
@@ -83,7 +68,6 @@ object GenCoreCynthion {
           memoryTranslatorPortConfig = null,
           csrInfo = true
         ),
-
         new StaticMemoryTranslatorPlugin(
           ioRange = _.msb
         ),
@@ -114,7 +98,7 @@ object GenCoreCynthion {
           catchAddressMisaligned = true
         ),
         new CsrPlugin(
-          CsrPluginConfig.all(mtvecInit = null).copy(ebreakGen = true)
+          CsrPluginConfig.all(mtvecInit = null).copy(ebreakGen = true, xtvecModeGen = false)
         ),
         new YamlPlugin(outputFile + ".yaml"),
         new MulPlugin,
