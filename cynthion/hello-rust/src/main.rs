@@ -25,6 +25,17 @@ fn custom_exception_handler(panic_info: &core::panic::PanicInfo) -> ! {
 core::arch::global_asm!(r#"
 .section .init
 _start:
+    // flush icache
+    .word(0x100f)
+    nop
+    nop
+    nop
+    nop
+    nop
+
+    // flush dcache
+    .word(0x500f)
+
     // global pointer
     .option push
     .option norelax
@@ -48,24 +59,13 @@ _start:
 #[no_mangle]
 pub unsafe extern "C" fn main() -> ! {
     const MSG: &'static str = "Entering main loop.";
-
-    // repro #1 - nop either here or in _start
-    //unsafe { core::arch::asm!("nop", options(nomem, nostack)) };
-    for b in MSG.bytes() { }
-
-    //uart_tx(MSG);
-
-    // repro #2 - doesn't work in this config, keeping as reference
-    //for &b in MSG.as_bytes() { }
+    uart_tx(MSG);
 
     let mut counter = 0;
     loop {
         unsafe { asm::delay(1_000_000) };
         unsafe { core::ptr::write_volatile(IO_LEDS as *mut u32, counter & 0b11_1111) };
         counter += 1;
-
-        // or here
-        //unsafe { core::arch::asm!("nop", options(nomem, nostack)) };
     }
 }
 
@@ -86,14 +86,14 @@ mod asm {
 
 // - peripherals --------------------------------------------------------------
 
-const IO_BASE: usize = 0x8000_0000;
-const IO_LEDS: usize = IO_BASE + 0x0080;
-const IO_UART_TX_DATA: usize = IO_BASE + 0x0010;
-const IO_UART_TX_RDY: usize = IO_BASE + 0x0014;
+const IO_BASE: usize = 0xf000_0000;
+const IO_LEDS: usize = IO_BASE + 0x1000;
+const IO_UART_TX_DAT: usize = IO_BASE + 0x2000 + 0x0010;
+const IO_UART_TX_RDY: usize = IO_BASE + 0x2000 + 0x0014;
 
 fn uart_tx(s: &str) {
     for b in s.bytes() {
         while unsafe { core::ptr::read_volatile(IO_UART_TX_RDY as *mut u32) } == 0 { }
-        unsafe { core::ptr::write_volatile(IO_UART_TX_DATA as *mut u32, b as u32 & 0b1111_1111) };
+        unsafe { core::ptr::write_volatile(IO_UART_TX_DAT as *mut u32, b as u32 & 0b1111_1111) };
     }
 }

@@ -8,12 +8,13 @@ use cynthion::pac;
 
 // - panic handler ------------------------------------------------------------
 
-#[no_mangle]
+// disable panic handler in lib.rs to use this
+/*#[no_mangle]
 #[panic_handler]
 fn panic(panic_info: &core::panic::PanicInfo) -> ! {
     unsafe { core::ptr::write_volatile(IO_LEDS as *mut u32, 0b11_1100) };
     loop { }
-}
+}*/
 
 #[export_name = "ExceptionHandler"]
 fn custom_exception_handler(panic_info: &core::panic::PanicInfo) -> ! {
@@ -26,12 +27,7 @@ fn custom_exception_handler(panic_info: &core::panic::PanicInfo) -> ! {
 #[riscv_rt::entry]
 fn main() -> ! {
     const MSG: &'static str = "Entering main loop.";
-
-    unsafe { core::arch::asm!("nop", options(nomem, nostack)) };
-    unsafe { core::arch::asm!("nop", options(nomem, nostack)) };
-    unsafe { core::arch::asm!("nop", options(nomem, nostack)) };
-    unsafe { core::arch::asm!("nop", options(nomem, nostack)) };
-    for &b in MSG.as_bytes() { }
+    uart_tx(MSG);
 
     let mut counter = 0;
     loop {

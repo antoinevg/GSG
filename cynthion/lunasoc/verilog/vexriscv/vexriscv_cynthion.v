@@ -1,6 +1,6 @@
 // Generator : SpinalHDL v1.8.1    git head : 2a7592004363e5b40ec43e1f122ed8641cd8965b
 // Component : VexRiscv
-// Git hash  : d6f93be9138a6b6d39bf9b1bf05a7c397a24da85
+// Git hash  : c444747ccf03c9a8d72343068d8cb8748eab2894
 
 `timescale 1ns/1ps
 
@@ -392,6 +392,8 @@ module VexRiscv (
   wire       [1:0]    _zz__zz_CsrPlugin_exceptionPortCtrl_exceptionContext_code_1;
   wire       [1:0]    _zz__zz_CsrPlugin_exceptionPortCtrl_exceptionContext_code_1_1;
   wire                _zz_when;
+  wire       [29:0]   _zz_CsrPlugin_jumpInterface_payload;
+  wire       [29:0]   _zz_CsrPlugin_jumpInterface_payload_1;
   wire       [65:0]   _zz_writeBack_MulPlugin_result;
   wire       [65:0]   _zz_writeBack_MulPlugin_result_1;
   wire       [31:0]   _zz__zz_decode_RS2_2;
@@ -1384,6 +1386,7 @@ module VexRiscv (
   reg        [31:0]   _zz_CsrPlugin_csrMapping_readDataInit_6;
   reg        [31:0]   _zz_CsrPlugin_csrMapping_readDataInit_7;
   reg        [31:0]   _zz_CsrPlugin_csrMapping_readDataInit_8;
+  wire                when_CsrPlugin_l964;
   reg        [31:0]   _zz_CsrPlugin_csrMapping_readDataInit_9;
   reg        [31:0]   _zz_CsrPlugin_csrMapping_readDataInit_10;
   reg        [31:0]   _zz_CsrPlugin_csrMapping_readDataInit_11;
@@ -1546,6 +1549,8 @@ module VexRiscv (
   assign _zz_execute_BranchPlugin_branch_src2_9 = (execute_IS_RVC ? 3'b010 : 3'b100);
   assign _zz__zz_CsrPlugin_exceptionPortCtrl_exceptionContext_code_1 = (_zz_CsrPlugin_exceptionPortCtrl_exceptionContext_code & (~ _zz__zz_CsrPlugin_exceptionPortCtrl_exceptionContext_code_1_1));
   assign _zz__zz_CsrPlugin_exceptionPortCtrl_exceptionContext_code_1_1 = (_zz_CsrPlugin_exceptionPortCtrl_exceptionContext_code - 2'b01);
+  assign _zz_CsrPlugin_jumpInterface_payload = (CsrPlugin_xtvec_base + _zz_CsrPlugin_jumpInterface_payload_1);
+  assign _zz_CsrPlugin_jumpInterface_payload_1 = {26'd0, CsrPlugin_trapCause};
   assign _zz_writeBack_MulPlugin_result = {{14{writeBack_MUL_LOW[51]}}, writeBack_MUL_LOW};
   assign _zz_writeBack_MulPlugin_result_1 = ({32'd0,writeBack_MUL_HH} <<< 32);
   assign _zz__zz_decode_RS2_2 = writeBack_MUL_LOW[31 : 0];
@@ -3133,7 +3138,7 @@ module VexRiscv (
   always @(*) begin
     CsrPlugin_jumpInterface_payload = 32'bxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx;
     if(when_CsrPlugin_l1390) begin
-      CsrPlugin_jumpInterface_payload = {CsrPlugin_xtvec_base,2'b00};
+      CsrPlugin_jumpInterface_payload = (((CsrPlugin_xtvec_mode == 2'b00) || CsrPlugin_hadException) ? {CsrPlugin_xtvec_base,2'b00} : {_zz_CsrPlugin_jumpInterface_payload,2'b00});
     end
     if(when_CsrPlugin_l1456) begin
       case(switch_CsrPlugin_l1460)
@@ -4972,6 +4977,7 @@ module VexRiscv (
     end
   end
 
+  assign when_CsrPlugin_l964 = ({(CsrPlugin_csrMapping_writeDataSignal[1 : 0] == 2'b01),(CsrPlugin_csrMapping_writeDataSignal[1 : 0] == 2'b00)} != 2'b00);
   always @(*) begin
     _zz_CsrPlugin_csrMapping_readDataInit_9 = 32'h0;
     if(execute_CsrPlugin_csr_773) begin
@@ -5826,6 +5832,9 @@ module VexRiscv (
     if(execute_CsrPlugin_csr_773) begin
       if(execute_CsrPlugin_writeEnable) begin
         CsrPlugin_mtvec_base <= CsrPlugin_csrMapping_writeDataSignal[31 : 2];
+        if(when_CsrPlugin_l964) begin
+          CsrPlugin_mtvec_mode <= CsrPlugin_csrMapping_writeDataSignal[1 : 0];
+        end
       end
     end
     if(execute_CsrPlugin_csr_833) begin

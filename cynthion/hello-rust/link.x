@@ -12,19 +12,19 @@ SECTIONS
     .init :
     {
         *(.init) *(.init.*)
-    } > internal_srom
+    } > internal_sram
 
     /* .text */
     .text :
     {
         *(.text) *(.text.*)
-    } > internal_srom
+    } > internal_sram
 
     /* .rodata */
     .rodata :
     {
         *(.rodata) *(.rodata.*)
-    } > internal_rodata
+    } > internal_sram
 
     /* .sdata */
     .sdata :
@@ -48,4 +48,4 @@ SECTIONS
 }
 
 /* stack */
-PROVIDE(__stack_top = ORIGIN(internal_stack) + LENGTH(internal_stack));
+PROVIDE(__stack_top = ORIGIN(internal_sram) + LENGTH(internal_sram));

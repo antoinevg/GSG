@@ -6,6 +6,7 @@
 """VexRiscv SoC for LUNA firmware."""
 
 from generate                import Introspect
+from vexriscv                import VexRiscv
 
 #from luna.gateware.utils.cdc import synchronize
 
@@ -24,7 +25,7 @@ from lambdasoc.periph.sram   import SRAMPeripheral
 from lambdasoc.periph.timer  import TimerPeripheral
 from lambdasoc.soc.cpu       import CPUSoC, BIOSBuilder
 
-from vexriscv                import VexRiscv
+from luna.gateware.soc.memory import WishboneRAM
 
 import logging
 
@@ -42,7 +43,7 @@ class CoreSoC(CPUSoC, Elaboratable):
             reset_addr=0x00000000,
             variant="cynthion",
             #variant="imac",
-            #variant="imac+dcache", # TODO significant corruption of memory occurs
+            #variant="imac+dcache",
             #variant="imac+litex",
         )
 
@@ -175,10 +176,7 @@ class LunaSoC(CoreSoC):
         )
 
         # load external firmware binary into bootrom
-        #firmware_bin = "../target/riscv32i-unknown-none-elf/release/lunabios.bin"
         #firmware_bin = "/Users/antoine/GreatScott/cynthion-litex.git/hello-rust/hello-rust.bin"
-        #firmware_bin = "/Users/antoine/GreatScott/cynthion-litex.git/hello-rust/bios.bin"
-        #firmware_bin = "/Users/antoine/GreatScott/cynthion-litex.git/hello-c/main.bin"
         #from bootloader import get_mem_data
         #data = get_mem_data(firmware_bin,
         #                    data_width = 32,
@@ -193,9 +191,7 @@ class LunaSoC(CoreSoC):
         self.scratchpad = SRAMPeripheral(size=scratchpad_size)
         self._bus_decoder.add(self.scratchpad.bus, addr=scratchpad_addr)
 
-        #self._internal_sram = SRAMPeripheral(size=internal_sram_size)
-        #self._internal_sram = SRAMPeripheral(size=internal_sram_size, init=data)
-        from luna.gateware.soc.memory import WishboneRAM
+        # VexRiscv does not like LambdaSoC RAM for main program memory
         self._internal_sram = WishboneRAM(
             name = "internal_sram",
             addr_width = (self.internal_sram_size - 1).bit_length(),
@@ -265,7 +261,6 @@ class LunaSoC(CoreSoC):
             self._peripherals.append(peripheral)
 
         return peripheral
-
 
 
     # - LambdaSoC @property overrides --

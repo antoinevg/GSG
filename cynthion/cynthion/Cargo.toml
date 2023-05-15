@@ -51,11 +51,8 @@ lunasoc-hal = { path = "../lunasoc-hal", default-features = false, features = []
 
 riscv = { version = "=0.10.1", features = ["critical-section-single-hart"] }
 riscv-rt = { version = "=0.11.0" }
-#riscv-rt = { path = "../../../upstream/riscv-rt.git", default-features = false  }
 
 bbqueue = { version = "0.5.1", default-features = false }
-#bbqueue = { path = "../../../upstream/bbqueue.git/core", default-features = false }
-#bbqueue = { git = "https://github.com/antoinevg/bbqueue.git", branch = "antoinevg/atomic-polyfill", default-features = false }
 
 heapless = { version = "=0.7.16", default-features = false, features = ["mpmc_large"] } # TODO 0.8.0 is en-route
 zerocopy = { version = "=0.7.0-alpha.2", default-features = false }

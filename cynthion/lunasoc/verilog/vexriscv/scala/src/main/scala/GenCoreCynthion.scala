@@ -98,7 +98,7 @@ object GenCoreCynthion {
           catchAddressMisaligned = true
         ),
         new CsrPlugin(
-          CsrPluginConfig.all(mtvecInit = null).copy(ebreakGen = true, xtvecModeGen = false)
+          CsrPluginConfig.all(mtvecInit = null).copy(ebreakGen = true, xtvecModeGen = true)
         ),
         new YamlPlugin(outputFile + ".yaml"),
         new MulPlugin,
