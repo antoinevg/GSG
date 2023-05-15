@@ -42,18 +42,18 @@ static mut USB_RECEIVE_BUFFER_PRODUCER: Option<Producer<USB_RECEIVE_BUFFER_SIZE>
 #[allow(non_snake_case)]
 #[no_mangle]
 fn MachineExternal() {
-    use cynthion::UsbInterface::Host;
+    use cynthion::UsbInterface::Aux;
 
     let usb1 = unsafe { hal::Usb1::summon() };
     let leds = unsafe { &pac::Peripherals::steal().LEDS };
 
-    // - usb1 interrupts - "host_phy" --
+    // - usb1 interrupts - "host_phy" / "aux_phy" --
 
     // USB1 UsbBusReset
     let message = if usb1.is_pending(pac::Interrupt::USB1) {
         usb1.clear_pending(pac::Interrupt::USB1);
         usb1.bus_reset();
-        Message::UsbBusReset(Host)
+        Message::UsbBusReset(Aux)
 
     // USB1_EP_CONTROL UsbReceiveSetupPacket
     } else if usb1.is_pending(pac::Interrupt::USB1_EP_CONTROL) {
@@ -62,7 +62,7 @@ fn MachineExternal() {
         usb1.clear_pending(pac::Interrupt::USB1_EP_CONTROL);
 
         match SetupPacket::try_from(setup_packet_buffer) {
-            Ok(setup_packet) => Message::UsbReceiveSetupPacket(Host, setup_packet),
+            Ok(setup_packet) => Message::UsbReceiveSetupPacket(Aux, setup_packet),
             Err(e) => Message::ErrorMessage("USB1_EP_CONTROL failed to read setup packet"),
         }
 
@@ -74,7 +74,7 @@ fn MachineExternal() {
             let mut buffer = [0_u8; cynthion::EP_MAX_RECEIVE_LENGTH];
             let bytes_read = usb1.read(endpoint, &mut buffer);
             usb1.clear_pending(pac::Interrupt::USB1_EP_OUT);
-            Message::UsbReceiveData(Host, endpoint, bytes_read, buffer)
+            Message::UsbReceiveData(Aux, endpoint, bytes_read, buffer)
         } else {
             leds.output.write(|w| unsafe { w.output().bits(0b00_0001) });
             if let Some(producer) = unsafe { USB_RECEIVE_BUFFER_PRODUCER.as_mut() } {
@@ -88,7 +88,7 @@ fn MachineExternal() {
                         leds.output.write(|w| unsafe { w.output().bits(0b00_1111) });
                         grant.commit(64);
                         leds.output.write(|w| unsafe { w.output().bits(0b01_1111) });
-                        Message::UsbReceiveData(Host, endpoint, bytes_read, buffer)
+                        Message::UsbReceiveData(Aux, endpoint, bytes_read, buffer)
                     }
                     Err(e) => {
                         leds.output.write(|w| unsafe { w.output().bits(0b11_1100) });
@@ -111,7 +111,7 @@ fn MachineExternal() {
             usb1.clear_tx_ack_active();
         }
 
-        Message::UsbTransferComplete(Host, endpoint)
+        Message::UsbTransferComplete(Aux, endpoint)
 
     // - Unknown Interrupt --
     } else {
@@ -223,28 +223,28 @@ fn main_loop() -> GreatResult<()> {
     loop {
         let mut queue_length = 0;
         while let Some(message) = MESSAGE_QUEUE.dequeue() {
-            use cynthion::{Message::*, UsbInterface::Host};
+            use cynthion::{Message::*, UsbInterface::Aux};
 
             match message {
                 // - usb1 message handlers --
 
                 // Usb1 received USB bus reset
-                UsbBusReset(Host) => (),
+                UsbBusReset(Aux) => (),
 
                 // Usb1 received setup packet
-                UsbReceiveSetupPacket(Host, setup_packet) => {
+                UsbReceiveSetupPacket(Aux, setup_packet) => {
                     test_command = TestCommand::Stop;
                     usb1.handle_setup_request(&setup_packet)
                         .map_err(|_| GreatError::BadMessage)?;
                 }
 
                 // TODO Usb1 received zero byte packet on endpoint 0x00 ???
-                UsbReceiveData(Host, 0x00, bytes_read, buffer) => {
+                UsbReceiveData(Aux, 0x00, bytes_read, buffer) => {
                     info!("received {} bytes on endpoint 0x00", bytes_read);
                 }
 
                 // Usb1 received bulk test data on endpoint 0x01
-                UsbReceiveData(Host, 0x01, bytes_read, buffer) => {
+                UsbReceiveData(Aux, 0x01, bytes_read, buffer) => {
                     leds.output.write(|w| unsafe { w.output().bits(0b11_1000) });
                     info!("received bulk data from host: {} bytes", bytes_read);
 
@@ -265,7 +265,7 @@ fn main_loop() -> GreatResult<()> {
                 }
 
                 // Usb1 received command data on endpoint 0x02
-                UsbReceiveData(Host, 0x02, bytes_read, buffer) => {
+                UsbReceiveData(Aux, 0x02, bytes_read, buffer) => {
                     match (bytes_read, buffer[0].into()) {
                         (1, TestCommand::In) => {
                             info!("starting test: IN");
@@ -300,7 +300,7 @@ fn main_loop() -> GreatResult<()> {
                 }
 
                 // Usb1 transfer complete
-                UsbTransferComplete(Host, endpoint) => {
+                UsbTransferComplete(Aux, endpoint) => {
                     leds.output.write(|w| unsafe { w.output().bits(0b10_0000) });
                 }
 
