@@ -55,7 +55,7 @@ class LedPeripheral(Peripheral, Elaboratable):
 # - CynthionSoC ---------------------------------------------------------------
 
 class CynthionSoC(Elaboratable):
-    def __init__(self, clock_frequency=int(60e6)):
+    def __init__(self, clock_frequency):
 
         # Create a stand-in for our UART.
         self.uart_pins = Record([
@@ -173,11 +173,10 @@ class CynthionSoC(Elaboratable):
 # - main ----------------------------------------------------------------------
 
 import luna
-from luna.gateware.platform.ulx3s  import ULX3S_85F_Platform
-from luna.gateware.platform        import CynthionPlatformRev0D4, CynthionPlatformRev0D7
+from luna.gateware.platform.ulx3s    import ULX3S_85F_Platform
+from luna.gateware.platform          import CynthionPlatformRev0D4, CynthionPlatformRev0D7
 
-from lambdasoc.sim.platform        import CXXRTLPlatform
-
+from lambdasoc.sim.platform          import CXXRTLPlatform
 
 if __name__ == "__main__":
     from generate import Generate
@@ -196,24 +195,29 @@ if __name__ == "__main__":
     platform = luna.gateware.platform.get_appropriate_platform()
     #platform = CynthionPlatformRev0D7()
     #platform = ULX3S_85F_Platform()
+    #platform = CXXRTLPlatform()
 
-    # create design
+    # configure platform
+    clock_frequency = int(platform.default_clk_frequency)
+
     if isinstance(platform, CynthionPlatformRev0D4):
         logging.info("Building for Cynthion revision 0.4")
-        design = CynthionSoC(clock_frequency=int(60e6))
     elif isinstance(platform, CynthionPlatformRev0D7):
         logging.info("Building for Cynthion revision 0.7")
-        design = CynthionSoC(clock_frequency=int(60e6))
     elif isinstance(platform, ULX3S_85F_Platform):
         logging.info("Building for ULX3s")
-        design = CynthionSoC(clock_frequency=int(48e6))
+        clock_frequency=int(48e6)
     elif isinstance(platform, CXXRTLPlatform):
         logging.info("Building for CXXRTLPlatform")
-        design = CynthionSoC(clock_frequency=int(48e6))
+        clock_frequency=int(1e6)
     else:
         logging.error("Unsupported platform: {}".format(platform))
         sys.exit()
-    design = CynthionSoC(clock_frequency=int(60e6))
+
+    logging.info(f"Platform clock frequency: {clock_frequency}")
+
+    # create design
+    design = CynthionSoC(clock_frequency=clock_frequency)
 
     # TODO fix litex build
     thirdparty = os.path.join(build_dir, "lambdasoc.soc.cpu/bios/3rdparty/litex")
