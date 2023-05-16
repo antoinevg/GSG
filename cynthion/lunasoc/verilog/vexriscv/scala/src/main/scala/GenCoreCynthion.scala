@@ -52,7 +52,7 @@ object GenCoreCynthion {
           dBusRspSlavePipe = false,
           relaxedMemoryTranslationRegister = false,
           config = new DataCacheConfig(
-            cacheSize = 2048,
+            cacheSize = 4096,
             bytePerLine = 32,
             wayCount = 1,
             addressWidth = 32,
@@ -69,7 +69,7 @@ object GenCoreCynthion {
           csrInfo = true
         ),
         new StaticMemoryTranslatorPlugin(
-          ioRange = _.msb
+          ioRange = _.msb    // 0x8000_0000 -> 0xffff_ffff will not be cached
         ),
         new DecoderSimplePlugin(
           catchIllegalInstruction = true
