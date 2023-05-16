@@ -197,7 +197,7 @@ class LunaSoC(CoreSoC):
 
         # VexRiscv does not like LambdaSoC RAM for main program memory
         self._internal_sram = SRAMPeripheralWithACK(size=internal_sram_size)
-        # self._internal_sram = WishboneRAM_burst(
+        # self._internal_sram = WishboneRAM(
         #     name = "internal_sram",
         #     addr_width = (self.internal_sram_size - 1).bit_length(),
         # )

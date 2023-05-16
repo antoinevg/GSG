@@ -76,18 +76,13 @@ fn MachineExternal() {
             usb1.clear_pending(pac::Interrupt::USB1_EP_OUT);
             Message::UsbReceiveData(Aux, endpoint, bytes_read, buffer)
         } else {
-            leds.output.write(|w| unsafe { w.output().bits(0b00_0001) });
             if let Some(producer) = unsafe { USB_RECEIVE_BUFFER_PRODUCER.as_mut() } {
-                leds.output.write(|w| unsafe { w.output().bits(0b00_0011) });
                 match producer.grant_exact(64) {
                     Ok(mut grant) => {
                         let buffer = [0_u8; cynthion::EP_MAX_RECEIVE_LENGTH];
-                        leds.output.write(|w| unsafe { w.output().bits(0b00_0111) });
                         let bytes_read = usb1.read(endpoint, grant.buf());
                         usb1.clear_pending(pac::Interrupt::USB1_EP_OUT);
-                        leds.output.write(|w| unsafe { w.output().bits(0b00_1111) });
                         grant.commit(64);
-                        leds.output.write(|w| unsafe { w.output().bits(0b01_1111) });
                         Message::UsbReceiveData(Aux, endpoint, bytes_read, buffer)
                     }
                     Err(e) => {
@@ -245,7 +240,6 @@ fn main_loop() -> GreatResult<()> {
 
                 // Usb1 received bulk test data on endpoint 0x01
                 UsbReceiveData(Aux, 0x01, bytes_read, buffer) => {
-                    leds.output.write(|w| unsafe { w.output().bits(0b11_1000) });
                     info!("received bulk data from host: {} bytes", bytes_read);
 
                     match consumer.read() {
@@ -271,13 +265,11 @@ fn main_loop() -> GreatResult<()> {
                             info!("starting test: IN");
                             test_stats.reset();
                             test_command = TestCommand::In;
-                            leds.output.write(|w| unsafe { w.output().bits(0b00_0000) });
                         }
                         (1, TestCommand::Out) => {
                             info!("starting test: OUT");
                             test_stats.reset();
                             test_command = TestCommand::Out;
-                            leds.output.write(|w| unsafe { w.output().bits(0b00_0000) });
                         }
                         (1, _) => {
                             info!("stopping test");
@@ -288,7 +280,6 @@ fn main_loop() -> GreatResult<()> {
                             info!("  write count: {}", test_stats.write_count);
                             info!("  reset count: {}", test_stats.reset_count);
                             test_command = TestCommand::Stop;
-                            leds.output.write(|w| unsafe { w.output().bits(0b00_0000) });
                         }
                         _ => {
                             error!(
@@ -343,8 +334,6 @@ fn test_in_speed(
     test_data: &[u8; TEST_WRITE_SIZE],
     test_stats: &mut TestStats,
 ) {
-    leds.output.write(|w| unsafe { w.output().bits(0b00_0001) });
-
     // Passing in a fixed size slice ref is 4MB/s vs 3.7MB/s
     #[inline(always)]
     fn test_write_slice(usb1: &hal::Usb1, endpoint: u8, data: &[u8; TEST_WRITE_SIZE]) -> bool {
@@ -353,11 +342,11 @@ fn test_in_speed(
             usb1.ep_in.reset.write(|w| w.reset().bit(true));
             did_reset = true;
         }
-        // 4.00309544825905 MB/s
+        // 5.005340640788884 MB/s
         for byte in data {
             usb1.ep_in.data.write(|w| unsafe { w.data().bits(*byte) });
         }
-        // 5.063017280948139 MB/s - no memory access
+        // 5.507828119928235 MB/s - no memory access
         /*for n in 0..TEST_WRITE_SIZE {
             usb1.ep_in.data.write(|w| unsafe { w.data().bits((n % 256) as u8) });
         }*/
@@ -371,7 +360,6 @@ fn test_in_speed(
     let (_, t_flush) = cynthion::profile!(
         let mut timeout = 100;
         while !usb1.ep_in.idle.read().idle().bit() && timeout > 0 {
-            leds.output.write(|w| unsafe { w.output().bits(0b00_0010) });
             timeout -= 1;
         }
     );
@@ -386,8 +374,6 @@ fn test_in_speed(
 
     // update stats
     test_stats.update_in(t_write, t_flush, did_reset);
-
-    leds.output.write(|w| unsafe { w.output().bits(0b00_0100) });
 }
 
 /// Receive test data from host as fast as possible
