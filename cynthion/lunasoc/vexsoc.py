@@ -25,6 +25,9 @@ from lambdasoc.periph.sram   import SRAMPeripheral
 from lambdasoc.periph.timer  import TimerPeripheral
 from lambdasoc.soc.cpu       import CPUSoC, BIOSBuilder
 
+from lambdasoc.sim.platform          import CXXRTLPlatform
+from lambdasoc.sim.blackboxes.serial import AsyncSerial_Blackbox
+
 from luna.gateware.soc.memory import WishboneRAM
 from sram                     import SRAMPeripheral as SRAMPeripheralWithACK
 
@@ -170,7 +173,7 @@ class LunaSoC(CoreSoC):
         uart_addr  = 0xf0002000
         uart_irqno = self._interrupt_index
         self._interrupt_index += 1
-        uart_core  = AsyncSerial(
+        uart_core = AsyncSerial(
             data_bits = 8,
             divisor   = int(self.sync_clk_freq // uart_baud_rate),
             pins      = uart_pins,
