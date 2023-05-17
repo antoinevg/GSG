@@ -35,7 +35,7 @@ pub const BOARD_INFORMATION: BoardInformation = BoardInformation {
 };
 
 pub const EP_MAX_ENDPOINTS: usize = 16;
-pub const EP_MAX_RECEIVE_LENGTH: usize = 64;
+pub const EP_MAX_RECEIVE_LENGTH: usize = 512;
 
 // - messages -----------------------------------------------------------------
 
@@ -47,7 +47,8 @@ pub enum UsbInterface {
     Control,  // Usb2
 }
 
-// Starting stack size with Queue<Message, 512> is: 2976 bytes
+// Starting stack size with Queue<Message, 512> is:  2976 bytes
+// New stack size with      Queue<Message, 512> is: 32384 bytes
 pub enum Message {
     // interrupts
     HandleInterrupt(pac::Interrupt),
@@ -74,8 +75,9 @@ pub enum Message {
 
     /// Received data on USBx_EP_OUT
     ///
-    /// Contents is (UsbInterface, endpoint, bytes_read, buffer)
-    UsbReceiveData(UsbInterface, u8, usize, [u8; EP_MAX_RECEIVE_LENGTH]),
+    /// Contents is (UsbInterface, endpoint, bytes_read)
+    //UsbReceiveData(UsbInterface, u8, usize, [u8; EP_MAX_RECEIVE_LENGTH]),
+    UsbReceiveData(UsbInterface, u8, usize),
 
     // misc
     ErrorMessage(&'static str),
@@ -101,7 +103,8 @@ impl core::fmt::Debug for Message {
             Message::UsbReceiveSetupPacket(interface, _setup_packet) => {
                 write!(f, "UsbReceiveSetupPacket({:?})", interface)
             }
-            Message::UsbReceiveData(interface, endpoint, bytes_read, _buffer) => write!(
+            //Message::UsbReceiveData(interface, endpoint, bytes_read, _buffer) => write!(
+            Message::UsbReceiveData(interface, endpoint, bytes_read) => write!(
                 f,
                 "UsbReceiveData({:?}, {}, {})",
                 interface, endpoint, bytes_read

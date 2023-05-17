@@ -24,15 +24,37 @@ BULK_ENDPOINT_NUMBER = 1
 COMMAND_ENDPOINT_NUMBER = 2
 
 # Set the total amount of data to be used in our speed test.
-TEST_DATA_SIZE = 1 * 1024 * 1024 # 1MB
+TEST_DATA_SIZE = 2 * 1024 * 1024 # 2MB
 
 # Set the size each transfer will receive or transmit
 TEST_TRANSFER_SIZE = 16 * 1024
 
 # Size of the host-size "transfer queue" -- this is effectively the number of async transfers we'll
 # have scheduled at a given time.
-IN_TRANSFER_QUEUE_DEPTH = 16
+IN_TRANSFER_QUEUE_DEPTH  = 16
+
+# cynthion quickly becomes overwhelmed with simultaneous transfers causing a: LIBUSB_ERROR_NOT_FOUND
 OUT_TRANSFER_QUEUE_DEPTH = 1
+
+# read packets:
+# 1: 2.448430428023344MB/s
+# 2: 2.4717943643756657MB/s
+# 4: 2.51900532612526MB/s.
+# 5: 2.5068577811577875MB/s.
+# 6: LIBUSB_ERROR_NOT_FOUND
+# 7: 2.5148447304802444MB/s.
+# 8: 2.5158352388810172MB/s.
+
+# drop packets:
+#  1: 11.419072351464296MB/s
+#  2: 18.385399967580145MB/s.
+#  3: 24.504871086525295MB/s.
+#  4: 30.89587741279804MB/s.
+#  5: 35.95011973110496MB/s.
+#  6: 44.002186713638345MB/s.
+#  7: 44.775200760703285MB/s.
+#  8: 46.824779890645644MB/s.
+# 16: 40.54324777930811MB/s.
 
 # Test commands
 class TestCommand(IntEnum):
@@ -152,8 +174,7 @@ def run_in_speed_test():
 def run_out_speed_test():
     """ Runs a simple OUT speed test, and reports throughput. """
 
-    #test_data = bytearray([x % 256 for x in range(512)])
-    test_data = bytearray([x % 256 for x in range(64)])
+    test_data = bytearray([x % 256 for x in range(512)])
     total_data_exchanged = 0
     failed_out = False
 
@@ -173,20 +194,22 @@ def run_out_speed_test():
 
             # Count the data exchanged in this packet...
             total_data_exchanged += transfer.getActualLength()
-            #logging.info(f"usb1.TRANSFER_COMPLETED: {total_data_exchanged} bytes")
+            logging.debug(f"usb1.TRANSFER_COMPLETED: {total_data_exchanged} bytes")
 
             # ... and if we should terminate, abort.
             if _should_terminate():
-                logging.info("usb1.TRANSFER_COMPLETED terminating")
+                logging.debug("usb1.TRANSFER_COMPLETED terminating")
                 return
 
-            # TODO why do I need to sleep?
-            # are we overwhelming the gateware?
-            import time
-            time.sleep(0.0001)
+            # time.sleep(1)
 
             # Otherwise, re-submit the transfer.
             transfer.submit()
+
+        elif status in (usb1.TRANSFER_STALL,):
+            logging.info(f"transfer stalled, backing off")
+            #transfer.device_handle.clearHalt(0x1)
+            #transfer.submit()
 
         else:
             failed_out = status
@@ -205,6 +228,7 @@ def run_out_speed_test():
 
             # Allocate the transfer...
             transfer = device.getTransfer()
+            transfer.device_handle = device
             transfer.setBulk(0x00 | BULK_ENDPOINT_NUMBER, test_data, callback=_transfer_completed, timeout=1000)
 
             # ... and store it.
@@ -251,13 +275,14 @@ def run_out_speed_test():
 
 if __name__ == "__main__":
     configure_default_logging()
-    #logging.info("Running IN speed test...")
+
     try:
+        logging.info("Running IN speed test...")
         run_in_speed_test()
-    except Exception as e:
-        logging.error(f"USB Bulk IN speed test failed: {e}")
-    logging.info("Running OUT speed test...")
-    try:
+        time.sleep(1)
+
+        logging.info("Running OUT speed test...")
         run_out_speed_test()
+
     except Exception as e:
-        logging.error(f"USB Bulk OUT speed test failed: {e}")
+        logging.error(f"USB Bulk speed test failed: {e}")
