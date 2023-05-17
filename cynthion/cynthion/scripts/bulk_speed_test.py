@@ -24,7 +24,9 @@ BULK_ENDPOINT_NUMBER = 1
 COMMAND_ENDPOINT_NUMBER = 2
 
 # Set the total amount of data to be used in our speed test.
-TEST_DATA_SIZE = 1 * 1024 * 1024
+TEST_DATA_SIZE = 1 * 1024 * 1024 # 1MB
+
+# Set the size each transfer will receive or transmit
 TEST_TRANSFER_SIZE = 16 * 1024
 
 # Size of the host-size "transfer queue" -- this is effectively the number of async transfers we'll
@@ -171,15 +173,17 @@ def run_out_speed_test():
 
             # Count the data exchanged in this packet...
             total_data_exchanged += transfer.getActualLength()
-            logging.info(f"usb1.TRANSFER_COMPLETED: {total_data_exchanged} bytes")
+            #logging.info(f"usb1.TRANSFER_COMPLETED: {total_data_exchanged} bytes")
 
             # ... and if we should terminate, abort.
             if _should_terminate():
                 logging.info("usb1.TRANSFER_COMPLETED terminating")
                 return
 
+            # TODO why do I need to sleep?
+            # are we overwhelming the gateware?
             import time
-            time.sleep(1)
+            time.sleep(0.0001)
 
             # Otherwise, re-submit the transfer.
             transfer.submit()

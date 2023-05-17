@@ -1,10 +1,14 @@
 # - helpful -------------------------------------------------------------------
 
-#BIN=firmware
-#TARGET=target/riscv32imac-unknown-none-elf
+#BIN=moondancer
+#TARGET=../target/riscv32imac-unknown-none-elf
 
-BIN=smollest
+BIN=bulk_speed_test
 TARGET=../target/riscv32i-unknown-none-elf/release
+
+#BIN=smollest
+#TARGET=../target/riscv32imac-unknown-none-elf/release
+
 
 size:
 	cargo size --release --bin $(BIN) -- -A

@@ -47,6 +47,7 @@ pub enum UsbInterface {
     Control,  // Usb2
 }
 
+// Starting stack size with Queue<Message, 512> is: 2976 bytes
 pub enum Message {
     // interrupts
     HandleInterrupt(pac::Interrupt),

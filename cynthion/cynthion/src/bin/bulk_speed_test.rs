@@ -31,7 +31,7 @@ const TEST_WRITE_SIZE: usize = 512;
 
 // - global static state ------------------------------------------------------
 
-static MESSAGE_QUEUE: Queue<Message, 32> = Queue::new();
+static MESSAGE_QUEUE: Queue<Message, 512> = Queue::new();
 
 const USB_RECEIVE_BUFFER_SIZE: usize = cynthion::EP_MAX_ENDPOINTS * cynthion::EP_MAX_RECEIVE_LENGTH;
 static USB_RECEIVE_BUFFER: BBBuffer<USB_RECEIVE_BUFFER_SIZE> = BBBuffer::new();
@@ -118,7 +118,7 @@ fn MachineExternal() {
         Ok(()) => (),
         Err(_) => {
             error!("MachineExternal - message queue overflow");
-            panic!("MachineExternal - message queue overflow");
+            //panic!("MachineExternal - message queue overflow");
         }
     }
 }
@@ -215,6 +215,8 @@ fn main_loop() -> GreatResult<()> {
     //let test_data: heapless::Vec<u8, TEST_WRITE_SIZE> =
     //    (0..TEST_WRITE_SIZE).map(|x| (x % 256) as u8).collect();
 
+    let mut counter = 0;
+
     loop {
         let mut queue_length = 0;
         while let Some(message) = MESSAGE_QUEUE.dequeue() {
@@ -240,15 +242,18 @@ fn main_loop() -> GreatResult<()> {
 
                 // Usb1 received bulk test data on endpoint 0x01
                 UsbReceiveData(Aux, 0x01, bytes_read, buffer) => {
-                    info!("received bulk data from host: {} bytes", bytes_read);
+                    counter += 1;
+                    if counter % 1000 == 0 {
+                        info!("received bulk data from host: {} bytes", bytes_read);
+                    }
 
                     match consumer.read() {
                         Ok(bbbuffer) => {
-                            info!(
+                            /*info!(
                                 "{:?} .. {:?}",
                                 &bbbuffer[0..8],
                                 &bbbuffer[(bytes_read - 8)..]
-                            );
+                            );*/
                             bbbuffer.release(64);
                         }
                         Err(e) => {
