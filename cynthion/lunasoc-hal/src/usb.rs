@@ -352,7 +352,7 @@ macro_rules! impl_usb {
                                 .epno
                                 .write(|w| unsafe { w.epno().bits(endpoint_address & 0xf) });
                             self.ep_out.stall.write(|w| w.stall().bit(state));
-                            trace!("  STALL EP_OUT: {} -> {}", endpoint_address, state);
+                            log::debug!("  STALL EP_OUT: {} -> {}", endpoint_address, state);
                         }
                         Direction::DeviceToHost => {
                             let endpoint_address = endpoint_address - 0x80; // TODO - see above
@@ -360,7 +360,7 @@ macro_rules! impl_usb {
                                 .epno
                                 .write(|w| unsafe { w.epno().bits(endpoint_address & 0xf) });
                             self.ep_in.stall.write(|w| w.stall().bit(state));
-                            trace!("  STALL EP_IN: {} -> {}", endpoint_address, state);
+                            log::debug!("  STALL EP_IN: {} -> {}", endpoint_address, state);
                         }
                     }
                 }
