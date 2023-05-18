@@ -31,30 +31,39 @@ TEST_TRANSFER_SIZE = 16 * 1024
 
 # Size of the host-size "transfer queue" -- this is effectively the number of async transfers we'll
 # have scheduled at a given time.
-IN_TRANSFER_QUEUE_DEPTH  = 16
+#
+# Typical rates are:
+#
+# IN
+#  1: 4.173176849909332MB/s.
+#  2: 5.0328733340888006MB/s.
+#  4: 5.0091525616969435MB/s.
+#  8: 5.3542598818498535MB/s.
+# 16: 5.392326674816055MB/s.
+#
+# OUT
+#  1: 1.4349925228227383MB/s.
+#  2: 1.4666992693303362MB/s.
+#  4: 1.457957841985751MB/s.
+#  8: 1.4654306572531672MB/s.
+# 16: 1.4512499419971148MB/s.
+#
+# OUT drop packets instead of sending to main loop
+#  1: 2.1133309407538894MB/s.
+#  2: 2.2171208320139666MB/s.
+#  4: 2.2115455978314476MB/s.
+#  8: 2.2631431327794385MB/s.
+# 16: 2.205459558884749MB/s.
+#
+# OUT reset endpoint
+#  1: 11.370056274755495MB/s.
+#  2: 17.527108715416382MB/s.
+#  4: 24.430036727672277MB/s.
+#  8: 21.272581091551572MB/s.
+# 16: LIBUSB_ERROR_NOT_FOUND
+#
+TRANSFER_QUEUE_DEPTH = 4
 
-# cynthion quickly becomes overwhelmed with simultaneous transfers causing a: LIBUSB_ERROR_NOT_FOUND
-OUT_TRANSFER_QUEUE_DEPTH = 1
-
-# read packets:
-# 1: 2.448430428023344MB/s
-# 2: 2.4717943643756657MB/s
-# 4: 2.51900532612526MB/s.
-# 5: 2.5068577811577875MB/s.
-# 6: LIBUSB_ERROR_NOT_FOUND
-# 7: 2.5148447304802444MB/s.
-# 8: 2.5158352388810172MB/s.
-
-# drop packets:
-#  1: 11.419072351464296MB/s
-#  2: 18.385399967580145MB/s.
-#  3: 24.504871086525295MB/s.
-#  4: 30.89587741279804MB/s.
-#  5: 35.95011973110496MB/s.
-#  6: 44.002186713638345MB/s.
-#  7: 44.775200760703285MB/s.
-#  8: 46.824779890645644MB/s.
-# 16: 40.54324777930811MB/s.
 
 # Test commands
 class TestCommand(IntEnum):
@@ -124,7 +133,7 @@ def run_in_speed_test():
 
         # Submit a set of transfers to perform async comms with.
         active_transfers = []
-        for _ in range(IN_TRANSFER_QUEUE_DEPTH):
+        for _ in range(TRANSFER_QUEUE_DEPTH):
 
             # Allocate the transfer...
             transfer = device.getTransfer()
@@ -224,7 +233,7 @@ def run_out_speed_test():
 
         # Submit a set of transfers to perform async comms with.
         active_transfers = []
-        for _ in range(OUT_TRANSFER_QUEUE_DEPTH):
+        for _ in range(TRANSFER_QUEUE_DEPTH):
 
             # Allocate the transfer...
             transfer = device.getTransfer()
@@ -275,6 +284,10 @@ def run_out_speed_test():
 
 if __name__ == "__main__":
     configure_default_logging()
+
+    logging.info(f"Total data transmitted for each test: {TEST_DATA_SIZE} bytes")
+    logging.info(f"Individual transfer size: {TEST_TRANSFER_SIZE} bytes")
+    logging.info(f"Transfer queue depth: {TRANSFER_QUEUE_DEPTH}")
 
     try:
         logging.info("Running IN speed test...")

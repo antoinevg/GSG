@@ -446,16 +446,6 @@ macro_rules! impl_usb {
 
             impl EndpointRead for $USBX {
                 fn read(&self, endpoint: u8, buffer: &mut [u8]) -> usize {
-                    // prime all endpoints for reception after receiving the first packet on endpoint 0x00
-                    static mut ONCE: bool = true;
-                    if unsafe { ONCE } {
-                        unsafe { ONCE = false };
-                        for epno in (1..=16).rev() {
-                            self.ep_out.epno.write(|w| unsafe { w.epno().bits(epno) });
-                            self.ep_out.prime.write(|w| w.prime().bit(true));
-                        }
-                    }
-
                     // drain fifo
                     let mut bytes_read = 0;
                     let mut overflow = 0;
@@ -468,13 +458,6 @@ macro_rules! impl_usb {
                             bytes_read += 1;
                         }
                     }
-
-                    // add endpoint back to collection of endpoints willing to receive data
-                    self.ep_out.epno.write(|w| unsafe { w.epno().bits(endpoint) });
-                    self.ep_out.prime.write(|w| w.prime().bit(true));
-
-                    // re-enable reception on any primed endpoint
-                    self.ep_out.enable.write(|w| w.enable().bit(true));
 
                     trace!("  RX OUT{} {} bytes read + {} bytes overflow", endpoint, bytes_read, overflow);
 
