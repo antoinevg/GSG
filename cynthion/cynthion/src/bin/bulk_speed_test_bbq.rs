@@ -50,40 +50,40 @@ static MESSAGE_QUEUE: Queue<Message, 64> = Queue::new();
 #[allow(non_snake_case)]
 #[no_mangle]
 fn MachineExternal() {
-    use cynthion::UsbInterface::Aux;
+    use cynthion::UsbInterface::Target;
 
-    let usb1 = unsafe { hal::Usb1::summon() };
+    let usb0 = unsafe { hal::Usb0::summon() };
     let leds = unsafe { &pac::Peripherals::steal().LEDS };
 
-    // - usb1 interrupts - "host_phy" / "aux_phy" --
+    // - usb0 interrupts - "host_phy" / "aux_phy" --
 
-    // USB1 UsbBusReset
-    let message = if usb1.is_pending(pac::Interrupt::USB1) {
-        usb1.clear_pending(pac::Interrupt::USB1);
-        usb1.bus_reset();
-        Message::UsbBusReset(Aux)
+    // USB0 UsbBusReset
+    let message = if usb0.is_pending(pac::Interrupt::USB0) {
+        usb0.clear_pending(pac::Interrupt::USB0);
+        usb0.bus_reset();
+        Message::UsbBusReset(Target)
 
-    // USB1_EP_CONTROL UsbReceiveSetupPacket
-    } else if usb1.is_pending(pac::Interrupt::USB1_EP_CONTROL) {
+    // USB0_EP_CONTROL UsbReceiveSetupPacket
+    } else if usb0.is_pending(pac::Interrupt::USB0_EP_CONTROL) {
         let mut setup_packet_buffer = [0_u8; 8];
-        usb1.read_control(&mut setup_packet_buffer);
-        usb1.clear_pending(pac::Interrupt::USB1_EP_CONTROL);
+        usb0.read_control(&mut setup_packet_buffer);
+        usb0.clear_pending(pac::Interrupt::USB0_EP_CONTROL);
 
         match SetupPacket::try_from(setup_packet_buffer) {
-            Ok(setup_packet) => Message::UsbReceiveSetupPacket(Aux, setup_packet),
-            Err(e) => Message::ErrorMessage("USB1_EP_CONTROL failed to read setup packet"),
+            Ok(setup_packet) => Message::UsbReceiveSetupPacket(Target, setup_packet),
+            Err(e) => Message::ErrorMessage("USB0_EP_CONTROL failed to read setup packet"),
         }
 
-    // USB1_EP_OUT UsbReceiveData
-    } else if usb1.is_pending(pac::Interrupt::USB1_EP_OUT) {
-        let endpoint = usb1.ep_out.data_ep.read().bits() as u8;
+    // USB0_EP_OUT UsbReceiveData
+    } else if usb0.is_pending(pac::Interrupt::USB0_EP_OUT) {
+        let endpoint = usb0.ep_out.data_ep.read().bits() as u8;
 
         if let Some(producer) = unsafe { USB_RECEIVE_BUFFER_PRODUCER.as_mut() } {
             match producer.grant_exact(cynthion::EP_MAX_RECEIVE_LENGTH) {
                 Ok(mut grant) => {
                     let mut bytes_read = 0;
-                    while usb1.ep_out.have.read().have().bit() {
-                        let b = usb1.ep_out.data.read().data().bits();
+                    while usb0.ep_out.have.read().have().bit() {
+                        let b = usb0.ep_out.data.read().data().bits();
                         if bytes_read < cynthion::EP_MAX_RECEIVE_LENGTH {
                             grant.buf()[bytes_read] = b;
                         } else {
@@ -92,8 +92,8 @@ fn MachineExternal() {
                         bytes_read += 1;
                     }
                     grant.commit(bytes_read);
-                    usb1.clear_pending(pac::Interrupt::USB1_EP_OUT);
-                    Message::UsbReceiveData(Aux, endpoint, bytes_read)
+                    usb0.clear_pending(pac::Interrupt::USB0_EP_OUT);
+                    Message::UsbReceiveData(Target, endpoint, bytes_read)
                 }
                 Err(e) => {
                     Message::ErrorMessage("no space in bbqueue")
@@ -103,17 +103,17 @@ fn MachineExternal() {
             Message::ErrorMessage("no bbqueue")
         }
 
-    // USB1_EP_IN UsbTransferComplete
-    } else if usb1.is_pending(pac::Interrupt::USB1_EP_IN) {
-        usb1.clear_pending(pac::Interrupt::USB1_EP_IN);
-        let endpoint = usb1.ep_in.epno.read().bits() as u8;
+    // USB0_EP_IN UsbTransferComplete
+    } else if usb0.is_pending(pac::Interrupt::USB0_EP_IN) {
+        usb0.clear_pending(pac::Interrupt::USB0_EP_IN);
+        let endpoint = usb0.ep_in.epno.read().bits() as u8;
 
         // TODO something a little bit safer would be nice
         unsafe {
-            usb1.clear_tx_ack_active();
+            usb0.clear_tx_ack_active();
         }
 
-        Message::UsbTransferComplete(Aux, endpoint)
+        Message::UsbTransferComplete(Target, endpoint)
 
     // - Unknown Interrupt --
     } else {
@@ -170,23 +170,23 @@ fn main_loop() -> GreatResult<()> {
     cynthion::log::init(hal::Serial::new(peripherals.UART));
     info!("Logging initialized");
 
-    // usb1: host
-    let mut usb1 = UsbDevice::new(
-        hal::Usb1::new(
-            peripherals.USB1,
-            peripherals.USB1_EP_CONTROL,
-            peripherals.USB1_EP_IN,
-            peripherals.USB1_EP_OUT,
+    // usb0: host
+    let mut usb0 = UsbDevice::new(
+        hal::Usb0::new(
+            peripherals.USB0,
+            peripherals.USB0_EP_CONTROL,
+            peripherals.USB0_EP_IN,
+            peripherals.USB0_EP_OUT,
         ),
         &USB_DEVICE_DESCRIPTOR,
         &USB_CONFIGURATION_DESCRIPTOR_0,
         &USB_STRING_DESCRIPTOR_0,
         &USB_STRING_DESCRIPTORS,
     );
-    usb1.device_qualifier_descriptor = Some(&USB_DEVICE_QUALIFIER_DESCRIPTOR);
-    usb1.other_speed_configuration_descriptor = Some(USB_OTHER_SPEED_CONFIGURATION_DESCRIPTOR_0);
-    let speed = usb1.connect();
-    debug!("Connected usb1 device: {:?}", speed);
+    usb0.device_qualifier_descriptor = Some(&USB_DEVICE_QUALIFIER_DESCRIPTOR);
+    usb0.other_speed_configuration_descriptor = Some(USB_OTHER_SPEED_CONFIGURATION_DESCRIPTOR_0);
+    let speed = usb0.connect();
+    debug!("Connected usb0 device: {:?}", speed);
 
     // enable interrupts
     unsafe {
@@ -196,12 +196,12 @@ fn main_loop() -> GreatResult<()> {
         // set mie register: machine external interrupts enable
         riscv::register::mie::set_mext();
 
-        // write csr: enable usb1 interrupts and events
-        pac::csr::interrupt::enable(pac::Interrupt::USB1);
-        pac::csr::interrupt::enable(pac::Interrupt::USB1_EP_CONTROL);
-        pac::csr::interrupt::enable(pac::Interrupt::USB1_EP_IN);
-        pac::csr::interrupt::enable(pac::Interrupt::USB1_EP_OUT);
-        usb1.hal_driver.enable_interrupts();
+        // write csr: enable usb0 interrupts and events
+        pac::csr::interrupt::enable(pac::Interrupt::USB0);
+        pac::csr::interrupt::enable(pac::Interrupt::USB0_EP_CONTROL);
+        pac::csr::interrupt::enable(pac::Interrupt::USB0_EP_IN);
+        pac::csr::interrupt::enable(pac::Interrupt::USB0_EP_OUT);
+        usb0.hal_driver.enable_interrupts();
     }
 
     info!("Peripherals initialized, entering main loop.");
@@ -219,8 +219,8 @@ fn main_loop() -> GreatResult<()> {
     };
 
     // prime the usb OUT endpoints we'll be using
-    usb1.hal_driver.ep_out_prime_receive(1);
-    usb1.hal_driver.ep_out_prime_receive(2);
+    usb0.hal_driver.ep_out_prime_receive(1);
+    usb0.hal_driver.ep_out_prime_receive(2);
 
     let mut counter = 0;
 
@@ -228,23 +228,23 @@ fn main_loop() -> GreatResult<()> {
         let mut queue_length = 0;
 
         while let Some(message) = MESSAGE_QUEUE.dequeue() {
-            use cynthion::{Message::*, UsbInterface::Aux};
+            use cynthion::{Message::*, UsbInterface::Target};
 
             match message {
-                // - usb1 message handlers --
+                // - usb0 message handlers --
 
-                // Usb1 received USB bus reset
-                UsbBusReset(Aux) => (),
+                // Usb0 received USB bus reset
+                UsbBusReset(Target) => (),
 
-                // Usb1 received setup packet
-                UsbReceiveSetupPacket(Aux, setup_packet) => {
+                // Usb0 received setup packet
+                UsbReceiveSetupPacket(Target, setup_packet) => {
                     test_command = TestCommand::Stop;
-                    usb1.handle_setup_request(&setup_packet)
+                    usb0.handle_setup_request(&setup_packet)
                         .map_err(|_| GreatError::BadMessage)?;
                 }
 
-                // TODO Usb1 received zero byte packet on endpoint 0x00 ???
-                UsbReceiveData(Aux, 0x00, bytes_read) => {
+                // TODO Usb0 received zero byte packet on endpoint 0x00 ???
+                UsbReceiveData(Target, 0x00, bytes_read) => {
                     info!("received {} bytes on endpoint 0x00", bytes_read);
                     if bytes_read > 0 {
                         match consumer.read() {
@@ -261,11 +261,11 @@ fn main_loop() -> GreatResult<()> {
                             }
                         }
                     }
-                    usb1.hal_driver.ep_out_prime_receive(0);
+                    usb0.hal_driver.ep_out_prime_receive(0);
                 }
 
-                // Usb1 received bulk test data on endpoint 0x01
-                UsbReceiveData(Aux, 0x01, bytes_read) => {
+                // Usb0 received bulk test data on endpoint 0x01
+                UsbReceiveData(Target, 0x01, bytes_read) => {
                     /*counter += 1;
                     if counter % 100 == 0 {
                         info!("received bulk data from host: {} bytes", bytes_read);
@@ -283,11 +283,11 @@ fn main_loop() -> GreatResult<()> {
                             error!("no bbqueue 1: {:?}", e);
                         }
                     }
-                    usb1.hal_driver.ep_out_prime_receive(1);
+                    usb0.hal_driver.ep_out_prime_receive(1);
                 }
 
-                // Usb1 received command data on endpoint 0x02
-                UsbReceiveData(Aux, 0x02, bytes_read) => {
+                // Usb0 received command data on endpoint 0x02
+                UsbReceiveData(Target, 0x02, bytes_read) => {
                     info!("received command data from host: {} bytes", bytes_read);
                     let command = match consumer.read() {
                         Ok(bbbuffer) => {
@@ -330,11 +330,11 @@ fn main_loop() -> GreatResult<()> {
                             );
                         }
                     }
-                    usb1.hal_driver.ep_out_prime_receive(2);
+                    usb0.hal_driver.ep_out_prime_receive(2);
                 }
 
-                // Usb1 transfer complete
-                UsbTransferComplete(Aux, endpoint) => {
+                // Usb0 transfer complete
+                UsbTransferComplete(Target, endpoint) => {
                     //leds.output.write(|w| unsafe { w.output().bits(0b10_0000) });
                 }
 
@@ -354,8 +354,8 @@ fn main_loop() -> GreatResult<()> {
 
         // perform tests
         match test_command {
-            TestCommand::In => test_in_speed(leds, &usb1.hal_driver, &test_data, &mut test_stats),
-            TestCommand::Out => (), //test_out_speed(leds, &usb1.hal_driver, &mut test_stats),
+            TestCommand::In => test_in_speed(leds, &usb0.hal_driver, &test_data, &mut test_stats),
+            TestCommand::Out => (), //test_out_speed(leds, &usb0.hal_driver, &mut test_stats),
             _ => (),
         }
 
@@ -373,27 +373,27 @@ fn main_loop() -> GreatResult<()> {
 #[inline(always)]
 fn test_in_speed(
     leds: &pac::LEDS,
-    usb1: &hal::Usb1,
+    usb0: &hal::Usb0,
     test_data: &[u8; TEST_WRITE_SIZE],
     test_stats: &mut TestStats,
 ) {
     // Passing in a fixed size slice ref is 4MB/s vs 3.7MB/s
     #[inline(always)]
-    fn test_write_slice(usb1: &hal::Usb1, endpoint: u8, data: &[u8; TEST_WRITE_SIZE]) -> bool {
+    fn test_write_slice(usb0: &hal::Usb0, endpoint: u8, data: &[u8; TEST_WRITE_SIZE]) -> bool {
         let mut did_reset = false;
-        if usb1.ep_in.have.read().have().bit() {
-            usb1.ep_in.reset.write(|w| w.reset().bit(true));
+        if usb0.ep_in.have.read().have().bit() {
+            usb0.ep_in.reset.write(|w| w.reset().bit(true));
             did_reset = true;
         }
         // 5.005340640788884 MB/s
         for byte in data {
-            usb1.ep_in.data.write(|w| unsafe { w.data().bits(*byte) });
+            usb0.ep_in.data.write(|w| unsafe { w.data().bits(*byte) });
         }
         // 5.507828119928235 MB/s - no memory access
         /*for n in 0..TEST_WRITE_SIZE {
-            usb1.ep_in.data.write(|w| unsafe { w.data().bits((n % 256) as u8) });
+            usb0.ep_in.data.write(|w| unsafe { w.data().bits((n % 256) as u8) });
         }*/
-        usb1.ep_in
+        usb0.ep_in
             .epno
             .write(|w| unsafe { w.epno().bits(endpoint & 0xf) });
         did_reset
@@ -402,16 +402,16 @@ fn test_in_speed(
     // wait for fifo endpoint to be idle
     let (_, t_flush) = cynthion::profile!(
         let mut timeout = 100;
-        while !usb1.ep_in.idle.read().idle().bit() && timeout > 0 {
+        while !usb0.ep_in.idle.read().idle().bit() && timeout > 0 {
             timeout -= 1;
         }
     );
 
     // write data to endpoint fifo
     let (did_reset, t_write) = cynthion::profile!(
-        //usb1.write(0x1, test_data.into_iter().copied()); false // 6780 / 5653 ~3.99MB/s
-        //usb1.write_ref(0x1, test_data.iter()); false // 5663 / 5652 - ~4.02MB/s
-        test_write_slice(usb1, 0x1, test_data) // 56533 / 5652 - ~4.04MB/s
+        //usb0.write(0x1, test_data.into_iter().copied()); false // 6780 / 5653 ~3.99MB/s
+        //usb0.write_ref(0x1, test_data.iter()); false // 5663 / 5652 - ~4.02MB/s
+        test_write_slice(usb0, 0x1, test_data) // 56533 / 5652 - ~4.04MB/s
     );
     test_stats.write_count += 1;
 
@@ -421,7 +421,7 @@ fn test_in_speed(
 
 /// Receive test data from host as fast as possible
 #[inline(always)]
-fn test_out_speed(leds: &pac::LEDS, usb1: &hal::Usb1, test_stats: &mut TestStats) {
+fn test_out_speed(leds: &pac::LEDS, usb0: &hal::Usb0, test_stats: &mut TestStats) {
 }
 
 // - types --------------------------------------------------------------------
