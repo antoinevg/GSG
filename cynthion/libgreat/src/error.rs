@@ -45,16 +45,18 @@ pub type GreatResult<T> = core::result::Result<T, GreatError>;
 #[derive(Debug, Copy, Clone)]
 pub enum GreatError {
     // from libgreat/errno.h
-    NotOwner = 1,              // EPERM    - Not owner
-    NoSuchFileOrDirectory = 2, // ENOENT   - No such file or directory
-    InterruptedSystemCall = 4, // EINTR    - Interrupted system call
-    ArgumentListTooLong = 7,   // E2BIG    - Arg list too long
-    BadAddress = 14,           // EFAULT   - Bad address
-    DeviceOrResourceBusy = 15, // EBUSY    - Device or resource busy
-    InvalidArgument = 22,      // EINVAL   - Invalid argument
-    NoSpaceLeftOnDevice = 28,  // ENOSPC   - No space left on device
-    NoMessageOfType = 35,      // ENOMSG   - No message of desired type
-    BadMessage = 77,           // EBADMSG  - Bad message
+    NotOwner = 1,                  // EPERM    - Not owner
+    NoSuchFileOrDirectory = 2,     // ENOENT   - No such file or directory
+    InterruptedSystemCall = 4,     // EINTR    - Interrupted system call
+    ArgumentListTooLong = 7,       // E2BIG    - Arg list too long
+    BadAddress = 14,               // EFAULT   - Bad address
+    DeviceOrResourceBusy = 15,     // EBUSY    - Device or resource busy
+    InvalidArgument = 22,          // EINVAL   - Invalid argument
+    NoSpaceLeftOnDevice = 28,      // ENOSPC   - No space left on device
+    NoMessageOfType = 35,          // ENOMSG   - No message of desired type
+    NoData = 61,                   // ENODATA  - No data
+    BadMessage = 77,               // EBADMSG  - Bad message
+    NoBufferSpaceAvailable = 105,  // ENOBUFS - No buffer space available
 
     // TODO consider just using libgreat/errno.h errors above
     GcpClassNotFound(crate::gcp::class::ClassId) = 0xf000,

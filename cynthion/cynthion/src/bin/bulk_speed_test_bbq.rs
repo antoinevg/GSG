@@ -31,19 +31,50 @@ const TEST_WRITE_SIZE: usize = 512;
 
 // - global static state ------------------------------------------------------
 
+trait SafeRead<'a, const N: usize> {
+    fn safe_read(&mut self) -> bbqueue::Result<bbqueue::GrantR<'a, N>>;
+}
+
+impl<'a, const N: usize> SafeRead<'a, N> for bbqueue::Consumer<'a, N> {
+    fn safe_read(&mut self) -> bbqueue::Result<bbqueue::GrantR<'a, N>> {
+        self.read()
+    }
+}
+
+/*trait SafeWrite {
+    fn safe_write() -> u32;
+}
+
+impl<'a, const N: usize> SafeWrite for bbqueue::Producer<'a, N> {
+    fn foo() -> u32 {
+        23
+    }
+}*/
+
+/*pub struct UsbReceiveBuffer<'a, const N: usize> {
+    bbbuffer: bbqueue::BBBuffer<N>,
+    producer: &'a mut bbqueue::Producer<'a, N>,
+    consumer: &'a mut bbqueue::Consumer<'a, N>,
+}
+
+impl<'a, const N: usize> UsbReceiveBuffer<'a, N> {
+    pub fn new() -> Self {
+        let bbbuffer: BBBuffer<N> = BBBuffer::<N>::new();
+        let (mut producer, mut consumer) = bbbuffer.try_split().unwrap();
+        //unimplemented!();
+        Self {
+            bbbuffer,
+            producer: &mut producer,
+            consumer: &mut consumer,
+        }
+    }
+}*/
+
 const USB_RECEIVE_BUFFER_SIZE: usize = cynthion::EP_MAX_ENDPOINTS * cynthion::EP_MAX_RECEIVE_LENGTH;
 static USB_RECEIVE_BUFFER: BBBuffer<USB_RECEIVE_BUFFER_SIZE> = BBBuffer::new();
 static mut USB_RECEIVE_BUFFER_PRODUCER: Option<Producer<USB_RECEIVE_BUFFER_SIZE>> = None;
-/*
-struct ReceivePacket {
-    pub port: cynthion::UsbInterface,
-    pub endpoint: u8,
-    pub bytes_read: usize,
-    pub buffer: [u8; cynthion::EP_MAX_RECEIVE_LENGTH],
-}
-static RECEIVE_PACKET_QUEUE: Queue<ReceivePacket, { cynthion::EP_MAX_ENDPOINTS }> = Queue::new();
-*/
-static MESSAGE_QUEUE: Queue<Message, 64> = Queue::new();
+
+static MESSAGE_QUEUE: Queue<Message, 32> = Queue::new();
 
 // - MachineExternal interrupt handler ----------------------------------------
 
@@ -77,6 +108,16 @@ fn MachineExternal() {
     // USB0_EP_OUT UsbReceiveData
     } else if usb0.is_pending(pac::Interrupt::USB0_EP_OUT) {
         let endpoint = usb0.ep_out.data_ep.read().bits() as u8;
+
+        // discard packets from Bulk OUT transfer endpoint
+        /*if endpoint == 1 {
+            /*while usb0.ep_out.have.read().have().bit() {
+                let _b = usb0.ep_out.data.read().data().bits();
+            }*/
+            usb0.ep_out_prime_receive(1);
+            usb0.clear_pending(pac::Interrupt::USB0_EP_OUT);
+            return;
+        }*/
 
         if let Some(producer) = unsafe { USB_RECEIVE_BUFFER_PRODUCER.as_mut() } {
             match producer.grant_exact(cynthion::EP_MAX_RECEIVE_LENGTH) {
@@ -247,19 +288,8 @@ fn main_loop() -> GreatResult<()> {
                 UsbReceiveData(Target, 0x00, bytes_read) => {
                     info!("received {} bytes on endpoint 0x00", bytes_read);
                     if bytes_read > 0 {
-                        match consumer.read() {
-                            Ok(bbbuffer) => {
-                                info!(
-                                    "{:?} .. {:?}",
-                                    &bbbuffer[0..8],
-                                    &bbbuffer[(bytes_read - 8)..]
-                                );
-                                bbbuffer.release(bytes_read);
-                            }
-                            Err(e) => {
-                                error!("no bbqueue 0: {:?}", e);
-                            }
-                        }
+                        let bbbuffer = consumer.read().map_err(|_| GreatError::NoData)?;
+                        bbbuffer.release(bytes_read);
                     }
                     usb0.hal_driver.ep_out_prime_receive(0);
                 }
@@ -270,18 +300,14 @@ fn main_loop() -> GreatResult<()> {
                     if counter % 100 == 0 {
                         info!("received bulk data from host: {} bytes", bytes_read);
                     }*/
-                    match consumer.read() {
-                        Ok(bbbuffer) => {
-                            /*info!(
-                                "{:?} .. {:?}",
-                                &bbbuffer[0..8],
-                                &bbbuffer[(bytes_read - 8)..]
-                            );*/
-                            bbbuffer.release(bytes_read);
-                        }
-                        Err(e) => {
-                            error!("no bbqueue 1: {:?}", e);
-                        }
+                    if bytes_read > 0 {
+                        let bbbuffer = consumer.read().map_err(|_| GreatError::NoData)?;
+                        /*info!(
+                            "{:?} .. {:?}",
+                            &bbbuffer[0..8],
+                            &bbbuffer[(bytes_read - 8)..]
+                        );*/
+                        bbbuffer.release(bytes_read);
                     }
                     usb0.hal_driver.ep_out_prime_receive(1);
                 }
@@ -289,16 +315,13 @@ fn main_loop() -> GreatResult<()> {
                 // Usb0 received command data on endpoint 0x02
                 UsbReceiveData(Target, 0x02, bytes_read) => {
                     info!("received command data from host: {} bytes", bytes_read);
-                    let command = match consumer.read() {
-                        Ok(bbbuffer) => {
-                            let command = bbbuffer[0].into();
-                            bbbuffer.release(bytes_read);
-                            command
-                        }
-                        Err(e) => {
-                            error!("no bbqueue 2: {:?}", e);
-                            TestCommand::Error
-                        }
+                    let command = if bytes_read > 0 {
+                        let bbbuffer = consumer.read().map_err(|_| GreatError::NoData)?;
+                        let command = bbbuffer[0].into();
+                        bbbuffer.release(bytes_read);
+                        command
+                    } else {
+                        TestCommand::Error
                     };
 
                     match (bytes_read, &command) {

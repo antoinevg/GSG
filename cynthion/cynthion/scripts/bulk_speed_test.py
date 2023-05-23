@@ -69,6 +69,13 @@ TEST_TRANSFER_SIZE = 16 * 1024
 #  8: 21.272581091551572MB/s.
 # 16: LIBUSB_ERROR_NOT_FOUND
 #
+# OUT records
+#  8: 5.78624228905323MB/s.
+#
+# IN  records
+#  8: 1.8312864324208076MB/s.
+#
+
 TRANSFER_QUEUE_DEPTH = 8
 
 
@@ -175,6 +182,9 @@ def run_speed_test(direction=usb1.ENDPOINT_IN):
         end_time = time.time()
         elapsed = end_time - start_time
 
+        # Tell Cynthion to stop transmitting/receiving
+        device.bulkWrite(COMMAND_ENDPOINT_NUMBER, [TestCommand.Stop])
+
         # Cancel all of our active transfers.
         for transfer in active_transfers:
             if transfer.isSubmitted():
@@ -189,8 +199,6 @@ def run_speed_test(direction=usb1.ENDPOINT_IN):
         bytes_per_second = total_data_exchanged / elapsed
         logging.info(f"Exchanged {total_data_exchanged / 1000000}MB total at {bytes_per_second / 1000000}MB/s.")
 
-        # Tell Cynthion to stop transmitting/receiving
-        device.bulkWrite(COMMAND_ENDPOINT_NUMBER, [TestCommand.Stop])
 
 
 
