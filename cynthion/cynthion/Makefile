@@ -1,13 +1,22 @@
 # - helpful -------------------------------------------------------------------
 
+TARGET=../target/riscv32imac-unknown-none-elf/release
+
+#
 #BIN=moondancer
-#TARGET=../target/riscv32imac-unknown-none-elf
 
+# 25624
 BIN=bulk_speed_test
-TARGET=../target/riscv32i-unknown-none-elf/release
 
+# 17120
+# BIN=bulk_speed_test_spsc
+
+# 6972
+#BIN=bulk_speed_test_bbq
+
+#
 #BIN=smollest
-#TARGET=../target/riscv32imac-unknown-none-elf/release
+
 
 
 size:
