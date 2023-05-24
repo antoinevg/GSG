@@ -108,8 +108,8 @@ pub enum Direction {
 }
 
 impl From<u8> for Direction {
-    fn from(value: u8) -> Self {
-        match (value & 0b1000_0000) == 0 {
+    fn from(endpoint_address: u8) -> Self {
+        match (endpoint_address & 0b1000_0000) == 0 {
             true => Direction::HostToDevice,
             false => Direction::DeviceToHost,
         }

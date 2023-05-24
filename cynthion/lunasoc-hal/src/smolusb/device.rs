@@ -397,9 +397,9 @@ where
                 // TODO self.feature_remote_wakeup = false;
             }
             (Recipient::Endpoint, Feature::EndpointHalt) => {
-                let endpoint = setup_packet.index as u8;
-                self.hal_driver.stall_endpoint(endpoint, false);
-                debug!("SETUP clear stall: 0x{:x}", endpoint);
+                let endpoint_address = setup_packet.index as u8;
+                self.hal_driver.stall_endpoint(endpoint_address, false);
+                debug!("SETUP clear stall: 0x{:x}", endpoint_address);
             }
             _ => {
                 warn!(
