@@ -34,6 +34,17 @@ const TEST_WRITE_SIZE: usize = 512;
 
 static mut MESSAGE_QUEUE: Queue<Message, 32> = Queue::new();
 
+#[inline(always)]
+fn dispatch(message: Message) {
+    match unsafe { MESSAGE_QUEUE.enqueue(message) } {
+        Ok(()) => (),
+        Err(_) => {
+            error!("MachineExternal - message queue overflow");
+            panic!("MachineExternal - message queue overflow");
+        }
+    }
+}
+
 // - MachineExternal interrupt handler ----------------------------------------
 
 #[allow(non_snake_case)]
@@ -53,7 +64,7 @@ fn MachineExternal() {
         dispatch(Message::UsbBusReset(Target));
 
     // USB0_EP_CONTROL UsbReceiveSetupPacket
-    } else if usb0.is_pending(pac::Interrupt::USB0_EP_CONTROL) {
+    } if usb0.is_pending(pac::Interrupt::USB0_EP_CONTROL) {
         let mut setup_packet_buffer = [0_u8; 8];
         usb0.read_control(&mut setup_packet_buffer);
         usb0.clear_pending(pac::Interrupt::USB0_EP_CONTROL);
@@ -64,7 +75,7 @@ fn MachineExternal() {
         }
 
     // USB0_EP_OUT UsbReceiveData
-    } else if usb0.is_pending(pac::Interrupt::USB0_EP_OUT) {
+    } if usb0.is_pending(pac::Interrupt::USB0_EP_OUT) {
         let endpoint = usb0.ep_out.data_ep.read().bits() as u8;
 
         // discard packets from Bulk OUT transfer endpoint
@@ -99,10 +110,10 @@ fn MachineExternal() {
         // clear interrupt
         usb0.clear_pending(pac::Interrupt::USB0_EP_OUT);
 
-        dispatch(Message::UsbReceiveData(Target, endpoint, bytes_read));
+        dispatch(Message::UsbReceivePacket(Target, endpoint, bytes_read));
 
     // USB0_EP_IN UsbTransferComplete
-    } else if usb0.is_pending(pac::Interrupt::USB0_EP_IN) {
+    } if usb0.is_pending(pac::Interrupt::USB0_EP_IN) {
         usb0.clear_pending(pac::Interrupt::USB0_EP_IN);
         let endpoint = usb0.ep_in.epno.read().bits() as u8;
 
@@ -114,23 +125,13 @@ fn MachineExternal() {
         dispatch(Message::UsbTransferComplete(Target, endpoint));
 
     // - Unknown Interrupt --
-    } else {
+    } /* {
         let pending = pac::csr::interrupt::reg_pending();
         dispatch(Message::HandleUnknownInterrupt(pending));
-    };
+    };*/
 
 }
 
-#[inline(always)]
-fn dispatch(message: Message) {
-    match unsafe { MESSAGE_QUEUE.enqueue(message) } {
-        Ok(()) => (),
-        Err(_) => {
-            error!("MachineExternal - message queue overflow");
-            panic!("MachineExternal - message queue overflow");
-        }
-    }
-}
 
 // - main entry point ---------------------------------------------------------
 
@@ -233,13 +234,13 @@ fn main_loop() -> GreatResult<()> {
                 UsbBusReset(Target) => (),
 
                 // TODO Usb0 received zero byte packet on endpoint 0x00 ???
-                UsbReceiveData(Target, 0x00, bytes_read) => {
+                UsbReceivePacket(Target, 0x00, bytes_read) => {
                     info!("received {} bytes on endpoint 0x00", bytes_read);
                     usb0.hal_driver.ep_out_prime_receive(0);
                 }
 
                 // Usb0 received bulk test data on endpoint 0x01
-                UsbReceiveData(Target, 0x01, bytes_read) => {
+                UsbReceivePacket(Target, 0x01, bytes_read) => {
                     /*counter += 1;
                     if counter % 100 == 0 {
                         info!("received bulk data from host: {} bytes", bytes_read);
@@ -253,9 +254,9 @@ fn main_loop() -> GreatResult<()> {
                 }
 
                 // Usb0 received command data on endpoint 0x02
-                UsbReceiveData(Target, 0x02, bytes_read) => {
+                UsbReceivePacket(Target, 0x02, bytes_read) => {
                     // TODO
-                    info!("received command data from host: {} bytes", bytes_read);
+                    /*info!("received command data from host: {} bytes", bytes_read);
                     let command = buffer[0].into();
                     match (bytes_read, &command) {
                         (1, TestCommand::In) => {
@@ -286,7 +287,7 @@ fn main_loop() -> GreatResult<()> {
                             );
                         }
                     }
-                    usb0.hal_driver.ep_out_prime_receive(2);
+                    usb0.hal_driver.ep_out_prime_receive(2);*/
                 }
 
                 // Usb0 received setup packet

@@ -35,16 +35,23 @@ pub const BOARD_INFORMATION: BoardInformation = BoardInformation {
 };
 
 pub const EP_MAX_ENDPOINTS: usize = 16;
-pub const EP_MAX_RECEIVE_LENGTH: usize = 512;
+pub const EP_MAX_RECEIVE_LENGTH: usize = 64; //512;
 
 // - messages -----------------------------------------------------------------
 
-// TODO use these instead of u8 in messages
 #[derive(Debug)]
 pub enum UsbInterface {
     Target,   // Usb0
     Aux,      // Usb1
     Control,  // Usb2
+}
+
+/// The UsbPacket message represents a single packet of data received from a USB port.
+pub struct UsbReceivePacket {
+    pub interface: UsbInterface,
+    pub endpoint: u8,
+    pub bytes_read: usize,
+    pub buffer: [u8; EP_MAX_RECEIVE_LENGTH],
 }
 
 // Starting stack size with Queue<Message, 512> is:  2976 bytes
@@ -73,11 +80,12 @@ pub enum Message {
     /// Contents is (UsbInterface, endpoint)
     UsbTransferComplete(UsbInterface, u8),
 
-    /// Received data on USBx_EP_OUT
+    /// Received a data packet on USBx_EP_OUT
     ///
     /// Contents is (UsbInterface, endpoint, bytes_read)
-    //UsbReceiveData(UsbInterface, u8, usize, [u8; EP_MAX_RECEIVE_LENGTH]),
-    UsbReceiveData(UsbInterface, u8, usize),
+    //UsbReceivePacket(UsbInterface, u8, usize, [u8; EP_MAX_RECEIVE_LENGTH]),
+    UsbReceivePacket(UsbInterface, u8, usize),
+    //UsbReceivePacket(UsbReceivePacket),
 
     // misc
     ErrorMessage(&'static str),
@@ -104,7 +112,8 @@ impl core::fmt::Debug for Message {
                 write!(f, "UsbReceiveSetupPacket({:?})", interface)
             }
             //Message::UsbReceiveData(interface, endpoint, bytes_read, _buffer) => write!(
-            Message::UsbReceiveData(interface, endpoint, bytes_read) => write!(
+            Message::UsbReceivePacket(interface, endpoint, bytes_read) => write!(
+            //Message::UsbReceivePacket(UsbReceivePacket { interface, endpoint, bytes_read, buffer: _ }) => write!(
                 f,
                 "UsbReceiveData({:?}, {}, {})",
                 interface, endpoint, bytes_read

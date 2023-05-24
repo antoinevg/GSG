@@ -5,13 +5,16 @@ TARGET=../target/riscv32imac-unknown-none-elf/release
 #
 #BIN=moondancer
 
-# 25624
-BIN=bulk_speed_test
+# start:			  25624
+# 1 queue, no buffer: 46176
+#BIN=bulk_speed_test
 
-# 17120
-# BIN=bulk_speed_test_spsc
+# mpmc: 34720
+# spsc: 35272
+BIN=bulk_speed_test_spsc
 
-# 6972
+# 16 endpoint buffer: 25620
+# with 2 endpoint buffer: 32812
 #BIN=bulk_speed_test_bbq
 
 #
