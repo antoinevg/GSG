@@ -2,9 +2,7 @@
 #![no_std]
 #![no_main]
 
-//use riscv_atomic_emulation_trap as _;
-
-use cynthion::{hal, pac, Message};
+use cynthion::{hal, pac, Message, UsbReceivePacket};
 
 use hal::{smolusb, Serial};
 
@@ -18,13 +16,10 @@ use smolusb::traits::{
 
 use libgreat::{GreatError, GreatResult};
 
-use bbqueue::{BBBuffer, Producer};
-use heapless::mpmc::MpMcQueue as Queue;
-use heapless::spsc::Queue as SpScQueue;
+//use heapless::mpmc::MpMcQueue as Queue;
+use heapless::spsc::Queue as Queue;
 
 use log::{debug, error, info};
-
-use riscv_rt::entry;
 
 // - configuration ------------------------------------------------------------
 
@@ -33,17 +28,31 @@ const TEST_WRITE_SIZE: usize = 512;
 
 // - global static state ------------------------------------------------------
 
-struct ReceivePacket {
-    pub port: cynthion::UsbInterface,
-    pub endpoint: u8,
-    pub bytes_read: usize,
-    pub buffer: [u8; cynthion::EP_MAX_RECEIVE_LENGTH],
+static mut MESSAGE_QUEUE: Queue<Message, 32> = Queue::new();
+static mut USB_RECEIVE_PACKET_QUEUE: Queue<UsbReceivePacket, { cynthion::EP_MAX_ENDPOINTS }>
+    = Queue::new();
+
+#[inline(always)]
+fn dispatch_message(message: Message) {
+    match unsafe { MESSAGE_QUEUE.enqueue(message) } {
+        Ok(()) => (),
+        Err(_) => {
+            error!("MachineExternal - message queue overflow");
+            panic!("MachineExternal - message queue overflow");
+        }
+    }
 }
 
-static mut RECEIVE_PACKET_QUEUE: heapless::spsc::Queue<ReceivePacket, { cynthion::EP_MAX_ENDPOINTS }>
-    = heapless::spsc::Queue::new();
-
-static MESSAGE_QUEUE: Queue<Message, 32> = Queue::new();
+#[inline(always)]
+fn dispatch_receive_packet(usb_receive_packet: UsbReceivePacket) {
+    match unsafe { USB_RECEIVE_PACKET_QUEUE.enqueue(usb_receive_packet) } {
+        Ok(()) => (),
+        Err(_) => {
+            error!("MachineExternal - message queue overflow");
+            panic!("MachineExternal - message queue overflow");
+        }
+    }
+}
 
 // - MachineExternal interrupt handler ----------------------------------------
 
@@ -71,51 +80,31 @@ fn MachineExternal() {
             return;
         }*/
 
-        let mut receive_packet = ReceivePacket {
-            port: cynthion::UsbInterface::Target,
+        // read data from endpoint
+        let mut receive_packet = UsbReceivePacket {
+            interface: cynthion::UsbInterface::Target,
             endpoint,
             bytes_read: 0,
             buffer: [0_u8; cynthion::EP_MAX_RECEIVE_LENGTH],
         };
-
-        // TODO handle overflow
-        let mut bytes_read = 0;
-        while usb0.ep_out.have.read().have().bit() {
-            let b = usb0.ep_out.data.read().data().bits();
-            if bytes_read < receive_packet.buffer.len() {
-                receive_packet.buffer[bytes_read] = b;
-            } else {
-                leds.output.write(|w| unsafe { w.output().bits(0b10_0001) });
-            }
-            bytes_read += 1;
-        }
-        receive_packet.bytes_read = bytes_read;
+        receive_packet.bytes_read = usb0.read(endpoint, &mut receive_packet.buffer);
 
         // clear interrupt
         usb0.clear_pending(pac::Interrupt::USB0_EP_OUT);
 
         // dispatch packet to main loop
-        match unsafe { RECEIVE_PACKET_QUEUE.enqueue(receive_packet) } {
-            Ok(()) => (),
-            Err(_) => {
-                leds.output.write(|w| unsafe { w.output().bits(0b00_0010) });
-                // stall endpoint ?
-            }
-        }
+        dispatch_receive_packet(receive_packet);
 
         // prime for immediate reception if we have space in our receive queue
-        if unsafe { RECEIVE_PACKET_QUEUE.len() } < unsafe { RECEIVE_PACKET_QUEUE.capacity() } {
-            usb0.ep_out_prime_receive(endpoint);
-        }
-
-        return;
-    }
+        //if unsafe { USB_RECEIVE_PACKET_QUEUE.len() } < unsafe { USB_RECEIVE_PACKET_QUEUE.capacity() } {
+        //    usb0.ep_out_prime_receive(endpoint);
+        //}
 
     // USB0 UsbBusReset
-    let message = if usb0.is_pending(pac::Interrupt::USB0) {
+    } else if usb0.is_pending(pac::Interrupt::USB0) {
         usb0.clear_pending(pac::Interrupt::USB0);
         usb0.bus_reset();
-        Message::UsbBusReset(Target)
+        dispatch_message(Message::UsbBusReset(Target))
 
     // USB0_EP_CONTROL UsbReceiveSetupPacket
     } else if usb0.is_pending(pac::Interrupt::USB0_EP_CONTROL) {
@@ -123,10 +112,11 @@ fn MachineExternal() {
         usb0.read_control(&mut setup_packet_buffer);
         usb0.clear_pending(pac::Interrupt::USB0_EP_CONTROL);
 
-        match SetupPacket::try_from(setup_packet_buffer) {
+        let message = match SetupPacket::try_from(setup_packet_buffer) {
             Ok(setup_packet) => Message::UsbReceiveSetupPacket(Target, setup_packet),
             Err(e) => Message::ErrorMessage("USB0_EP_CONTROL failed to read setup packet"),
-        }
+        };
+        dispatch_message(message);
 
     // USB0_EP_IN UsbTransferComplete
     } else if usb0.is_pending(pac::Interrupt::USB0_EP_IN) {
@@ -138,20 +128,12 @@ fn MachineExternal() {
             usb0.clear_tx_ack_active();
         }
 
-        Message::UsbTransferComplete(Target, endpoint)
+        dispatch_message(Message::UsbTransferComplete(Target, endpoint));
 
     // - Unknown Interrupt --
     } else {
         let pending = pac::csr::interrupt::reg_pending();
-        Message::HandleUnknownInterrupt(pending)
-    };
-
-    match MESSAGE_QUEUE.enqueue(message) {
-        Ok(()) => (),
-        Err(_) => {
-            error!("MachineExternal - message queue overflow");
-            panic!("MachineExternal - message queue overflow");
-        }
+        dispatch_message(Message::HandleUnknownInterrupt(pending));
     }
 }
 
@@ -165,7 +147,7 @@ unsafe fn pre_main() {
     pac::cpu::vexriscv::flush_dcache();
 }
 
-#[entry]
+#[riscv_rt::entry]
 fn main() -> ! {
     match main_loop() {
         Ok(()) => {
@@ -246,10 +228,10 @@ fn main_loop() -> GreatResult<()> {
     loop {
         let mut queue_length = 0;
 
-        if let Some(receive_packet) = unsafe { RECEIVE_PACKET_QUEUE.dequeue() } {
+        if let Some(receive_packet) = unsafe { USB_RECEIVE_PACKET_QUEUE.dequeue() } {
             match receive_packet {
-                ReceivePacket {
-                    port: cynthion::UsbInterface::Target,
+                UsbReceivePacket {
+                    interface: cynthion::UsbInterface::Target,
                     endpoint: 0,
                     bytes_read,
                     buffer,
@@ -257,8 +239,8 @@ fn main_loop() -> GreatResult<()> {
                     info!("received {} bytes on endpoint 0x00", bytes_read);
                     usb0.hal_driver.ep_out_prime_receive(0);
                 }
-                ReceivePacket {
-                    port: cynthion::UsbInterface::Target,
+                UsbReceivePacket {
+                    interface: cynthion::UsbInterface::Target,
                     endpoint: 1,
                     bytes_read,
                     buffer,
@@ -276,8 +258,8 @@ fn main_loop() -> GreatResult<()> {
                     counter += 1;*/
                     usb0.hal_driver.ep_out_prime_receive(1);
                 }
-                ReceivePacket {
-                    port: cynthion::UsbInterface::Target,
+                UsbReceivePacket {
+                    interface: cynthion::UsbInterface::Target,
                     endpoint: 2,
                     bytes_read,
                     buffer,
@@ -315,14 +297,14 @@ fn main_loop() -> GreatResult<()> {
                     }
                     usb0.hal_driver.ep_out_prime_receive(2);
                 }
-                ReceivePacket { port, endpoint, bytes_read, buffer } => {
+                UsbReceivePacket { interface: port, endpoint, bytes_read, buffer } => {
                     log::warn!("received unknown packet on {:?} endpoint: {}", port, endpoint);
                     usb0.hal_driver.ep_out_prime_receive(endpoint);
                 }
             }
         }
 
-        if let Some(message) = MESSAGE_QUEUE.dequeue() {
+        if let Some(message) = unsafe { MESSAGE_QUEUE.dequeue() } {
             use cynthion::{Message::*, UsbInterface::Target};
 
             match message {

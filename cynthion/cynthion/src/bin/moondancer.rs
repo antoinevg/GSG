@@ -74,7 +74,7 @@ fn MachineExternal() {
         let bytes_read = usb1.read(endpoint, &mut buffer);
         usb1.clear_pending(pac::Interrupt::USB1_EP_OUT);
 
-        Message::UsbReceiveData(Aux, endpoint, bytes_read, buffer)
+        Message::UsbReceivePacket(Aux, endpoint, bytes_read, buffer)
 
     // USB1_EP_IN UsbTransferComplete
     } else if usb1.is_pending(pac::Interrupt::USB1_EP_IN) {
@@ -112,7 +112,7 @@ fn MachineExternal() {
         let bytes_read = usb0.read(endpoint, &mut buffer);
         usb0.clear_pending(pac::Interrupt::USB0_EP_OUT);
 
-        Message::UsbReceiveData(Target, endpoint, bytes_read, buffer)
+        Message::UsbReceivePacket(Target, endpoint, bytes_read, buffer)
 
     // USB0_EP_IN UsbTransferComplete
     } else if usb0.is_pending(pac::Interrupt::USB0_EP_IN) {
@@ -319,12 +319,12 @@ impl<'a> Firmware<'a> {
                     }
 
                     // Usb1 received data on control endpoint
-                    UsbReceiveData(Aux, 0, bytes_read, buffer) => {
+                    UsbReceivePacket(Aux, 0, bytes_read, buffer) => {
                         self.handle_usb1_receive_control_data(bytes_read, buffer)?;
                     }
 
                     // Usb1 received data on endpoint
-                    UsbReceiveData(Aux, endpoint, bytes_read, buffer) => {
+                    UsbReceivePacket(Aux, endpoint, bytes_read, buffer) => {
                         self.handle_usb1_receive_data(endpoint, bytes_read, buffer)?;
                         debug!(
                             "Usb1 received {} bytes on usb1 endpoint: {} - {:?}",
@@ -353,13 +353,13 @@ impl<'a> Firmware<'a> {
                     }
 
                     // Usb0 received data on control endpoint
-                    UsbReceiveData(Target, 0, bytes_read, buffer) => {
+                    UsbReceivePacket(Target, 0, bytes_read, buffer) => {
                         self.greatdancer
                             .handle_usb_receive_control_data(bytes_read, buffer)?;
                     }
 
                     // Usb0 received data on endpoint
-                    UsbReceiveData(Target, endpoint, bytes_read, buffer) => {
+                    UsbReceivePacket(Target, endpoint, bytes_read, buffer) => {
                         self.greatdancer
                             .handle_usb_receive_data(endpoint, bytes_read, buffer)?;
                         debug!(

@@ -2,8 +2,6 @@
 #![no_std]
 #![no_main]
 
-//use riscv_atomic_emulation_trap as _;
-
 use cynthion::{hal, pac, Message};
 
 use hal::{smolusb, Serial};
@@ -30,7 +28,7 @@ const TEST_READ_SIZE: usize = 512;
 const TEST_WRITE_SIZE: usize = 512;
 
 // - global static state ------------------------------------------------------
-
+/*
 trait SafeRead<'a, const N: usize> {
     fn safe_read(&mut self) -> bbqueue::Result<bbqueue::GrantR<'a, N>>;
 }
@@ -41,16 +39,16 @@ impl<'a, const N: usize> SafeRead<'a, N> for bbqueue::Consumer<'a, N> {
     }
 }
 
-/*trait SafeWrite {
-    fn safe_write() -> u32;
+trait SafeWrite<'a, const N: usize> {
+    fn safe_write(&mut self, size: usize) -> bbqueue::Result<bbqueue::GrantW<'a, N>>;
 }
 
-impl<'a, const N: usize> SafeWrite for bbqueue::Producer<'a, N> {
-    fn foo() -> u32 {
-        23
+impl<'a, const N: usize> SafeWrite<'a, N> for bbqueue::Producer<'a, N> {
+    fn safe_write(&mut self, size: usize) -> bbqueue::Result<bbqueue::GrantW<'a, N>> {
+        self.grant_exact(size)
     }
-}*/
-
+}
+*/
 /*pub struct UsbReceiveBuffer<'a, const N: usize> {
     bbbuffer: bbqueue::BBBuffer<N>,
     producer: &'a mut bbqueue::Producer<'a, N>,
@@ -70,7 +68,7 @@ impl<'a, const N: usize> UsbReceiveBuffer<'a, N> {
     }
 }*/
 
-const USB_RECEIVE_BUFFER_SIZE: usize = cynthion::EP_MAX_ENDPOINTS * cynthion::EP_MAX_RECEIVE_LENGTH;
+const USB_RECEIVE_BUFFER_SIZE: usize =  cynthion::EP_MAX_ENDPOINTS * cynthion::EP_MAX_RECEIVE_LENGTH;
 static USB_RECEIVE_BUFFER: BBBuffer<USB_RECEIVE_BUFFER_SIZE> = BBBuffer::new();
 static mut USB_RECEIVE_BUFFER_PRODUCER: Option<Producer<USB_RECEIVE_BUFFER_SIZE>> = None;
 
@@ -134,7 +132,7 @@ fn MachineExternal() {
                     }
                     grant.commit(bytes_read);
                     usb0.clear_pending(pac::Interrupt::USB0_EP_OUT);
-                    Message::UsbReceiveData(Target, endpoint, bytes_read)
+                    Message::UsbReceivePacket(Target, endpoint, bytes_read)
                 }
                 Err(e) => {
                     Message::ErrorMessage("no space in bbqueue")
@@ -285,23 +283,29 @@ fn main_loop() -> GreatResult<()> {
                 }
 
                 // TODO Usb0 received zero byte packet on endpoint 0x00 ???
-                UsbReceiveData(Target, 0x00, bytes_read) => {
+                UsbReceivePacket(Target, 0x00, bytes_read) => {
                     info!("received {} bytes on endpoint 0x00", bytes_read);
                     if bytes_read > 0 {
-                        let bbbuffer = consumer.read().map_err(|_| GreatError::NoData)?;
+                        let bbbuffer = consumer.read().map_err(|_| {
+                            usb0.hal_driver.ep_out_prime_receive(0);
+                            GreatError::NoData
+                        })?;
                         bbbuffer.release(bytes_read);
                     }
                     usb0.hal_driver.ep_out_prime_receive(0);
                 }
 
                 // Usb0 received bulk test data on endpoint 0x01
-                UsbReceiveData(Target, 0x01, bytes_read) => {
+                UsbReceivePacket(Target, 0x01, bytes_read) => {
                     /*counter += 1;
                     if counter % 100 == 0 {
                         info!("received bulk data from host: {} bytes", bytes_read);
                     }*/
                     if bytes_read > 0 {
-                        let bbbuffer = consumer.read().map_err(|_| GreatError::NoData)?;
+                        let bbbuffer = consumer.read().map_err(|_| {
+                            usb0.hal_driver.ep_out_prime_receive(1);
+                            GreatError::NoData
+                        })?;
                         /*info!(
                             "{:?} .. {:?}",
                             &bbbuffer[0..8],
@@ -313,10 +317,13 @@ fn main_loop() -> GreatResult<()> {
                 }
 
                 // Usb0 received command data on endpoint 0x02
-                UsbReceiveData(Target, 0x02, bytes_read) => {
+                UsbReceivePacket(Target, 0x02, bytes_read) => {
                     info!("received command data from host: {} bytes", bytes_read);
                     let command = if bytes_read > 0 {
-                        let bbbuffer = consumer.read().map_err(|_| GreatError::NoData)?;
+                        let bbbuffer = consumer.read().map_err(|_| {
+                            usb0.hal_driver.ep_out_prime_receive(2);
+                            GreatError::NoData
+                        })?;
                         let command = bbbuffer[0].into();
                         bbbuffer.release(bytes_read);
                         command
