@@ -68,6 +68,7 @@ macro_rules! impl_usb {
                 /// # Safety
                 ///
                 /// 'Tis thine responsibility, that which thou doth summon.
+                #[inline(always)]
                 pub unsafe fn summon() -> Self {
                     Self {
                         controller: pac::Peripherals::steal().$USBX_CONTROLLER,
@@ -107,10 +108,12 @@ macro_rules! impl_usb {
                     self.disable_interrupt(Interrupt::$USBX_EP_OUT);
                 }
 
+                #[inline(always)]
                 pub fn is_pending(&self, interrupt: Interrupt) -> bool {
                     pac::csr::interrupt::pending(interrupt)
                 }
 
+                #[inline(always)]
                 pub fn clear_pending(&self, interrupt: Interrupt) {
                     match interrupt {
                         Interrupt::$USBX_CONTROLLER => self
@@ -184,6 +187,7 @@ macro_rules! impl_usb {
                 }
 
                 /// Prepare endpoint to receive a single OUT packet.
+                #[inline(always)]
                 pub fn ep_out_prime_receive(&self, endpoint: u8) {
                     // clear receive buffer
                     self.ep_out.reset.write(|w| w.reset().bit(true));
@@ -383,6 +387,7 @@ macro_rules! impl_usb {
             }
 
             impl UnsafeUsbDriverOperations for $USBX {
+                #[inline(always)]
                 unsafe fn set_tx_ack_active(&self) {
                     #[cfg(not(target_has_atomic))]
                     {
@@ -394,6 +399,7 @@ macro_rules! impl_usb {
                         $USBX_CONTROLLER::TX_ACK_ACTIVE.store(true, Ordering::Relaxed);
                     }
                 }
+                #[inline(always)]
                 unsafe fn clear_tx_ack_active(&self) {
                     #[cfg(not(target_has_atomic))]
                     {
@@ -405,6 +411,7 @@ macro_rules! impl_usb {
                         $USBX_CONTROLLER::TX_ACK_ACTIVE.store(false, Ordering::Relaxed);
                     }
                 }
+                #[inline(always)]
                 unsafe fn is_tx_ack_active(&self) -> bool {
                     #[cfg(not(target_has_atomic))]
                     {
@@ -445,6 +452,7 @@ macro_rules! impl_usb {
             }
 
             impl EndpointRead for $USBX {
+                #[inline(always)]
                 fn read(&self, endpoint: u8, buffer: &mut [u8]) -> usize {
                     // drain fifo
                     let mut bytes_read = 0;
@@ -466,6 +474,7 @@ macro_rules! impl_usb {
             }
 
             impl EndpointWrite for $USBX {
+                #[inline(always)]
                 fn write<I>(&self, endpoint: u8, iter: I)
                 where
                     I: Iterator<Item = u8>,
@@ -494,6 +503,7 @@ macro_rules! impl_usb {
             }
 
             impl EndpointWriteRef for $USBX {
+                #[inline(always)]
                 fn write_ref<'a, I>(&self, endpoint: u8, iter: I)
                 where
                     I: Iterator<Item = &'a u8>,
