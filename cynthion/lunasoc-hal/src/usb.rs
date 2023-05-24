@@ -390,7 +390,9 @@ macro_rules! impl_usb {
                 unsafe fn set_tx_ack_active(&self) {
                     #[cfg(not(target_has_atomic))]
                     {
-                        $USBX_CONTROLLER::TX_ACK_ACTIVE = true;
+                        riscv::interrupt::free(|| {
+                            $USBX_CONTROLLER::TX_ACK_ACTIVE = true;
+                        });
                     }
                     #[cfg(target_has_atomic)]
                     {
@@ -402,7 +404,9 @@ macro_rules! impl_usb {
                 unsafe fn clear_tx_ack_active(&self) {
                     #[cfg(not(target_has_atomic))]
                     {
-                        $USBX_CONTROLLER::TX_ACK_ACTIVE = false;
+                        riscv::interrupt::free(|| {
+                            $USBX_CONTROLLER::TX_ACK_ACTIVE = false;
+                        });
                     }
                     #[cfg(target_has_atomic)]
                     {
@@ -414,9 +418,9 @@ macro_rules! impl_usb {
                 unsafe fn is_tx_ack_active(&self) -> bool {
                     #[cfg(not(target_has_atomic))]
                     {
-                        riscv::register::mie::clear_mext();
-                        let active = $USBX_CONTROLLER::TX_ACK_ACTIVE;
-                        riscv::register::mie::set_mext();
+                        let active = riscv::interrupt::free(|| {
+                            $USBX_CONTROLLER::TX_ACK_ACTIVE
+                        });
                         active
                     }
                     #[cfg(target_has_atomic)]
