@@ -46,6 +46,17 @@ pub static DEVICE_DESCRIPTOR: DeviceDescriptor = DeviceDescriptor {
     ..DeviceDescriptor::new()
 };
 
+pub static DEVICE_QUALIFIER_DESCRIPTOR: DeviceQualifierDescriptor = DeviceQualifierDescriptor {
+    descriptor_version: 0x0200,
+    device_class: 0xff,
+    device_subclass: 0x00,
+    device_protocol: 0x00,
+    max_packet_size: 8,
+    num_configurations: 1,
+    reserved: 0,
+    ..DeviceQualifierDescriptor::new()
+};
+
 pub static CONFIGURATION_DESCRIPTOR_0: ConfigurationDescriptor = ConfigurationDescriptor::new(
     ConfigurationDescriptorHeader {
         descriptor_type: DescriptorType::Configuration as u8,
@@ -77,6 +88,51 @@ pub static CONFIGURATION_DESCRIPTOR_0: ConfigurationDescriptor = ConfigurationDe
                 endpoint_address: 0x02, // OUT
                 attributes: 0x02,       // Bulk
                 max_packet_size: 512,   // technically 32
+                interval: 0,
+                ..EndpointDescriptor::new()
+            },
+            EndpointDescriptor {
+                endpoint_address: 0x81, // IN
+                attributes: 0x03,       // Interrupt
+                max_packet_size: 8,
+                interval: 1, // 1ms
+                ..EndpointDescriptor::new()
+            },
+        ],
+    )],
+);
+
+pub static OTHER_SPEED_CONFIGURATION_DESCRIPTOR_0: ConfigurationDescriptor = ConfigurationDescriptor::new(
+    ConfigurationDescriptorHeader {
+        descriptor_type: DescriptorType::OtherSpeedConfiguration as u8,
+        configuration_value: 1,
+        configuration_string_index: 1,
+        attributes: 0x80, // 0b1000_0000 = bus-powered
+        max_power: 50,    // 50 * 2 mA = 100 mA
+        ..ConfigurationDescriptorHeader::new()
+    },
+    &[InterfaceDescriptor::new(
+        InterfaceDescriptorHeader {
+            interface_number: 0,
+            alternate_setting: 0,
+            interface_class: 0xff,    // Vendor-specific
+            interface_subclass: 0x01, // Vendor-specific
+            interface_protocol: 0x02, // CDC
+            interface_string_index: 2,
+            ..InterfaceDescriptorHeader::new()
+        },
+        &[
+            EndpointDescriptor {
+                endpoint_address: 0x82, // IN
+                attributes: 0x02,       // Bulk
+                max_packet_size: 64,    // technically 32
+                interval: 0,
+                ..EndpointDescriptor::new()
+            },
+            EndpointDescriptor {
+                endpoint_address: 0x02, // OUT
+                attributes: 0x02,       // Bulk
+                max_packet_size: 64,    // technically 32
                 interval: 0,
                 ..EndpointDescriptor::new()
             },
