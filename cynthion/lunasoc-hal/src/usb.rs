@@ -344,7 +344,7 @@ macro_rules! impl_usb {
                     self.ep_out.stall.write(|w| w.stall().bit(true));
                 }
 
-                /// Sets the stall state for the given endpoint address
+                /// Set the stall state for the given endpoint address
                 ///
                 /// TODO endpoint_address is a USB address i.e. masked with 0x80
                 /// for direction. It may be more consistent to actually pass
@@ -356,16 +356,38 @@ macro_rules! impl_usb {
                                 .epno
                                 .write(|w| unsafe { w.epno().bits(endpoint_address) });
                             self.ep_out.stall.write(|w| w.stall().bit(state));
-                            log::debug!("  STALL EP_OUT: {} -> {}", endpoint_address, state);
+                            log::debug!("  usb::stall_endpoint EP_OUT: {} -> {}", endpoint_address, state);
                         }
                         Direction::DeviceToHost => {
                             self.ep_in
                                 .epno
                                 .write(|w| unsafe { w.epno().bits(endpoint_address & 0xf) });
                             self.ep_in.stall.write(|w| w.stall().bit(state));
-                            log::debug!("  STALL EP_IN: {} -> {}", endpoint_address & 0xf, state);
+                            log::debug!("  usb::stall_endpoint EP_IN: {} -> {}", endpoint_address & 0xf, state);
                         }
                     }
+                }
+
+                /// Clear PID toggle bit for the given endpoint address.
+                ///
+                /// TODO this works most of the time, but not always ...
+                ///
+                /// Also see: https://github.com/greatscottgadgets/luna/issues/166
+                fn clear_feature_endpoint_halt(&self, endpoint_address: u8) {
+                    let endpoint_number = endpoint_address & 0xf;
+
+                    if (endpoint_address & 0x80) == 0 {  // HostToDevice
+                        self.ep_out.epno.write(|w| unsafe { w.epno().bits(endpoint_number) });
+                        self.ep_out.pid.write(|w| w.pid().bit(false));
+
+                    } else { // DeviceToHost
+                        self.ep_in.epno.write(|w| unsafe { w.epno().bits(endpoint_number) });
+                        self.ep_in.pid.write(|w| w.pid().bit(false));
+                    }
+
+                    // TODO figure out why throughput is higher if we emit log messages
+                    // this smacks of a deeper problem ...
+                    log::debug!("  usb::clear_feature_endpoint_halt: 0x{:x}", endpoint_address);
                 }
             }
 

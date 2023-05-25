@@ -236,7 +236,7 @@ fn main_loop() -> GreatResult<()> {
                     bytes_read,
                     buffer,
                 } => {
-                    info!("received {} bytes on endpoint 0x00", bytes_read);
+                    //info!("received {} bytes on endpoint 0x00", bytes_read);
                     usb0.hal_driver.ep_out_prime_receive(0);
                 }
                 UsbReceivePacket {
