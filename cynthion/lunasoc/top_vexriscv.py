@@ -150,8 +150,10 @@ class CynthionSoC(Elaboratable):
         usb0_device.add_endpoint(self.usb0_ep_out)
         m.d.comb += self.usb0.attach(usb0_device)
         m.submodules.usb0_device = usb0_device
-
-        ulpi1 = platform.request("aux_phy")
+        try:
+            ulpi1 = platform.request("aux_phy")
+        except:
+            ulpi1 = platform.request("host_phy")
         usb1_device = USBDevice(bus=ulpi1)
         usb1_device.add_endpoint(self.usb1_ep_control)
         usb1_device.add_endpoint(self.usb1_ep_in)
@@ -159,7 +161,10 @@ class CynthionSoC(Elaboratable):
         m.d.comb += self.usb1.attach(usb1_device)
         m.submodules.usb1_device = usb1_device
 
-        ulpi2 = platform.request("control_phy")
+        try:
+            ulpi2 = platform.request("control_phy")
+        except:
+            ulpi2 = platform.request("sideband_phy")
         usb2_device = USBDevice(bus=ulpi2)
         usb2_device.add_endpoint(self.usb2_ep_control)
         usb2_device.add_endpoint(self.usb2_ep_in)
@@ -174,7 +179,10 @@ class CynthionSoC(Elaboratable):
 
 import luna
 from luna.gateware.platform.ulx3s    import ULX3S_85F_Platform
-from luna.gateware.platform          import CynthionPlatformRev0D4, CynthionPlatformRev0D7
+try:
+    from luna.gateware.platform          import CynthionPlatformRev0D4, CynthionPlatformRev0D7
+except:
+    from luna.gateware.platform.luna_r0_4 import LUNAPlatformRev0D4 as CynthionPlatformRev0D4
 
 from lambdasoc.sim.platform          import CXXRTLPlatform
 
