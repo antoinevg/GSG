@@ -378,8 +378,6 @@ where
     }
 
     fn handle_clear_feature(&self, setup_packet: &SetupPacket) -> SmolResult<()> {
-        debug!("SETUP handle_clear_feature()");
-
         // parse request
         let recipient = setup_packet.recipient();
         let feature_bits = setup_packet.value;
@@ -398,8 +396,9 @@ where
             }
             (Recipient::Endpoint, Feature::EndpointHalt) => {
                 let endpoint_address = setup_packet.index as u8;
-                self.hal_driver.stall_endpoint(endpoint_address, false);
-                debug!("SETUP clear stall: 0x{:x}", endpoint_address);
+                self.hal_driver.clear_feature_endpoint_halt(endpoint_address);
+                self.hal_driver.ack_status_stage(setup_packet);
+                //debug!("SETUP handle_clear_feature EndpointHalt: 0x{:x}", endpoint_address);
             }
             _ => {
                 warn!(
@@ -432,11 +431,6 @@ where
         match (&recipient, &feature) {
             (Recipient::Device, Feature::DeviceRemoteWakeup) => {
                 // TODO self.feature_remote_wakeup = true;
-            }
-            (Recipient::Endpoint, Feature::EndpointHalt) => {
-                let endpoint = setup_packet.index as u8;
-                self.hal_driver.stall_endpoint(endpoint, true);
-                trace!("SETUP set stall: 0x{:x}", endpoint);
             }
             _ => {
                 warn!(

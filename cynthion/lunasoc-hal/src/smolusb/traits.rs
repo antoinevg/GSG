@@ -44,10 +44,12 @@ pub trait UsbDriverOperations {
     fn ack_status_stage(&self, packet: &SetupPacket);
     fn ack(&self, endpoint: u8, direction: Direction);
     fn set_address(&self, address: u8);
-    /// Stalls the current control request.
+    /// Stall the current control request.
     fn stall_request(&self);
-    /// Sets the stall state for the given endpoint address
+    /// Set the stall state for the given endpoint address
     fn stall_endpoint(&self, endpoint: u8, state: bool);
+    /// Clear any halt condition on the target endpoint, and clear the data toggle bit.
+    fn clear_feature_endpoint_halt(&self, endpoint_address: u8);
 }
 
 pub trait UnsafeUsbDriverOperations {
