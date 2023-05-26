@@ -398,7 +398,7 @@ where
                 let endpoint_address = setup_packet.index as u8;
                 self.hal_driver.clear_feature_endpoint_halt(endpoint_address);
                 self.hal_driver.ack_status_stage(setup_packet);
-                //debug!("SETUP handle_clear_feature EndpointHalt: 0x{:x}", endpoint_address);
+                debug!("SETUP handle_clear_feature EndpointHalt: 0x{:x}", endpoint_address);
             }
             _ => {
                 warn!(

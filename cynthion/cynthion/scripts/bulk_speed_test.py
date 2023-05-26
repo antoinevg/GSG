@@ -122,9 +122,10 @@ def run_speed_test(direction=usb1.ENDPOINT_IN):
             total_data_exchanged += transfer.getActualLength()
             logging.debug(f"usb1.TRANSFER_COMPLETED: {total_data_exchanged} bytes")
 
-            #buffer = transfer.getBuffer()
-            #logging.info(f"  buffer length: {len(buffer)}")
-            #logging.info(f"  {list(buffer[:8])} -> {list(buffer[-8:])}")
+            if direction == usb1.ENDPOINT_IN:
+                buffer = transfer.getBuffer()
+                logging.debug(f"  buffer length: {len(buffer)}")
+                logging.debug(f"  {list(buffer[:8])} -> {list(buffer[-8:])}")
 
             # ... and if we should terminate, abort.
             if _should_terminate():
