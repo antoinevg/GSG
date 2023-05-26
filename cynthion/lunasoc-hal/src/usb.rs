@@ -479,17 +479,37 @@ macro_rules! impl_usb {
             impl EndpointRead for $USBX {
                 #[inline(always)]
                 fn read(&self, endpoint: u8, buffer: &mut [u8]) -> usize {
-                    // drain fifo
-                    let mut bytes_read = 0;
+                    /*let mut bytes_read = 0;
                     let mut overflow = 0;
                     while self.ep_out.have.read().have().bit() {
                         if bytes_read >= buffer.len() {
+                            // drain fifo
                             let _drain = self.ep_out.data.read().data().bits();
                             overflow += 1;
                         } else {
                             buffer[bytes_read] = self.ep_out.data.read().data().bits();
                             bytes_read += 1;
                         }
+                    }*/
+
+                    // getting a little better performance with an
+                    // iterator, probably because it doesn't need to
+                    // do a bounds check.
+                    let mut bytes_read = 0;
+                    for b in buffer.iter_mut() {
+                        if self.ep_out.have.read().have().bit() {
+                            *b = self.ep_out.data.read().data().bits();
+                            bytes_read += 1;
+                        } else {
+                            break;
+                        }
+                    }
+
+                    // drain fifo if needed
+                    let mut overflow = 0;
+                    while self.ep_out.have.read().have().bit() {
+                        let _drain = self.ep_out.data.read().data().bits();
+                        overflow += 1;
                     }
 
                     trace!("  RX OUT{} {} bytes read + {} bytes overflow", endpoint, bytes_read, overflow);
