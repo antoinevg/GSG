@@ -53,25 +53,8 @@ fn MachineExternal() {
 
     // - usb0 interrupts - "host_phy" / "aux_phy" --
 
-    // USB0_EP_OUT UsbReceiveData
-    if usb0.is_pending(pac::Interrupt::USB0_EP_OUT) {
-        let endpoint = usb0.ep_out.data_ep.read().bits() as u8;
-
-        // discard packets from Bulk OUT transfer endpoint
-        /*if endpoint == 1 {
-            /*while usb0.ep_out.have.read().have().bit() {
-                let _b = usb0.ep_out.data.read().data().bits();
-            }*/
-            usb0.ep_out_prime_receive(1);
-            usb0.clear_pending(pac::Interrupt::USB0_EP_OUT);
-            return;
-        }*/
-
-        usb0.clear_pending(pac::Interrupt::USB0_EP_OUT);
-        dispatch_message(Message::UsbReceivePacket(cynthion::UsbInterface::Target, endpoint, 0));
-
     // USB0 UsbBusReset
-    } else if usb0.is_pending(pac::Interrupt::USB0) {
+    if usb0.is_pending(pac::Interrupt::USB0) {
         usb0.clear_pending(pac::Interrupt::USB0);
         usb0.bus_reset();
         dispatch_message(Message::UsbBusReset(Target))
@@ -88,10 +71,27 @@ fn MachineExternal() {
         };
         dispatch_message(message);
 
+    // USB0_EP_OUT UsbReceiveData
+    } else if usb0.is_pending(pac::Interrupt::USB0_EP_OUT) {
+        let endpoint = usb0.ep_out.data_ep.read().bits() as u8;
+
+        // discard packets from Bulk OUT transfer endpoint
+        /*if endpoint == 1 {
+            /*while usb0.ep_out.have.read().have().bit() {
+                let _b = usb0.ep_out.data.read().data().bits();
+            }*/
+            usb0.ep_out_prime_receive(1);
+            usb0.clear_pending(pac::Interrupt::USB0_EP_OUT);
+            return;
+        }*/
+
+        usb0.clear_pending(pac::Interrupt::USB0_EP_OUT);
+        dispatch_message(Message::UsbReceivePacket(cynthion::UsbInterface::Target, endpoint, 0));
+
     // USB0_EP_IN UsbTransferComplete
     } else if usb0.is_pending(pac::Interrupt::USB0_EP_IN) {
-        usb0.clear_pending(pac::Interrupt::USB0_EP_IN);
         let endpoint = usb0.ep_in.epno.read().bits() as u8;
+        usb0.clear_pending(pac::Interrupt::USB0_EP_IN);
 
         // TODO something a little bit safer would be nice
         unsafe {
