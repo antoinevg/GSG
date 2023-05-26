@@ -325,7 +325,7 @@ pub mod UsbStatusFlag {
 
 /// Greatdancer
 pub struct Greatdancer<'a> {
-    usb0: UsbDevice<'a, hal::Usb0>,
+    pub usb0: UsbDevice<'a, hal::Usb0>, // TODO needs to be private
     state: State,
     ep0_max_packet_size: u16,
     quirk_flags: u16,
