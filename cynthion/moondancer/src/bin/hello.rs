@@ -1,9 +1,9 @@
 #![no_std]
 #![no_main]
 
-use cynthion::pac;
+use moondancer::pac;
 
-use cynthion::hal;
+use moondancer::hal;
 use hal::hal::delay::DelayUs;
 use hal::Serial;
 use hal::Timer;
@@ -27,7 +27,7 @@ fn main() -> ! {
 
     // initialize logging
     let serial = Serial::new(peripherals.UART);
-    cynthion::log::init(serial);
+    moondancer::log::init(serial);
 
     let mut timer = Timer::new(peripherals.TIMER, pac::clock::sysclk());
     let mut counter = 0;

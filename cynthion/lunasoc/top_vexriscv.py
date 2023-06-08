@@ -69,7 +69,7 @@ class CynthionSoC(Elaboratable):
         # Add bios and core peripherals
         self.soc.add_bios_and_peripherals(uart_pins=self.uart_pins)
 
-        # ... add a GpioPeripheral for the PMOD connectors ...
+        # ... add two gpio peripherals for our PMOD connectors ...
         self.gpioa = GpioPeripheral(width=8)
         self.gpiob = GpioPeripheral(width=8)
         self.soc.add_peripheral(self.gpioa)

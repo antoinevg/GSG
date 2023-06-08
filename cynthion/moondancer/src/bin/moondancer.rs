@@ -2,7 +2,7 @@
 #![no_std]
 #![no_main]
 
-use cynthion::{hal, pac, Message};
+use moondancer::{hal, pac, Message};
 
 use pac::csr::interrupt;
 
@@ -45,7 +45,7 @@ fn dispatch_message(message: Message) {
 #[allow(non_snake_case)]
 #[no_mangle]
 fn MachineExternal() {
-    use cynthion::UsbInterface::{Aux, Target};
+    use moondancer::UsbInterface::{Aux, Target};
 
     // peripherals
     let peripherals = unsafe { pac::Peripherals::steal() };
@@ -180,13 +180,13 @@ struct Firmware<'a> {
 
     // classes
     core: gcp::class_core::Core,
-    greatdancer: cynthion::class::greatdancer::Greatdancer<'a>,
+    greatdancer: moondancer::class::greatdancer::Greatdancer<'a>,
 }
 
 impl<'a> Firmware<'a> {
     fn new(peripherals: pac::Peripherals) -> Self {
         // initialize logging
-        cynthion::log::init(hal::Serial::new(peripherals.UART));
+        moondancer::log::init(hal::Serial::new(peripherals.UART));
         trace!("Logging initialized");
 
         // usb1: host
@@ -223,14 +223,14 @@ impl<'a> Firmware<'a> {
         // initialize class registry
         static CLASSES: [gcp::Class; 3] = [
             gcp::class_core::CLASS,
-            cynthion::class::firmware::CLASS,
-            cynthion::class::greatdancer::CLASS,
+            moondancer::class::firmware::CLASS,
+            moondancer::class::greatdancer::CLASS,
         ];
         let classes = gcp::Classes(&CLASSES);
 
         // initialize classes
-        let core = gcp::class_core::Core::new(classes, cynthion::BOARD_INFORMATION);
-        let greatdancer = cynthion::class::greatdancer::Greatdancer::new(usb0);
+        let core = gcp::class_core::Core::new(classes, moondancer::BOARD_INFORMATION);
+        let greatdancer = moondancer::class::greatdancer::Greatdancer::new(usb0);
 
         Self {
             leds: peripherals.LEDS,
@@ -273,7 +273,7 @@ impl<'a> Firmware<'a> {
 
     #[inline(always)]
     fn main_loop(&'a mut self) -> GreatResult<()> {
-        let mut rx_buffer: [u8; cynthion::EP_MAX_RECEIVE_LENGTH] = [0; cynthion::EP_MAX_RECEIVE_LENGTH];
+        let mut rx_buffer: [u8; moondancer::EP_MAX_RECEIVE_LENGTH] = [0; moondancer::EP_MAX_RECEIVE_LENGTH];
         let mut max_queue_length = 0;
         let mut queue_length = 0;
 
@@ -285,7 +285,7 @@ impl<'a> Firmware<'a> {
             queue_length = 0;
 
             while let Some(message) = MESSAGE_QUEUE.dequeue() {
-                use cynthion::{
+                use moondancer::{
                     Message::*,
                     UsbInterface::{Aux, Target},
                 };
@@ -522,7 +522,7 @@ impl<'a> Firmware<'a> {
     fn handle_usb1_receive_control_data(
         &mut self,
         bytes_read: usize,
-        buffer: [u8; cynthion::EP_MAX_RECEIVE_LENGTH],
+        buffer: [u8; moondancer::EP_MAX_RECEIVE_LENGTH],
     ) -> GreatResult<()> {
         // TODO state == Command::Send
 
@@ -576,7 +576,7 @@ impl<'a> Firmware<'a> {
         &mut self,
         endpoint: u8,
         bytes_read: usize,
-        buffer: [u8; cynthion::EP_MAX_RECEIVE_LENGTH],
+        buffer: [u8; moondancer::EP_MAX_RECEIVE_LENGTH],
     ) -> GreatResult<()> {
         Ok(())
     }
@@ -601,7 +601,7 @@ impl<'a> Firmware<'a> {
             }
             // class: firmware
             (gcp::ClassId::firmware, verb_id) => {
-                cynthion::class::firmware::dispatch(verb_id, arguments, response_buffer)
+                moondancer::class::firmware::dispatch(verb_id, arguments, response_buffer)
             }
             // class: greatdancer
             (gcp::ClassId::greatdancer, verb_id) => {

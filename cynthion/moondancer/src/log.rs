@@ -116,15 +116,15 @@ unsafe impl<W: Write + Send> Sync for WriteLogger<W> {}
 
 #[cfg(not(feature = "alloc"))]
 pub mod format_nostd {
-    pub const SIZE: usize = 80;
+    pub const SIZE: usize = 128;
 
     #[macro_export]
     macro_rules! _format {
         ($($arg:tt)*) => {
             {
                 use core::fmt::Write;
-                use cynthion::log::format_nostd::BufferWriter;
-                use cynthion::log::format_nostd::SIZE;
+                use moondancer::log::format_nostd::BufferWriter;
+                use moondancer::log::format_nostd::SIZE;
                 let mut buffer = [0u8; SIZE];
                 let mut writer = BufferWriter::new(buffer);
                 write!(&mut writer, $($arg)*).unwrap();

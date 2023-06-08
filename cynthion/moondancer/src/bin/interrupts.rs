@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 
-use cynthion::{hal, pac};
+use moondancer::{hal, pac};
 
 use log::{error, info};
 use riscv_rt::entry;
@@ -40,7 +40,7 @@ fn MachineExternal() {
 fn main() -> ! {
     let peripherals = pac::Peripherals::take().unwrap();
     let serial = hal::Serial::new(peripherals.UART);
-    cynthion::log::init(serial);
+    moondancer::log::init(serial);
 
     // configure and enable timer
     let one_second = pac::clock::sysclk();

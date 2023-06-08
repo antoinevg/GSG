@@ -1,10 +1,10 @@
 #![no_std]
 #![no_main]
 
-use cynthion::pac;
+use moondancer::pac;
 use pac::csr::interrupt;
 
-use cynthion::hal;
+use moondancer::hal;
 
 use hal::smolusb;
 use smolusb::class::cdc;
@@ -18,11 +18,11 @@ use log::{debug, error, info, trace};
 
 // - global static state ------------------------------------------------------
 
-use cynthion::{Message, UsbReceivePacket};
+use moondancer::{Message, UsbReceivePacket};
 use heapless::mpmc::MpMcQueue as Queue;
 
-static MESSAGE_QUEUE: Queue<Message, { cynthion::EP_MAX_ENDPOINTS }> = Queue::new();
-static USB_RECEIVE_PACKET_QUEUE: Queue<UsbReceivePacket, { cynthion::EP_MAX_ENDPOINTS }> =
+static MESSAGE_QUEUE: Queue<Message, { moondancer::EP_MAX_ENDPOINTS }> = Queue::new();
+static USB_RECEIVE_PACKET_QUEUE: Queue<UsbReceivePacket, { moondancer::EP_MAX_ENDPOINTS }> =
     Queue::new();
 
 #[inline(always)]
@@ -50,7 +50,7 @@ fn dispatch_receive_packet(usb_receive_packet: UsbReceivePacket) {
 #[allow(non_snake_case)]
 #[no_mangle]
 fn MachineExternal() {
-    use cynthion::UsbInterface::{Aux, Target};
+    use moondancer::UsbInterface::{Aux, Target};
 
     // peripherals
     let peripherals = unsafe { pac::Peripherals::steal() };
@@ -97,7 +97,7 @@ fn MachineExternal() {
             interface: Target,
             endpoint,
             bytes_read: 0,
-            buffer: [0_u8; cynthion::EP_MAX_RECEIVE_LENGTH],
+            buffer: [0_u8; moondancer::EP_MAX_RECEIVE_LENGTH],
         };
         receive_packet.bytes_read = usb0.read(endpoint, &mut receive_packet.buffer);
 
@@ -141,7 +141,7 @@ fn MachineExternal() {
             interface: Aux,
             endpoint,
             bytes_read: 0,
-            buffer: [0_u8; cynthion::EP_MAX_RECEIVE_LENGTH],
+            buffer: [0_u8; moondancer::EP_MAX_RECEIVE_LENGTH],
         };
         receive_packet.bytes_read = usb1.read(endpoint, &mut receive_packet.buffer);
 
@@ -175,7 +175,7 @@ fn main() -> ! {
 
     // initialize logging
     let serial = hal::Serial::new(peripherals.UART);
-    cynthion::log::init(serial);
+    moondancer::log::init(serial);
     info!("logging initialized");
 
     // usb0: Target
@@ -255,7 +255,7 @@ fn main() -> ! {
             buffer,
         }) = USB_RECEIVE_PACKET_QUEUE.dequeue()
         {
-            use cynthion::UsbInterface::{Aux, Target};
+            use moondancer::UsbInterface::{Aux, Target};
 
             match (interface, endpoint, bytes_read, buffer) {
                 // usb0 receive packet handler
@@ -294,7 +294,7 @@ fn main() -> ! {
         }
 
         if let Some(message) = MESSAGE_QUEUE.dequeue() {
-            use cynthion::UsbInterface::{Aux, Target};
+            use moondancer::UsbInterface::{Aux, Target};
 
             match message {
                 // usb0 message handlers

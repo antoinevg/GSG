@@ -14,10 +14,10 @@
 ///! basically just shouts yolo and disables interrupts globally.
 ///!
 ///! Which unfortunately has some performance implications ...
-use cynthion::pac;
+use moondancer::pac;
 use pac::csr::interrupt;
 
-use cynthion::hal;
+use moondancer::hal;
 
 use log::{debug, error, info, trace, warn};
 
@@ -25,7 +25,7 @@ use riscv_rt::entry;
 
 // - global static state ------------------------------------------------------
 
-use cynthion::Message;
+use moondancer::Message;
 use heapless::mpmc::MpMcQueue as Queue;
 static MESSAGE_QUEUE: Queue<Message, 256> = Queue::new();
 
@@ -80,7 +80,7 @@ fn entry() -> ! {
 
     // initialize logging
     let serial = hal::Serial::new(peripherals.UART);
-    cynthion::log::init(serial);
+    moondancer::log::init(serial);
     info!("logging initialized");
     unsafe { riscv::asm::delay(pac::clock::sysclk()) };
 
@@ -114,7 +114,7 @@ fn entry() -> ! {
 // - main loop ----------------------------------------------------------------
 
 #[inline(always)]
-fn main_loop(mut state: State, leds: &pac::LEDS) -> cynthion::GreatResult<State> {
+fn main_loop(mut state: State, leds: &pac::LEDS) -> moondancer::GreatResult<State> {
     leds.output.write(|w| unsafe { w.output().bits(1 << 0) });
 
     let mut while_counter = 0;

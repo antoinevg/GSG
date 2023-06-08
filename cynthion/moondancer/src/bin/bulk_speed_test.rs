@@ -2,7 +2,7 @@
 #![no_std]
 #![no_main]
 
-use cynthion::{hal, pac, Message, UsbReceivePacket};
+use moondancer::{hal, pac, Message, UsbReceivePacket};
 
 use hal::{smolusb, Serial};
 
@@ -16,8 +16,7 @@ use smolusb::traits::{
 
 use libgreat::{GreatError, GreatResult};
 
-//use heapless::mpmc::MpMcQueue as Queue;
-use heapless::spsc::Queue as Queue;
+use heapless::mpmc::MpMcQueue as Queue;
 
 use log::{debug, error, info};
 
@@ -28,13 +27,11 @@ const TEST_WRITE_SIZE: usize = 512;
 
 // - global static state ------------------------------------------------------
 
-static mut MESSAGE_QUEUE: Queue<Message, 32> = Queue::new();
-static mut USB_RECEIVE_PACKET_QUEUE: Queue<UsbReceivePacket, { cynthion::EP_MAX_ENDPOINTS }>
-    = Queue::new();
+static MESSAGE_QUEUE: Queue<Message, 32> = Queue::new();
 
 #[inline(always)]
 fn dispatch_message(message: Message) {
-    match unsafe { MESSAGE_QUEUE.enqueue(message) } {
+    match MESSAGE_QUEUE.enqueue(message) {
         Ok(()) => (),
         Err(_) => {
             error!("MachineExternal - message queue overflow");
@@ -43,65 +40,21 @@ fn dispatch_message(message: Message) {
     }
 }
 
-#[inline(always)]
-fn dispatch_receive_packet(usb_receive_packet: UsbReceivePacket) {
-    match unsafe { USB_RECEIVE_PACKET_QUEUE.enqueue(usb_receive_packet) } {
-        Ok(()) => (),
-        Err(_) => {
-            error!("MachineExternal - message queue overflow");
-            panic!("MachineExternal - message queue overflow");
-        }
-    }
-}
 
 // - MachineExternal interrupt handler ----------------------------------------
 
 #[allow(non_snake_case)]
 #[no_mangle]
 fn MachineExternal() {
-    use cynthion::UsbInterface::Target;
+    use moondancer::UsbInterface::Target;
 
     let usb0 = unsafe { hal::Usb0::summon() };
     let leds = unsafe { &pac::Peripherals::steal().LEDS };
 
     // - usb0 interrupts - "host_phy" / "aux_phy" --
 
-    // USB0_EP_OUT UsbReceiveData
-    if usb0.is_pending(pac::Interrupt::USB0_EP_OUT) {
-        let endpoint = usb0.ep_out.data_ep.read().bits() as u8;
-
-        // discard packets from Bulk OUT transfer endpoint
-        /*if endpoint == 1 {
-            /*while usb0.ep_out.have.read().have().bit() {
-                let _b = usb0.ep_out.data.read().data().bits();
-            }*/
-            usb0.ep_out_prime_receive(1);
-            usb0.clear_pending(pac::Interrupt::USB0_EP_OUT);
-            return;
-        }*/
-
-        // read data from endpoint
-        let mut receive_packet = UsbReceivePacket {
-            interface: cynthion::UsbInterface::Target,
-            endpoint,
-            bytes_read: 0,
-            buffer: [0_u8; cynthion::EP_MAX_RECEIVE_LENGTH],
-        };
-        receive_packet.bytes_read = usb0.read(endpoint, &mut receive_packet.buffer);
-
-        // clear interrupt
-        usb0.clear_pending(pac::Interrupt::USB0_EP_OUT);
-
-        // dispatch packet to main loop
-        dispatch_receive_packet(receive_packet);
-
-        // prime for immediate reception if we have space in our receive queue
-        //if unsafe { USB_RECEIVE_PACKET_QUEUE.len() } < unsafe { USB_RECEIVE_PACKET_QUEUE.capacity() } {
-        //    usb0.ep_out_prime_receive(endpoint);
-        //}
-
     // USB0 UsbBusReset
-    } else if usb0.is_pending(pac::Interrupt::USB0) {
+    if usb0.is_pending(pac::Interrupt::USB0) {
         usb0.clear_pending(pac::Interrupt::USB0);
         usb0.bus_reset();
         dispatch_message(Message::UsbBusReset(Target))
@@ -118,10 +71,27 @@ fn MachineExternal() {
         };
         dispatch_message(message);
 
+    // USB0_EP_OUT UsbReceiveData
+    } else if usb0.is_pending(pac::Interrupt::USB0_EP_OUT) {
+        let endpoint = usb0.ep_out.data_ep.read().bits() as u8;
+
+        // discard packets from Bulk OUT transfer endpoint
+        /*if endpoint == 1 {
+            /*while usb0.ep_out.have.read().have().bit() {
+                let _b = usb0.ep_out.data.read().data().bits();
+            }*/
+            usb0.ep_out_prime_receive(1);
+            usb0.clear_pending(pac::Interrupt::USB0_EP_OUT);
+            return;
+        }*/
+
+        usb0.clear_pending(pac::Interrupt::USB0_EP_OUT);
+        dispatch_message(Message::UsbReceivePacket(moondancer::UsbInterface::Target, endpoint, 0));
+
     // USB0_EP_IN UsbTransferComplete
     } else if usb0.is_pending(pac::Interrupt::USB0_EP_IN) {
-        usb0.clear_pending(pac::Interrupt::USB0_EP_IN);
         let endpoint = usb0.ep_in.epno.read().bits() as u8;
+        usb0.clear_pending(pac::Interrupt::USB0_EP_IN);
 
         // TODO something a little bit safer would be nice
         unsafe {
@@ -168,7 +138,7 @@ fn main_loop() -> GreatResult<()> {
     let leds = &peripherals.LEDS;
 
     // initialize logging
-    cynthion::log::init(hal::Serial::new(peripherals.UART));
+    moondancer::log::init(hal::Serial::new(peripherals.UART));
     info!("Logging initialized");
 
     // usb0: Target
@@ -225,87 +195,15 @@ fn main_loop() -> GreatResult<()> {
 
     let mut counter = 0;
 
+    let mut rx_buffer: [u8; moondancer::EP_MAX_RECEIVE_LENGTH] = [0; moondancer::EP_MAX_RECEIVE_LENGTH];
+
     loop {
         let mut queue_length = 0;
 
-        if let Some(receive_packet) = unsafe { USB_RECEIVE_PACKET_QUEUE.dequeue() } {
-            match receive_packet {
-                UsbReceivePacket {
-                    interface: cynthion::UsbInterface::Target,
-                    endpoint: 0,
-                    bytes_read,
-                    buffer,
-                } => {
-                    //info!("received {} bytes on endpoint 0x00", bytes_read);
-                    usb0.hal_driver.ep_out_prime_receive(0);
-                }
-                UsbReceivePacket {
-                    interface: cynthion::UsbInterface::Target,
-                    endpoint: 1,
-                    bytes_read,
-                    buffer,
-                } => {
-                    /*if counter % 100 == 0 {
-                        info!("received bulk data from host: {} bytes", bytes_read);
-                        /*if bytes_read > 8 {
-                            info!(
-                                "{:?} .. {:?}",
-                                &buffer[0..8],
-                                &buffer[(bytes_read - 8)..bytes_read]
-                            );
-                        }*/
-                    }
-                    counter += 1;*/
-                    usb0.hal_driver.ep_out_prime_receive(1);
-                }
-                UsbReceivePacket {
-                    interface: cynthion::UsbInterface::Target,
-                    endpoint: 2,
-                    bytes_read,
-                    buffer,
-                } => {
-                    info!("received command data from host: {} bytes", bytes_read);
-                    let command = buffer[0].into();
-                    match (bytes_read, &command) {
-                        (1, TestCommand::In) => {
-                            info!("starting test: IN");
-                            test_stats.reset();
-                            test_command = TestCommand::In;
-                        }
-                        (1, TestCommand::Out) => {
-                            info!("starting test: OUT");
-                            test_stats.reset();
-                            test_command = TestCommand::Out;
-                        }
-                        (1, command) => {
-                            info!("stopping test: {:?}", command);
-                            info!("  max write time: {}", test_stats.max_write_time);
-                            info!("  min write time: {}", test_stats.min_write_time);
-                            info!("  max flush time: {}", test_stats.max_flush_time);
-                            info!("  min flush time: {}", test_stats.min_flush_time);
-                            info!("  write count: {}", test_stats.write_count);
-                            info!("  reset count: {}", test_stats.reset_count);
-                            test_command = TestCommand::Stop;
-                        }
-                        (bytes_read, _) => {
-                            error!(
-                                "received invalid command from host: {:?} (read {} bytes)",
-                                command,
-                                bytes_read,
-                            );
-                        }
-                    }
-                    usb0.hal_driver.ep_out_prime_receive(2);
-                }
-                UsbReceivePacket { interface: port, endpoint, bytes_read, buffer } => {
-                    log::warn!("received unknown packet on {:?} endpoint: {}", port, endpoint);
-                    usb0.hal_driver.ep_out_prime_receive(endpoint);
-                }
-            }
-        }
+        while let Some(message) = MESSAGE_QUEUE.dequeue() {
+            use moondancer::{Message::*, UsbInterface::Target};
 
-        if let Some(message) = unsafe { MESSAGE_QUEUE.dequeue() } {
-            use cynthion::{Message::*, UsbInterface::Target};
+            leds.output.write(|w| unsafe { w.output().bits(0) });
 
             match message {
                 // - usb0 message handlers --
@@ -320,14 +218,70 @@ fn main_loop() -> GreatResult<()> {
                         .map_err(|_| GreatError::BadMessage)?;
                 }
 
+                // Usb0 received packet
+                UsbReceivePacket(Target, endpoint, _) => {
+                    let bytes_read = usb0.hal_driver.read(endpoint, &mut rx_buffer);
+                    if endpoint == 1 {
+                        leds.output.write(|w| unsafe { w.output().bits(0b11_1000) });
+                        if counter % 100 == 0 {
+                            log::trace!(
+                                "{:?} .. {:?}",
+                                &rx_buffer[0..8],
+                                &rx_buffer[(bytes_read - 8)..]
+                            );
+
+                        }
+                        counter += 1;
+                        usb0.hal_driver.ep_out_prime_receive(1);
+
+                    } else if endpoint == 2 {
+                        info!("received command data from host: {} bytes", bytes_read);
+                        let command = rx_buffer[0].into();
+                        match (bytes_read, &command) {
+                            (1, TestCommand::In) => {
+                                info!("starting test: IN");
+                                test_stats.reset();
+                                test_command = TestCommand::In;
+                            }
+                            (1, TestCommand::Out) => {
+                                info!("starting test: OUT");
+                                test_stats.reset();
+                                test_command = TestCommand::Out;
+                            }
+                            (1, command) => {
+                                info!("stopping test: {:?}", command);
+                                info!("  max write time: {}", test_stats.max_write_time);
+                                info!("  min write time: {}", test_stats.min_write_time);
+                                info!("  max flush time: {}", test_stats.max_flush_time);
+                                info!("  min flush time: {}", test_stats.min_flush_time);
+                                info!("  write count: {}", test_stats.write_count);
+                                info!("  reset count: {}", test_stats.reset_count);
+                                test_command = TestCommand::Stop;
+                            }
+                            (bytes_read, _) => {
+                                error!(
+                                    "received invalid command from host: {:?} (read {} bytes)",
+                                    command,
+                                    bytes_read,
+                                );
+                            }
+
+                        }
+                        usb0.hal_driver.ep_out_prime_receive(2);
+
+                    } else {
+                        usb0.hal_driver.ep_out_prime_receive(endpoint);
+                    }
+                }
+
                 // Usb0 transfer complete
                 UsbTransferComplete(Target, endpoint) => {
-                    //leds.output.write(|w| unsafe { w.output().bits(0b10_0000) });
+                    leds.output.write(|w| unsafe { w.output().bits(0b00_0111) });
                 }
 
                 // Error Message
                 ErrorMessage(message) => {
-                    //error!("MachineExternal Error - {}", message);
+                    error!("MachineExternal Error - {}", message);
                 }
 
                 // Unhandled message
@@ -372,11 +326,11 @@ fn test_in_speed(
             usb0.ep_in.reset.write(|w| w.reset().bit(true));
             did_reset = true;
         }
-        // 5.005340640788884 MB/s
-        for byte in data {
+        // 5.033856452242371MB/s.
+        for byte in data.iter() {
             usb0.ep_in.data.write(|w| unsafe { w.data().bits(*byte) });
         }
-        // 5.507828119928235 MB/s - no memory access
+        // 6.392375785142406MB/s. - no memory access
         /*for n in 0..TEST_WRITE_SIZE {
             usb0.ep_in.data.write(|w| unsafe { w.data().bits((n % 256) as u8) });
         }*/
@@ -387,7 +341,7 @@ fn test_in_speed(
     }
 
     // wait for fifo endpoint to be idle
-    let (_, t_flush) = cynthion::profile!(
+    let (_, t_flush) = moondancer::profile!(
         let mut timeout = 100;
         while !usb0.ep_in.idle.read().idle().bit() && timeout > 0 {
             timeout -= 1;
@@ -395,7 +349,7 @@ fn test_in_speed(
     );
 
     // write data to endpoint fifo
-    let (did_reset, t_write) = cynthion::profile!(
+    let (did_reset, t_write) = moondancer::profile!(
         //usb0.write(0x1, test_data.into_iter().copied()); false // 6780 / 5653 ~3.99MB/s
         //usb0.write_ref(0x1, test_data.iter()); false // 5663 / 5652 - ~4.02MB/s
         test_write_slice(usb0, 0x1, test_data) // 56533 / 5652 - ~4.04MB/s

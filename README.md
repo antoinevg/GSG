@@ -16,7 +16,7 @@ A repo for sharing stuff with my colleagues at Great Scott Gadgets.
 * [`cynthion/lunasoc-pac/`](cynthion/lunasoc-pac/) - lunasoc peripheral access crate
 * [`cynthion/lunasoc-hal/`](cynthion/lunasoc-hal/) - lunasoc embedded-hal crate
 * [`cynthion/libgreat/`](cynthion/libgreat/) - libgreat crate
-* [`cynthion/cynthion/`](cynthion/cynthion/)  - cynthion firmware crate
+* [`cynthion/moondancer/`](cynthion/moondancer/)  - moondancer firmware crate
 
 # Standalone examples
 

@@ -158,13 +158,13 @@ Note: there are two variations of the Cynthion SoC
 
 ---
 
-## Step 2: Build the Cynthion SoC firmware
+## Step 2: Build the MoonDancer firmware
 
-The Cynthion SoC firmware crate can be found in the [`gsg.git/cynthion/cynthion/`](cynthion/) directory.
+The MoonDancer firmware crate can be found in the [`gsg.git/cynthion/moondancer/`](moondancer/) directory.
 
 ### 0. Check UART configuration in `flash.sh`
 
-Edit `gsg.git/cynthion/cynthion/.cargo/flash.sh` and make sure the `UART` variable is pointing at the right device file.
+Edit `gsg.git/cynthion/moondancer/.cargo/flash.sh` and make sure the `UART` variable is pointing at the right device file.
 
 
 ### 1. Try running a simple example

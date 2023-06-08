@@ -1,9 +1,9 @@
 #![no_std]
 #![no_main]
 
-use cynthion::pac;
+use moondancer::pac;
 
-use cynthion::hal;
+use moondancer::hal;
 use hal::hal::delay::DelayUs;
 use hal::Serial;
 use hal::Timer;
@@ -41,7 +41,7 @@ fn main() -> ! {
 
     // initialize logging
     let serial = Serial::new(peripherals.UART);
-    cynthion::log::init(serial);
+    moondancer::log::init(serial);
 
     // configure gpioa pins 7-4:output, 3-0:input
     let gpioa = &peripherals.GPIOA;

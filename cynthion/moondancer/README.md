@@ -8,7 +8,7 @@ Add one or more of:
 
 ## Select softcore
 
-LunaSoC and the Cynthion firmware supports two different softcores:
+LunaSoC and the MoonDancer firmware supports two different soft-cores:
 
 * Minerva
   - Supports the rv32i instruction set
@@ -22,14 +22,14 @@ Build gateware in `lunasoc/`:
     make top_minerva
     make load
 
-Edit `cynthion/Cargo.toml`:
+Edit `moondancer/Cargo.toml`:
 
     [features]
     default = [
         "minerva",
     ]
 
-Edit `cynthion/.cargo/config.toml`:
+Edit `moondancer/.cargo/config.toml`:
 
     [build]
     target = "riscv32i-unknown-none-elf"
@@ -42,14 +42,14 @@ Build gateware in `lunasoc/`:
     make top_vexriscv
     make load
 
-Edit `cynthion/Cargo.toml`:
+Edit `moondancer/Cargo.toml`:
 
     [features]
     default = [
         "vexriscv",
     ]
 
-Edit `cynthion/.cargo/config.toml`:
+Edit `moondancer/.cargo/config.toml`:
 
     [build]
     target = "riscv32imac-unknown-none-elf"

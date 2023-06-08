@@ -2,7 +2,7 @@
 #![no_std]
 #![no_main]
 
-use cynthion::{hal, pac, Message};
+use moondancer::{hal, pac, Message};
 
 use hal::{smolusb, Serial};
 
@@ -68,7 +68,7 @@ impl<'a, const N: usize> UsbReceiveBuffer<'a, N> {
     }
 }*/
 
-const USB_RECEIVE_BUFFER_SIZE: usize =  cynthion::EP_MAX_ENDPOINTS * cynthion::EP_MAX_RECEIVE_LENGTH;
+const USB_RECEIVE_BUFFER_SIZE: usize =  moondancer::EP_MAX_ENDPOINTS * moondancer::EP_MAX_RECEIVE_LENGTH;
 static USB_RECEIVE_BUFFER: BBBuffer<USB_RECEIVE_BUFFER_SIZE> = BBBuffer::new();
 static mut USB_RECEIVE_BUFFER_PRODUCER: Option<Producer<USB_RECEIVE_BUFFER_SIZE>> = None;
 
@@ -79,7 +79,7 @@ static MESSAGE_QUEUE: Queue<Message, 32> = Queue::new();
 #[allow(non_snake_case)]
 #[no_mangle]
 fn MachineExternal() {
-    use cynthion::UsbInterface::Target;
+    use moondancer::UsbInterface::Target;
 
     let usb0 = unsafe { hal::Usb0::summon() };
     let leds = unsafe { &pac::Peripherals::steal().LEDS };
@@ -118,12 +118,12 @@ fn MachineExternal() {
         }*/
 
         if let Some(producer) = unsafe { USB_RECEIVE_BUFFER_PRODUCER.as_mut() } {
-            match producer.grant_exact(cynthion::EP_MAX_RECEIVE_LENGTH) {
+            match producer.grant_exact(moondancer::EP_MAX_RECEIVE_LENGTH) {
                 Ok(mut grant) => {
                     let mut bytes_read = 0;
                     while usb0.ep_out.have.read().have().bit() {
                         let b = usb0.ep_out.data.read().data().bits();
-                        if bytes_read < cynthion::EP_MAX_RECEIVE_LENGTH {
+                        if bytes_read < moondancer::EP_MAX_RECEIVE_LENGTH {
                             grant.buf()[bytes_read] = b;
                         } else {
                             leds.output.write(|w| unsafe { w.output().bits(0b10_0001) });
@@ -206,7 +206,7 @@ fn main_loop() -> GreatResult<()> {
     let leds = &peripherals.LEDS;
 
     // initialize logging
-    cynthion::log::init(hal::Serial::new(peripherals.UART));
+    moondancer::log::init(hal::Serial::new(peripherals.UART));
     info!("Logging initialized");
 
     // usb0: host
@@ -267,7 +267,7 @@ fn main_loop() -> GreatResult<()> {
         let mut queue_length = 0;
 
         while let Some(message) = MESSAGE_QUEUE.dequeue() {
-            use cynthion::{Message::*, UsbInterface::Target};
+            use moondancer::{Message::*, UsbInterface::Target};
 
             match message {
                 // - usb0 message handlers --
@@ -430,7 +430,7 @@ fn test_in_speed(
     }
 
     // wait for fifo endpoint to be idle
-    let (_, t_flush) = cynthion::profile!(
+    let (_, t_flush) = moondancer::profile!(
         let mut timeout = 100;
         while !usb0.ep_in.idle.read().idle().bit() && timeout > 0 {
             timeout -= 1;
@@ -438,7 +438,7 @@ fn test_in_speed(
     );
 
     // write data to endpoint fifo
-    let (did_reset, t_write) = cynthion::profile!(
+    let (did_reset, t_write) = moondancer::profile!(
         //usb0.write(0x1, test_data.into_iter().copied()); false // 6780 / 5653 ~3.99MB/s
         //usb0.write_ref(0x1, test_data.iter()); false // 5663 / 5652 - ~4.02MB/s
         test_write_slice(usb0, 0x1, test_data) // 56533 / 5652 - ~4.04MB/s

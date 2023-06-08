@@ -1,9 +1,9 @@
 [workspace]
 members = [
-    "cynthion",
     "libgreat",
     "lunasoc-hal",
     "lunasoc-pac",
+    "moondancer",
 ]
 
 exclude = [

@@ -4,7 +4,7 @@
 #![no_main]
 
 use core::fmt::Write;
-use cynthion::pac;
+use moondancer::pac;
 
 // - panic handler ------------------------------------------------------------
 
