@@ -179,7 +179,7 @@ struct Firmware<'a> {
 
     // classes
     core: libgreat::gcp::class_core::Core,
-    greatdancer: moondancer::gcp::moondancer::Moondancer<'a>,
+    moondancer: moondancer::gcp::moondancer::Moondancer<'a>,
 }
 
 impl<'a> Firmware<'a> {
@@ -229,14 +229,14 @@ impl<'a> Firmware<'a> {
 
         // initialize classes
         let core = libgreat::gcp::class_core::Core::new(classes, moondancer::BOARD_INFORMATION);
-        let greatdancer = moondancer::gcp::moondancer::Moondancer::new(usb0);
+        let moondancer = moondancer::gcp::moondancer::Moondancer::new(usb0);
 
         Self {
             leds: peripherals.LEDS,
             usb1,
             active_response: None,
             core,
-            greatdancer,
+            moondancer,
         }
     }
 
@@ -336,40 +336,40 @@ impl<'a> Firmware<'a> {
 
                     // Usb0 received USB bus reset
                     UsbBusReset(Target) => {
-                        self.greatdancer.handle_usb_bus_reset()?;
+                        self.moondancer.handle_usb_bus_reset()?;
                     }
 
                     // Usb0 received setup packet
                     UsbReceiveSetupPacket(Target, packet) => {
-                        self.greatdancer.handle_usb_receive_setup_packet(packet)?;
+                        self.moondancer.handle_usb_receive_setup_packet(packet)?;
                     }
 
                     // Usb0 transfer complete
                     UsbTransferComplete(Target, endpoint) => {
-                        self.greatdancer.handle_usb_transfer_complete(endpoint)?;
+                        self.moondancer.handle_usb_transfer_complete(endpoint)?;
                         trace!("MachineExternal - USB0_EP_IN {}\n", endpoint);
                     }
 
                     // Usb0 received data on control endpoint
                     UsbReceivePacket(Target, 0, _) => {
-                        // TODO maybe handle the read in greatdancer.rs ?
-                        let bytes_read = self.greatdancer.usb0.hal_driver.read(0, &mut rx_buffer);
-                        self.greatdancer
+                        // TODO maybe handle the read in moondancer.rs ?
+                        let bytes_read = self.moondancer.usb0.hal_driver.read(0, &mut rx_buffer);
+                        self.moondancer
                             .handle_usb_receive_control_data(bytes_read, rx_buffer)?;
-                        self.greatdancer.usb0.hal_driver.ep_out_prime_receive(0);
+                        self.moondancer.usb0.hal_driver.ep_out_prime_receive(0);
                     }
 
                     // Usb0 received data on endpoint
                     UsbReceivePacket(Target, endpoint, _) => {
-                        // TODO maybe handle the read in greatdancer.rs ?
+                        // TODO maybe handle the read in moondancer.rs ?
                         let bytes_read = self
-                            .greatdancer
+                            .moondancer
                             .usb0
                             .hal_driver
                             .read(endpoint, &mut rx_buffer);
-                        self.greatdancer
+                        self.moondancer
                             .handle_usb_receive_data(endpoint, bytes_read, rx_buffer)?;
-                        self.greatdancer
+                        self.moondancer
                             .usb0
                             .hal_driver
                             .ep_out_prime_receive(endpoint);
@@ -610,9 +610,9 @@ impl<'a> Firmware<'a> {
             (libgreat::gcp::ClassId::firmware, verb_id) => {
                 moondancer::gcp::firmware::dispatch(verb_id, arguments, response_buffer)
             }
-            // class: greatdancer
+            // class: moondancer
             (libgreat::gcp::ClassId::moondancer, verb_id) => {
-                self.greatdancer
+                self.moondancer
                     .dispatch(verb_id, arguments, response_buffer)
             }
 

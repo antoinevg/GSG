@@ -124,7 +124,7 @@ mod tests {
         0x01, //                   arg2: descriptor = 1 (in_signature)
     ];
     const COMMAND_SET_UP_ENDPOINTS: [u8; 16] = [
-        0x04, 0x01, 0x00, 0x00, // class = 0x0104 (greatdancer)
+        0x20, 0x01, 0x00, 0x00, // class = 0x0120 (moondancer)
         0x04, 0x00, 0x00, 0x00, // verb  = 4 (set_up_endpoints)
         0x00, //                   arg0: address = 0x00,
         0x40, 0x00, //                   max_packet_size = 64,
@@ -250,7 +250,7 @@ mod tests {
             Command::parse(&COMMAND_SET_UP_ENDPOINTS[..]).expect("failed parsing command");
         println!("test_parse_complex_arguments: {:?}", command);
 
-        assert_eq!(command.class_id(), ClassId::greatdancer);
+        assert_eq!(command.class_id(), ClassId::moondancer);
         assert_eq!(command.verb_number(), 4);
 
         let mut byte_slice = command.arguments;

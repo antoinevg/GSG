@@ -574,7 +574,7 @@ impl<'a> Moondancer<'a> {
 // - verb implementations: status & control -----------------------------------
 
 impl<'a> Moondancer<'a> {
-    /// Query the GreatDancer for any events that need to be processed.
+    /// Query the Moondancer for any events that need to be processed.
     /// FIXME: should this actually use an interrupt pipe?
     ///
     /// The index value is used to select which status section we're looking for:
@@ -618,7 +618,7 @@ impl<'a> Moondancer<'a> {
         Ok(iter)
     }
 
-    /// Read a setup packet from the GreatDancer port and relays it to the host.
+    /// Read a setup packet from the Moondancer port and relays it to the host.
     ///
     /// The endpoint_number parameter specifies which endpoint we should be reading from.
     ///
@@ -671,7 +671,7 @@ impl<'a> Moondancer<'a> {
 // - verb implementations: data transfer --------------------------------------
 
 impl<'a> Moondancer<'a> {
-    /// Read data from the GreatFET host and sends on the provided GreatDancer endpoint.
+    /// Read data from the GreatFET host and sends on the provided Moondancer endpoint.
     ///
     /// The OUT request should contain a data stage containing all data to be sent.
     pub fn send_on_endpoint(
@@ -824,79 +824,79 @@ impl<'a> Moondancer<'a> {
     ) -> GreatResult<GcpResponse> {
         match verb_number {
             0x0 => {
-                // greatdancer::connect
+                // moondancer::connect
                 let iter = self.connect(arguments)?;
                 let response = unsafe { iter_to_response(iter, response_buffer) };
                 Ok(response)
             }
             0x1 => {
-                // greatdancer::disconnect
+                // moondancer::disconnect
                 let iter = self.disconnect(arguments)?;
                 let response = unsafe { iter_to_response(iter, response_buffer) };
                 Ok(response)
             }
             0x2 => {
-                // greatdancer::bus_reset
+                // moondancer::bus_reset
                 let iter = self.bus_reset(arguments)?;
                 let response = unsafe { iter_to_response(iter, response_buffer) };
                 Ok(response)
             }
             0x3 => {
-                // greatdancer::set_address
+                // moondancer::set_address
                 let iter = self.set_address(arguments)?;
                 let response = unsafe { iter_to_response(iter, response_buffer) };
                 Ok(response)
             }
             0x4 => {
-                // greatdancer::set_up_endpoints
+                // moondancer::set_up_endpoints
                 let iter = self.set_up_endpoints(arguments)?;
                 let response = unsafe { iter_to_response(iter, response_buffer) };
                 Ok(response)
             }
             0x5 => {
-                // greatdancer::get_status
+                // moondancer::get_status
                 let iter = self.get_status(arguments)?;
                 let response = unsafe { iter_to_response(iter, response_buffer) };
                 Ok(response)
             }
             0x6 => {
-                // greatdancer::read_setup
+                // moondancer::read_setup
                 let iter = self.read_setup(arguments)?;
                 let response = unsafe { iter_to_response(iter, response_buffer) };
                 Ok(response)
             }
             0x7 => {
-                // greatdancer::stall_endpoint
+                // moondancer::stall_endpoint
                 let iter = self.stall_endpoint(arguments)?;
                 let response = unsafe { iter_to_response(iter, response_buffer) };
                 Ok(response)
             }
             0x8 => {
-                // greatdancer::send_on_endpoint
+                // moondancer::send_on_endpoint
                 let iter = self.send_on_endpoint(arguments)?;
                 let response = unsafe { iter_to_response(iter, response_buffer) };
                 Ok(response)
             }
             0x9 => {
-                // greatdancer::clean_up_transfer
+                // moondancer::clean_up_transfer
                 let iter = self.clean_up_transfer(arguments)?;
                 let response = unsafe { iter_to_response(iter, response_buffer) };
                 Ok(response)
             }
             0xa => {
-                // greatdancer::start_nonblocking_read
+                // moondancer::start_nonblocking_read
                 let iter = self.start_nonblocking_read(arguments)?;
                 let response = unsafe { iter_to_response(iter, response_buffer) };
                 Ok(response)
             }
             0xb => {
-                // greatdancer::finish_nonblocking_read
+                // moondancer::finish_nonblocking_read
                 let iter = self.finish_nonblocking_read(arguments)?;
                 let response = unsafe { iter_to_response(iter, response_buffer) };
                 Ok(response)
             }
             0xc => {
-                // greatdancer::get_nonblocking_data_length
+                // moondancer::get_nonblocking_data_length
                 let iter = self.get_nonblocking_data_length(arguments)?;
                 let response = unsafe { iter_to_response(iter, response_buffer) };
                 Ok(response)
