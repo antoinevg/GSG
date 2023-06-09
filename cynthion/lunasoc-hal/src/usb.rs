@@ -3,8 +3,8 @@
 mod error;
 pub use error::ErrorKind;
 
-use crate::smolusb::control::*;
-use crate::smolusb::traits::{
+use smolusb::control::*;
+use smolusb::traits::{
     ControlRead, EndpointRead, EndpointWrite, EndpointWriteRef, UnsafeUsbDriverOperations,
     UsbDriver, UsbDriverOperations,
 };

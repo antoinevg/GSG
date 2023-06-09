@@ -53,6 +53,7 @@ log = "=0.4.17"
 lunasoc-pac = { path = "../lunasoc-pac", default-features = false }
 nb = "=1.0.0"
 riscv = "=0.10.1"
+smolusb = { path = "../smolusb" }
 zerocopy = { version = "=0.7.0-alpha.2", default-features = false }
 
 

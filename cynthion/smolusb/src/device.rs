@@ -1,10 +1,10 @@
 #![allow(dead_code, unused_imports, unused_variables)] // TODO
 
-use crate::smolusb::control::{Direction, Feature, Recipient, Request, RequestType, SetupPacket};
-use crate::smolusb::descriptor::*;
-use crate::smolusb::error::{SmolError, SmolResult};
-use crate::smolusb::traits::AsByteSliceIterator;
-use crate::smolusb::traits::{
+use crate::control::{Direction, Feature, Recipient, Request, RequestType, SetupPacket};
+use crate::descriptor::*;
+use crate::error::{SmolError, SmolResult};
+use crate::traits::AsByteSliceIterator;
+use crate::traits::{
     ControlRead, EndpointRead, EndpointWrite, EndpointWriteRef, UnsafeUsbDriverOperations,
     UsbDriverOperations,
 };

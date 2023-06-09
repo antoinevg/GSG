@@ -1,4 +1,4 @@
-use crate::smolusb::control::{Direction, SetupPacket};
+use crate::control::{Direction, SetupPacket};
 
 use zerocopy::AsBytes;
 

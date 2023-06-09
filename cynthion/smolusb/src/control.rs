@@ -1,5 +1,5 @@
 ///! Types for working with the SETUP packet.
-use crate::smolusb::error::SmolError;
+use crate::error::SmolError;
 
 // - SetupPacket --------------------------------------------------------------
 

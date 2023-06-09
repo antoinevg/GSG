@@ -1,4 +1,4 @@
-use crate::smolusb::descriptor::*;
+use crate::descriptor::*;
 
 pub mod ch34x {
     #[derive(Debug, PartialEq)]

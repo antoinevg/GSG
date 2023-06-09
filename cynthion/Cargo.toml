@@ -4,6 +4,7 @@ members = [
     "lunasoc-hal",
     "lunasoc-pac",
     "moondancer",
+    "smolusb",
 ]
 
 exclude = [

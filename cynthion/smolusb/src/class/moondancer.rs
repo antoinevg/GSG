@@ -1,6 +1,6 @@
 #![allow(dead_code, unused_variables)] // TODO
 
-use crate::smolusb::descriptor::*;
+use crate::descriptor::*;
 
 pub mod vendor {
     #[repr(u8)]

@@ -2,9 +2,6 @@
 #![cfg_attr(feature = "nightly", feature(panic_info_message))]
 #![no_std]
 
-// TODO move to libgreat when it's done
-pub mod smolusb;
-
 pub mod gpio;
 pub mod serial;
 pub mod timer;
@@ -17,6 +14,7 @@ pub use usb::{Usb0, Usb1, Usb2};
 
 // re-export dependencies
 pub use libgreat::GreatResult;
+pub use smolusb;
 
 pub use lunasoc_pac as pac;
 

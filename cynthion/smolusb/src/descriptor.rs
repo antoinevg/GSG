@@ -1,7 +1,7 @@
 #![allow(dead_code, unused_imports, unused_variables, unused_mut)] // TODO
 
-use crate::smolusb::traits::AsByteSliceIterator;
-use crate::smolusb::SmolError;
+use crate::traits::AsByteSliceIterator;
+use crate::SmolError;
 
 use heapless::Vec;
 use zerocopy::{AsBytes, FromBytes};
