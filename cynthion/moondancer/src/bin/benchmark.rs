@@ -25,8 +25,8 @@ use riscv_rt::entry;
 
 // - global static state ------------------------------------------------------
 
-use moondancer::Message;
 use heapless::mpmc::MpMcQueue as Queue;
+use moondancer::Message;
 static MESSAGE_QUEUE: Queue<Message, 256> = Queue::new();
 
 // - MachineExternal interrupt handler ----------------------------------------

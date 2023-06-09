@@ -10,15 +10,16 @@ use smolusb::class::cdc;
 use smolusb::control::SetupPacket;
 use smolusb::device::{Speed, UsbDevice};
 use smolusb::traits::{
-    ControlRead, EndpointRead, EndpointWrite, EndpointWriteRef, UnsafeUsbDriverOperations, UsbDriverOperations,
+    ControlRead, EndpointRead, EndpointWrite, EndpointWriteRef, UnsafeUsbDriverOperations,
+    UsbDriverOperations,
 };
 
 use log::{debug, error, info, trace};
 
 // - global static state ------------------------------------------------------
 
-use moondancer::{Message, UsbReceivePacket};
 use heapless::mpmc::MpMcQueue as Queue;
+use moondancer::{Message, UsbReceivePacket};
 
 static MESSAGE_QUEUE: Queue<Message, { moondancer::EP_MAX_ENDPOINTS }> = Queue::new();
 static USB_RECEIVE_PACKET_QUEUE: Queue<UsbReceivePacket, { moondancer::EP_MAX_ENDPOINTS }> =
@@ -67,7 +68,6 @@ fn MachineExternal() {
         usb0.clear_pending(pac::Interrupt::USB0);
         usb0.bus_reset();
         dispatch_message(Message::HandleInterrupt(pac::Interrupt::USB0));
-
     } else if usb0.is_pending(pac::Interrupt::USB0_EP_CONTROL) {
         let mut buffer = [0_u8; 8];
         usb0.read_control(&mut buffer);
@@ -80,7 +80,6 @@ fn MachineExternal() {
         };
         usb0.clear_pending(pac::Interrupt::USB0_EP_CONTROL);
         dispatch_message(Message::UsbReceiveSetupPacket(Target, setup_packet));
-
     } else if usb0.is_pending(pac::Interrupt::USB0_EP_IN) {
         usb0.clear_pending(pac::Interrupt::USB0_EP_IN);
         // TODO something a little bit safer would be nice
@@ -88,7 +87,6 @@ fn MachineExternal() {
             usb0.clear_tx_ack_active();
         }
         dispatch_message(Message::HandleInterrupt(pac::Interrupt::USB0_EP_IN));
-
     } else if usb0.is_pending(pac::Interrupt::USB0_EP_OUT) {
         // read data from endpoint
         let endpoint = usb0.ep_out.data_ep.read().bits() as u8;
@@ -111,7 +109,6 @@ fn MachineExternal() {
         usb1.clear_pending(pac::Interrupt::USB1);
         usb1.bus_reset();
         dispatch_message(Message::HandleInterrupt(pac::Interrupt::USB1));
-
     } else if usb1.is_pending(pac::Interrupt::USB1_EP_CONTROL) {
         let mut buffer = [0_u8; 8];
         usb1.read_control(&mut buffer);
@@ -124,7 +121,6 @@ fn MachineExternal() {
         };
         usb1.clear_pending(pac::Interrupt::USB1_EP_CONTROL);
         dispatch_message(Message::UsbReceiveSetupPacket(Aux, setup_packet));
-
     } else if usb1.is_pending(pac::Interrupt::USB1_EP_IN) {
         usb1.clear_pending(pac::Interrupt::USB1_EP_IN);
         // TODO something a little bit safer would be nice
@@ -132,7 +128,6 @@ fn MachineExternal() {
             usb1.clear_tx_ack_active();
         }
         dispatch_message(Message::HandleInterrupt(pac::Interrupt::USB1_EP_IN));
-
     } else if usb1.is_pending(pac::Interrupt::USB1_EP_OUT) {
         // read data from endpoint
         let endpoint = usb1.ep_out.data_ep.read().bits() as u8;
@@ -262,10 +257,11 @@ fn main() -> ! {
                     if endpoint != 0 {
                         debug!(
                             "Received {} bytes on usb0 endpoint: {} - {:?}",
-                            bytes_read, endpoint, &buffer[0..8],
+                            bytes_read,
+                            endpoint,
+                            &buffer[0..8],
                         );
-                        usb1
-                            .hal_driver
+                        usb1.hal_driver
                             .write_ref(endpoint, buffer.iter().take(bytes_read).into_iter());
                         info!("Sent {} bytes to usb1 endpoint: {}", bytes_read, endpoint);
                     }
@@ -277,10 +273,11 @@ fn main() -> ! {
                     if endpoint != 0 {
                         debug!(
                             "Received {} bytes on usb1 endpoint: {} - {:?}",
-                            bytes_read, endpoint, &buffer[0..8],
+                            bytes_read,
+                            endpoint,
+                            &buffer[0..8],
                         );
-                        usb0
-                            .hal_driver
+                        usb0.hal_driver
                             .write_ref(endpoint, buffer.iter().take(bytes_read).into_iter());
                         info!("Sent {} bytes to usb0 endpoint: {}", bytes_read, endpoint);
                     }
@@ -288,7 +285,7 @@ fn main() -> ! {
                 }
 
                 // unhandled
-                _ => ()
+                _ => (),
             }
         }
 
@@ -321,7 +318,7 @@ fn main() -> ! {
                 }
 
                 // unhandled
-                _ => ()
+                _ => (),
             }
         }
     }

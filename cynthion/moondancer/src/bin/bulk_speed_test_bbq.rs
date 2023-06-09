@@ -68,7 +68,8 @@ impl<'a, const N: usize> UsbReceiveBuffer<'a, N> {
     }
 }*/
 
-const USB_RECEIVE_BUFFER_SIZE: usize =  moondancer::EP_MAX_ENDPOINTS * moondancer::EP_MAX_RECEIVE_LENGTH;
+const USB_RECEIVE_BUFFER_SIZE: usize =
+    moondancer::EP_MAX_ENDPOINTS * moondancer::EP_MAX_RECEIVE_LENGTH;
 static USB_RECEIVE_BUFFER: BBBuffer<USB_RECEIVE_BUFFER_SIZE> = BBBuffer::new();
 static mut USB_RECEIVE_BUFFER_PRODUCER: Option<Producer<USB_RECEIVE_BUFFER_SIZE>> = None;
 
@@ -134,9 +135,7 @@ fn MachineExternal() {
                     usb0.clear_pending(pac::Interrupt::USB0_EP_OUT);
                     Message::UsbReceivePacket(Target, endpoint, bytes_read)
                 }
-                Err(e) => {
-                    Message::ErrorMessage("no space in bbqueue")
-                }
+                Err(e) => Message::ErrorMessage("no space in bbqueue"),
             }
         } else {
             Message::ErrorMessage("no bbqueue")
@@ -355,8 +354,7 @@ fn main_loop() -> GreatResult<()> {
                         (bytes_read, _) => {
                             error!(
                                 "received invalid command from host: {:?} (read {} bytes)",
-                                command,
-                                bytes_read,
+                                command, bytes_read,
                             );
                         }
                     }
@@ -451,8 +449,7 @@ fn test_in_speed(
 
 /// Receive test data from host as fast as possible
 #[inline(always)]
-fn test_out_speed(leds: &pac::LEDS, usb0: &hal::Usb0, test_stats: &mut TestStats) {
-}
+fn test_out_speed(leds: &pac::LEDS, usb0: &hal::Usb0, test_stats: &mut TestStats) {}
 
 // - types --------------------------------------------------------------------
 

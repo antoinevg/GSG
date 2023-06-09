@@ -40,7 +40,6 @@ fn dispatch_message(message: Message) {
     }
 }
 
-
 // - MachineExternal interrupt handler ----------------------------------------
 
 #[allow(non_snake_case)]
@@ -86,7 +85,11 @@ fn MachineExternal() {
         }*/
 
         usb0.clear_pending(pac::Interrupt::USB0_EP_OUT);
-        dispatch_message(Message::UsbReceivePacket(moondancer::UsbInterface::Target, endpoint, 0));
+        dispatch_message(Message::UsbReceivePacket(
+            moondancer::UsbInterface::Target,
+            endpoint,
+            0,
+        ));
 
     // USB0_EP_IN UsbTransferComplete
     } else if usb0.is_pending(pac::Interrupt::USB0_EP_IN) {
@@ -195,7 +198,8 @@ fn main_loop() -> GreatResult<()> {
 
     let mut counter = 0;
 
-    let mut rx_buffer: [u8; moondancer::EP_MAX_RECEIVE_LENGTH] = [0; moondancer::EP_MAX_RECEIVE_LENGTH];
+    let mut rx_buffer: [u8; moondancer::EP_MAX_RECEIVE_LENGTH] =
+        [0; moondancer::EP_MAX_RECEIVE_LENGTH];
 
     loop {
         let mut queue_length = 0;
@@ -229,11 +233,9 @@ fn main_loop() -> GreatResult<()> {
                                 &rx_buffer[0..8],
                                 &rx_buffer[(bytes_read - 8)..]
                             );
-
                         }
                         counter += 1;
                         usb0.hal_driver.ep_out_prime_receive(1);
-
                     } else if endpoint == 2 {
                         info!("received command data from host: {} bytes", bytes_read);
                         let command = rx_buffer[0].into();
@@ -261,14 +263,11 @@ fn main_loop() -> GreatResult<()> {
                             (bytes_read, _) => {
                                 error!(
                                     "received invalid command from host: {:?} (read {} bytes)",
-                                    command,
-                                    bytes_read,
+                                    command, bytes_read,
                                 );
                             }
-
                         }
                         usb0.hal_driver.ep_out_prime_receive(2);
-
                     } else {
                         usb0.hal_driver.ep_out_prime_receive(endpoint);
                     }
@@ -359,7 +358,6 @@ fn test_in_speed(
     // update stats
     test_stats.update_in(t_write, t_flush, did_reset);
 }
-
 
 // - types --------------------------------------------------------------------
 

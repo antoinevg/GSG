@@ -1,5 +1,4 @@
 #![allow(dead_code, unused_imports, unused_mut, unused_variables)]
-
 #![no_std]
 #![no_main]
 
@@ -19,7 +18,7 @@ fn panic(panic_info: &core::panic::PanicInfo) -> ! {
 #[export_name = "ExceptionHandler"]
 fn custom_exception_handler(panic_info: &core::panic::PanicInfo) -> ! {
     unsafe { core::ptr::write_volatile(IO_LEDS as *mut u32, 0b11_1110) };
-    loop { }
+    loop {}
 }
 
 // - riscv_rt::main -----------------------------------------------------------
@@ -46,7 +45,7 @@ const IO_UART_TX_RDY: usize = IO_BASE + 0x0014;
 
 fn uart_tx(s: &str) {
     for b in s.bytes() {
-        while unsafe { core::ptr::read_volatile(IO_UART_TX_RDY as *mut u32) } == 0 { }
+        while unsafe { core::ptr::read_volatile(IO_UART_TX_RDY as *mut u32) } == 0 {}
         unsafe { core::ptr::write_volatile(IO_UART_TX_DATA as *mut u32, b as u32 & 0b1111_1111) };
     }
 }

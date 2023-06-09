@@ -17,7 +17,7 @@ use smolusb::traits::{
 use libgreat::{GreatError, GreatResult};
 
 //use heapless::mpmc::MpMcQueue as Queue;
-use heapless::spsc::Queue as Queue;
+use heapless::spsc::Queue;
 
 use log::{debug, error, info};
 
@@ -29,8 +29,8 @@ const TEST_WRITE_SIZE: usize = 512;
 // - global static state ------------------------------------------------------
 
 static mut MESSAGE_QUEUE: Queue<Message, 32> = Queue::new();
-static mut USB_RECEIVE_PACKET_QUEUE: Queue<UsbReceivePacket, { moondancer::EP_MAX_ENDPOINTS }>
-    = Queue::new();
+static mut USB_RECEIVE_PACKET_QUEUE: Queue<UsbReceivePacket, { moondancer::EP_MAX_ENDPOINTS }> =
+    Queue::new();
 
 #[inline(always)]
 fn dispatch_message(message: Message) {
@@ -100,7 +100,7 @@ fn MachineExternal() {
         //    usb0.ep_out_prime_receive(endpoint);
         //}
 
-    // USB0 UsbBusReset
+        // USB0 UsbBusReset
     } else if usb0.is_pending(pac::Interrupt::USB0) {
         usb0.clear_pending(pac::Interrupt::USB0);
         usb0.bus_reset();
@@ -290,15 +290,23 @@ fn main_loop() -> GreatResult<()> {
                         (bytes_read, _) => {
                             error!(
                                 "received invalid command from host: {:?} (read {} bytes)",
-                                command,
-                                bytes_read,
+                                command, bytes_read,
                             );
                         }
                     }
                     usb0.hal_driver.ep_out_prime_receive(2);
                 }
-                UsbReceivePacket { interface: port, endpoint, bytes_read, buffer } => {
-                    log::warn!("received unknown packet on {:?} endpoint: {}", port, endpoint);
+                UsbReceivePacket {
+                    interface: port,
+                    endpoint,
+                    bytes_read,
+                    buffer,
+                } => {
+                    log::warn!(
+                        "received unknown packet on {:?} endpoint: {}",
+                        port,
+                        endpoint
+                    );
                     usb0.hal_driver.ep_out_prime_receive(endpoint);
                 }
             }
@@ -405,7 +413,6 @@ fn test_in_speed(
     // update stats
     test_stats.update_in(t_write, t_flush, did_reset);
 }
-
 
 // - types --------------------------------------------------------------------
 

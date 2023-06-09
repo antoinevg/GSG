@@ -2,8 +2,8 @@
 #![no_std]
 #![no_main]
 
-use moondancer::{hal, pac, Message};
 use moondancer::usb::vendor::{VendorRequest, VendorRequestValue};
+use moondancer::{hal, pac, Message};
 
 use pac::csr::interrupt;
 
@@ -272,7 +272,8 @@ impl<'a> Firmware<'a> {
 
     #[inline(always)]
     fn main_loop(&'a mut self) -> GreatResult<()> {
-        let mut rx_buffer: [u8; moondancer::EP_MAX_RECEIVE_LENGTH] = [0; moondancer::EP_MAX_RECEIVE_LENGTH];
+        let mut rx_buffer: [u8; moondancer::EP_MAX_RECEIVE_LENGTH] =
+            [0; moondancer::EP_MAX_RECEIVE_LENGTH];
         let mut max_queue_length = 0;
         let mut queue_length = 0;
 
@@ -361,10 +362,17 @@ impl<'a> Firmware<'a> {
                     // Usb0 received data on endpoint
                     UsbReceivePacket(Target, endpoint, _) => {
                         // TODO maybe handle the read in greatdancer.rs ?
-                        let bytes_read = self.greatdancer.usb0.hal_driver.read(endpoint, &mut rx_buffer);
+                        let bytes_read = self
+                            .greatdancer
+                            .usb0
+                            .hal_driver
+                            .read(endpoint, &mut rx_buffer);
                         self.greatdancer
                             .handle_usb_receive_data(endpoint, bytes_read, rx_buffer)?;
-                        self.greatdancer.usb0.hal_driver.ep_out_prime_receive(endpoint);
+                        self.greatdancer
+                            .usb0
+                            .hal_driver
+                            .ep_out_prime_receive(endpoint);
                         debug!(
                             "Usb0 received {} bytes on usb0 endpoint: {} - {:?}",
                             endpoint,

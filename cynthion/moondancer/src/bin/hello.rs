@@ -3,10 +3,10 @@
 
 use moondancer::pac;
 
-use moondancer::hal;
 use hal::hal::delay::DelayUs;
 use hal::Serial;
 use hal::Timer;
+use moondancer::hal;
 
 use log::{debug, info};
 

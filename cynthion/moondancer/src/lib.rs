@@ -42,9 +42,9 @@ pub const EP_MAX_RECEIVE_LENGTH: usize = 512;
 
 #[derive(Debug)]
 pub enum UsbInterface {
-    Target,   // Usb0
-    Aux,      // Usb1
-    Control,  // Usb2
+    Target,  // Usb0
+    Aux,     // Usb1
+    Control, // Usb2
 }
 
 /// The UsbPacket message represents a single packet of data received from a USB port.
@@ -114,10 +114,12 @@ impl core::fmt::Debug for Message {
             }
             //Message::UsbReceiveData(interface, endpoint, bytes_read, _buffer) => write!(
             Message::UsbReceivePacket(interface, endpoint, bytes_read) => write!(
-            //Message::UsbReceivePacket(UsbReceivePacket { interface, endpoint, bytes_read, buffer: _ }) => write!(
+                //Message::UsbReceivePacket(UsbReceivePacket { interface, endpoint, bytes_read, buffer: _ }) => write!(
                 f,
                 "UsbReceiveData({:?}, {}, {})",
-                interface, endpoint, bytes_read
+                interface,
+                endpoint,
+                bytes_read
             ),
             Message::UsbTransferComplete(interface, endpoint) => {
                 write!(f, "UsbTransferComplete({:?}, {})", interface, endpoint)
