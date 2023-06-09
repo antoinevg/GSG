@@ -49,6 +49,7 @@ nightly = [
 libgreat = { path = "../libgreat", features = [] }
 lunasoc-pac = { path = "../lunasoc-pac", default-features = false, features = ["critical-section"]}
 lunasoc-hal = { path = "../lunasoc-hal", default-features = false, features = []}
+smolusb = { path = "../smolusb", default-features = false, features = []}
 
 riscv = { version = "=0.10.1", features = ["critical-section-single-hart"] }
 riscv-rt = { version = "=0.11.0" }

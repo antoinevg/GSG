@@ -321,17 +321,17 @@ pub mod UsbStatusFlag {
     pub const USBSTS_D_NAKI: u32 = 1 << 16;
 }
 
-// - Greatdancer --------------------------------------------------------------
+// - Moondancer --------------------------------------------------------------
 
-/// Greatdancer
-pub struct Greatdancer<'a> {
+/// Moondancer
+pub struct Moondancer<'a> {
     pub usb0: UsbDevice<'a, hal::Usb0>, // TODO needs to be private
     state: State,
     ep0_max_packet_size: u16,
     quirk_flags: u16,
 }
 
-impl<'a> Greatdancer<'a> {
+impl<'a> Moondancer<'a> {
     pub fn new(usb0: UsbDevice<'a, hal::Usb0>) -> Self {
         Self {
             usb0,
@@ -364,12 +364,12 @@ impl<'a> Greatdancer<'a> {
 
 // - interrupt handlers -------------------------------------------------------
 
-impl<'a> Greatdancer<'a> {
+impl<'a> Moondancer<'a> {
     pub fn handle_usb_bus_reset(&mut self) -> GreatResult<()> {
         self.state.usb0_status_pending |= UsbStatusFlag::USBSTS_D_URI; // URI: USB reset received
 
         debug!(
-            "GD => IRQ handle_usb_bus_reset() -> 0b{:b}",
+            "MD => IRQ handle_usb_bus_reset() -> 0b{:b}",
             self.state.usb0_status_pending
         );
 
@@ -381,13 +381,13 @@ impl<'a> Greatdancer<'a> {
         setup_packet: SetupPacket,
     ) -> GreatResult<()> {
         debug!(
-            "GD => IRQ handle_usb_receive_setup_packet({:?}) -> 0b{:b}",
+            "MD => IRQ handle_usb_receive_setup_packet({:?}) -> 0b{:b}",
             setup_packet, self.state.usb0_status_pending,
         );
 
         // TODO not sure yet whether this will be a problem in practice
         if self.state.usb0_setup_pending.is_some() {
-            error!("GD =>     queued setup packet has not yet been transmitted");
+            error!("MD =>     queued setup packet has not yet been transmitted");
             //return Err(GreatError::DeviceOrResourceBusy);
         }
 
@@ -406,7 +406,7 @@ impl<'a> Greatdancer<'a> {
         self.state.usb0_endpoint_complete_pending |= 1 << 0;
 
         debug!(
-            "GD => IRQ handle_usb_receive_control_data({}) -> 0b{:b} -> 0b{:b}",
+            "MD => IRQ handle_usb_receive_control_data({}) -> 0b{:b} -> 0b{:b}",
             bytes_read, self.state.usb0_status_pending, self.state.usb0_endpoint_nak_pending,
         );
 
@@ -427,7 +427,7 @@ impl<'a> Greatdancer<'a> {
         self.state.usb0_endpoint_complete_pending |= 1 << endpoint;
 
         debug!(
-            "GD => IRQ handle_usb_receive_data({}) -> 0b{:b} -> 0b{:b}",
+            "MD => IRQ handle_usb_receive_data({}) -> 0b{:b} -> 0b{:b}",
             bytes_read, self.state.usb0_status_pending, self.state.usb0_endpoint_nak_pending,
         );
 
@@ -443,7 +443,7 @@ impl<'a> Greatdancer<'a> {
         self.state.usb0_endpoint_complete_pending |= 1 << (endpoint + 16);
 
         debug!(
-            "GD => IRQ handle_usb_transfer_complete({}) -> 0b{:b}",
+            "MD => IRQ handle_usb_transfer_complete({}) -> 0b{:b}",
             endpoint, self.state.usb0_status_pending
         );
 
@@ -453,7 +453,7 @@ impl<'a> Greatdancer<'a> {
 
 // - verb implementations: connection / disconnection -------------------------
 
-impl<'a> Greatdancer<'a> {
+impl<'a> Moondancer<'a> {
     /// Connect the USB interface.
     pub fn connect(&mut self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8> + 'a> {
         #[repr(C)]
@@ -471,7 +471,7 @@ impl<'a> Greatdancer<'a> {
 
         let speed = self.usb0.connect();
         debug!(
-            "GD Greatdancer::connect(ep0_max_packet_size:{}, quirk_flags:{}) -> {:?}",
+            "MD Moondancer::connect(ep0_max_packet_size:{}, quirk_flags:{}) -> {:?}",
             args.ep0_max_packet_size, args.quirk_flags, speed
         );
 
@@ -482,7 +482,7 @@ impl<'a> Greatdancer<'a> {
 
     /// Terminate all existing communication and disconnects the USB interface.
     pub fn disconnect(&mut self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8> + 'a> {
-        debug!("GD Greatdancer::disconnect()");
+        debug!("MD Moondancer::disconnect()");
 
         self.state = State::default();
         self.usb0.disconnect();
@@ -493,7 +493,7 @@ impl<'a> Greatdancer<'a> {
 
     /// Perform a USB bus reset.
     pub fn bus_reset(&mut self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8> + 'a> {
-        debug!("GD Greatdancer::bus_reset()");
+        debug!("MD Moondancer::bus_reset()");
 
         self.state = State::default();
         self.usb0.bus_reset();
@@ -504,7 +504,7 @@ impl<'a> Greatdancer<'a> {
 
 // - verb implementations: enumeration / setup --------------------------------
 
-impl<'a> Greatdancer<'a> {
+impl<'a> Moondancer<'a> {
     // TODO move tx_ack_active flag logic to hal_driver
     pub fn set_address(&self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8> + 'a> {
         #[repr(C)]
@@ -515,7 +515,7 @@ impl<'a> Greatdancer<'a> {
         }
         let args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
         debug!(
-            "GD Greatdancer::set_address(address:{}, deferred:{})",
+            "MD Moondancer::set_address(address:{}, deferred:{})",
             args.address, args.deferred
         );
 
@@ -544,19 +544,19 @@ impl<'a> Greatdancer<'a> {
         while let Some((endpoint, next)) =
             zerocopy::LayoutVerified::<_, ArgEndpoint>::new_from_prefix(byte_slice)
         {
-            debug!("TODO GD Greatdancer::set_up_endpoint({:?})", endpoint);
+            debug!("TODO MD Moondancer::set_up_endpoint({:?})", endpoint);
             byte_slice = next;
 
             // endpoint zero is always the control endpoint, and can't be configured
             if endpoint.address & 0x7f == 0x00 {
-                warn!("GD ignoring request to reconfigure control endpoint");
+                warn!("MD ignoring request to reconfigure control endpoint");
                 continue;
             }
 
             // ignore endpoint configurations we won't be able to handle
             if endpoint.max_packet_size.get() as usize > self.state.receive_buffers[0].len() {
                 error!(
-                    "GD failed to setup endpoint with max packet size {} > {}",
+                    "MD failed to setup endpoint with max packet size {} > {}",
                     endpoint.max_packet_size,
                     self.state.receive_buffers[0].len(),
                 );
@@ -573,7 +573,7 @@ impl<'a> Greatdancer<'a> {
 
 // - verb implementations: status & control -----------------------------------
 
-impl<'a> Greatdancer<'a> {
+impl<'a> Moondancer<'a> {
     /// Query the GreatDancer for any events that need to be processed.
     /// FIXME: should this actually use an interrupt pipe?
     ///
@@ -609,7 +609,7 @@ impl<'a> Greatdancer<'a> {
 
         if !is_repeat {
             debug!(
-                "GD Greatdancer::get_status(Args {{ register_type: {:?} }}) -> 0x{:x}",
+                "MD Moondancer::get_status(Args {{ register_type: {:?} }}) -> 0x{:x}",
                 register_type, register_value
             );
         }
@@ -641,7 +641,7 @@ impl<'a> Greatdancer<'a> {
         };
 
         debug!(
-            "GD Greatdancer::read_setup(endpoint_numger:{}) -> {:?}",
+            "MD Moondancer::read_setup(endpoint_numger:{}) -> {:?}",
             args.endpoint_number, result
         );
 
@@ -661,7 +661,7 @@ impl<'a> Greatdancer<'a> {
             .hal_driver
             .stall_endpoint(args.endpoint_number, true);
 
-        debug!("GD Greatdancer::stall_endpoint({:?})", args);
+        debug!("MD Moondancer::stall_endpoint({:?})", args);
 
         let iter = [].into_iter();
         Ok(iter)
@@ -670,7 +670,7 @@ impl<'a> Greatdancer<'a> {
 
 // - verb implementations: data transfer --------------------------------------
 
-impl<'a> Greatdancer<'a> {
+impl<'a> Moondancer<'a> {
     /// Read data from the GreatFET host and sends on the provided GreatDancer endpoint.
     ///
     /// The OUT request should contain a data stage containing all data to be sent.
@@ -696,7 +696,7 @@ impl<'a> Greatdancer<'a> {
         self.usb0.hal_driver.write_ref(endpoint, iter);
 
         debug!(
-            "GD Greatdancer::send_on_endpoint(endpoint_number:{}, data_to_send.len:{})",
+            "MD Moondancer::send_on_endpoint(endpoint_number:{}, data_to_send.len:{})",
             endpoint,
             args.data_to_send.len()
         );
@@ -718,7 +718,7 @@ impl<'a> Greatdancer<'a> {
         let args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
         let endpoint_number = args.endpoint_address & 0x7f;
         debug!(
-            "GD Greatdancer::clean_up_transfer({:?} / 0x{:x})",
+            "MD Moondancer::clean_up_transfer({:?} / 0x{:x})",
             args, endpoint_number
         );
 
@@ -741,7 +741,7 @@ impl<'a> Greatdancer<'a> {
             endpoint_number: u8,
         }
         let args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
-        debug!("GD Greatdancer::start_nonblocking_read({:?})", args);
+        debug!("MD Moondancer::start_nonblocking_read({:?})", args);
 
         self.usb0
             .hal_driver
@@ -775,7 +775,7 @@ impl<'a> Greatdancer<'a> {
         self.state.bytes_read[endpoint] = 0;
 
         debug!(
-            "GD Greatdancer::finish_nonblocking_read({}) -> {}",
+            "MD Moondancer::finish_nonblocking_read({}) -> {}",
             endpoint, bytes_read,
         );
 
@@ -803,7 +803,7 @@ impl<'a> Greatdancer<'a> {
             endpoint_number: u8,
         }
         let args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
-        debug!("GD Greatdancer::get_nonblocking_data_length({:?})", args);
+        debug!("MD Moondancer::get_nonblocking_data_length({:?})", args);
         let iter = [].into_iter();
         Ok(iter)
     }
@@ -815,7 +815,7 @@ use libgreat::gcp::{iter_to_response, GcpResponse, GCP_MAX_RESPONSE_LENGTH};
 
 use core::{array, iter};
 
-impl<'a> Greatdancer<'a> {
+impl<'a> Moondancer<'a> {
     pub fn dispatch(
         &mut self,
         verb_number: u32,

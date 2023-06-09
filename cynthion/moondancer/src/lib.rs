@@ -4,11 +4,12 @@
 
 // - modules ------------------------------------------------------------------
 
-pub mod class;
 pub mod error;
+pub mod gcp;
 pub mod log;
 pub mod macros;
 pub mod panic_log;
+pub mod usb;
 
 // - aliases ------------------------------------------------------------------
 
@@ -73,7 +74,7 @@ pub enum Message {
     /// Received a SETUP packet on USBx_EP_CONTROL
     ///
     /// Contents is (UsbInterface, SetupPacket)
-    UsbReceiveSetupPacket(UsbInterface, hal::smolusb::control::SetupPacket),
+    UsbReceiveSetupPacket(UsbInterface, smolusb::control::SetupPacket),
 
     /// Transfer is complete on USBx_EP_IN
     ///

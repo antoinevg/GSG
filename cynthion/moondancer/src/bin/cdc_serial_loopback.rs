@@ -6,7 +6,6 @@ use pac::csr::interrupt;
 
 use moondancer::hal;
 
-use hal::smolusb;
 use smolusb::class::cdc;
 use smolusb::control::SetupPacket;
 use smolusb::device::{Speed, UsbDevice};

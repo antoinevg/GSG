@@ -3,12 +3,11 @@
 #![no_main]
 
 use moondancer::{hal, pac, Message};
+use moondancer::usb::vendor::{VendorRequest, VendorRequestValue};
 
 use pac::csr::interrupt;
 
-use hal::smolusb;
 use smolusb::class;
-use smolusb::class::moondancer::vendor::{VendorRequest, VendorRequestValue};
 use smolusb::control::{Direction, RequestType, SetupPacket};
 use smolusb::device::{Speed, UsbDevice};
 use smolusb::traits::{
@@ -16,7 +15,7 @@ use smolusb::traits::{
     UsbDriverOperations,
 };
 
-use libgreat::gcp::{self, iter_to_response, GcpResponse, GCP_MAX_RESPONSE_LENGTH};
+use libgreat::gcp::{iter_to_response, GcpResponse, GCP_MAX_RESPONSE_LENGTH};
 use libgreat::{GreatError, GreatResult};
 
 use heapless::mpmc::MpMcQueue as Queue;
@@ -179,8 +178,8 @@ struct Firmware<'a> {
     active_response: Option<GcpResponse<'a>>,
 
     // classes
-    core: gcp::class_core::Core,
-    greatdancer: moondancer::class::greatdancer::Greatdancer<'a>,
+    core: libgreat::gcp::class_core::Core,
+    greatdancer: moondancer::gcp::moondancer::Moondancer<'a>,
 }
 
 impl<'a> Firmware<'a> {
@@ -197,14 +196,14 @@ impl<'a> Firmware<'a> {
                 peripherals.USB1_EP_IN,
                 peripherals.USB1_EP_OUT,
             ),
-            &class::moondancer::DEVICE_DESCRIPTOR,
-            &class::moondancer::CONFIGURATION_DESCRIPTOR_0,
-            &class::moondancer::USB_STRING_DESCRIPTOR_0,
-            &class::moondancer::USB_STRING_DESCRIPTORS,
+            &moondancer::usb::DEVICE_DESCRIPTOR,
+            &moondancer::usb::CONFIGURATION_DESCRIPTOR_0,
+            &moondancer::usb::USB_STRING_DESCRIPTOR_0,
+            &moondancer::usb::USB_STRING_DESCRIPTORS,
         );
-        usb1.device_qualifier_descriptor = Some(&class::moondancer::DEVICE_QUALIFIER_DESCRIPTOR);
+        usb1.device_qualifier_descriptor = Some(&moondancer::usb::DEVICE_QUALIFIER_DESCRIPTOR);
         usb1.other_speed_configuration_descriptor =
-            Some(class::moondancer::OTHER_SPEED_CONFIGURATION_DESCRIPTOR_0);
+            Some(moondancer::usb::OTHER_SPEED_CONFIGURATION_DESCRIPTOR_0);
 
         // usb0: target
         let usb0 = UsbDevice::new(
@@ -214,23 +213,23 @@ impl<'a> Firmware<'a> {
                 peripherals.USB0_EP_IN,
                 peripherals.USB0_EP_OUT,
             ),
-            &class::moondancer::DEVICE_DESCRIPTOR,
-            &class::moondancer::CONFIGURATION_DESCRIPTOR_0,
-            &class::moondancer::USB_STRING_DESCRIPTOR_0,
-            &class::moondancer::USB_STRING_DESCRIPTORS,
+            &moondancer::usb::DEVICE_DESCRIPTOR,
+            &moondancer::usb::CONFIGURATION_DESCRIPTOR_0,
+            &moondancer::usb::USB_STRING_DESCRIPTOR_0,
+            &moondancer::usb::USB_STRING_DESCRIPTORS,
         );
 
         // initialize class registry
-        static CLASSES: [gcp::Class; 3] = [
-            gcp::class_core::CLASS,
-            moondancer::class::firmware::CLASS,
-            moondancer::class::greatdancer::CLASS,
+        static CLASSES: [libgreat::gcp::Class; 3] = [
+            libgreat::gcp::class_core::CLASS,
+            moondancer::gcp::firmware::CLASS,
+            moondancer::gcp::moondancer::CLASS,
         ];
-        let classes = gcp::Classes(&CLASSES);
+        let classes = libgreat::gcp::Classes(&CLASSES);
 
         // initialize classes
-        let core = gcp::class_core::Core::new(classes, moondancer::BOARD_INFORMATION);
-        let greatdancer = moondancer::class::greatdancer::Greatdancer::new(usb0);
+        let core = libgreat::gcp::class_core::Core::new(classes, moondancer::BOARD_INFORMATION);
+        let greatdancer = moondancer::gcp::moondancer::Moondancer::new(usb0);
 
         Self {
             leds: peripherals.LEDS,
@@ -539,7 +538,7 @@ impl<'a> Firmware<'a> {
         }
 
         // parse & dispatch command
-        if let Some(command) = gcp::Command::parse(&buffer[0..bytes_read]) {
+        if let Some(command) = libgreat::gcp::Command::parse(&buffer[0..bytes_read]) {
             trace!("ORDER: #2");
             trace!("GCP dispatching command: {:?}", command);
             // let response = self.classes.dispatch(command, &self.some_state);
@@ -587,7 +586,7 @@ impl<'a> Firmware<'a> {
 
     fn dispatch_gcp_command(
         &mut self,
-        class_id: gcp::ClassId,
+        class_id: libgreat::gcp::ClassId,
         verb_id: u32,
         arguments: &[u8],
         response_buffer: [u8; GCP_MAX_RESPONSE_LENGTH],
@@ -596,15 +595,15 @@ impl<'a> Firmware<'a> {
 
         match (class_id, verb_id) {
             // class: core
-            (gcp::ClassId::core, verb_id) => {
+            (libgreat::gcp::ClassId::core, verb_id) => {
                 self.core.dispatch(verb_id, arguments, response_buffer)
             }
             // class: firmware
-            (gcp::ClassId::firmware, verb_id) => {
-                moondancer::class::firmware::dispatch(verb_id, arguments, response_buffer)
+            (libgreat::gcp::ClassId::firmware, verb_id) => {
+                moondancer::gcp::firmware::dispatch(verb_id, arguments, response_buffer)
             }
             // class: greatdancer
-            (gcp::ClassId::greatdancer, verb_id) => {
+            (libgreat::gcp::ClassId::moondancer, verb_id) => {
                 self.greatdancer
                     .dispatch(verb_id, arguments, response_buffer)
             }
