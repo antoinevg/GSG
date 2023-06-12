@@ -58,7 +58,7 @@ where
 // - helpers ------------------------------------------------------------------
 
 // TODO get rid of this
-pub const GCP_MAX_RESPONSE_LENGTH: usize = 128;
+pub const GCP_MAX_RESPONSE_LENGTH: usize = 512;
 
 pub type GcpResponse<'a> = core::iter::Take<core::array::IntoIter<u8, GCP_MAX_RESPONSE_LENGTH>>;
 //type GcpResponse<'a> = iter::Take<core::slice::IterMut<'a, u8>>;

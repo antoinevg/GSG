@@ -1,18 +1,12 @@
-#![allow(dead_code, unused_imports, unused_mut, unused_variables)] // TODO
 #![no_std]
 #![no_main]
 
 use moondancer::{hal, pac, Message};
 
-use hal::{smolusb, Serial};
-
-use smolusb::control::{Direction, SetupPacket};
+use smolusb::control::SetupPacket;
 use smolusb::descriptor::*;
-use smolusb::device::{DeviceState, Speed, UsbDevice};
-use smolusb::traits::{
-    ControlRead, EndpointRead, EndpointWrite, EndpointWriteRef, UnsafeUsbDriverOperations,
-    UsbDriverOperations,
-};
+use smolusb::device::UsbDevice;
+use smolusb::traits::{ControlRead, UnsafeUsbDriverOperations, UsbDriverOperations};
 
 use libgreat::{GreatError, GreatResult};
 
@@ -22,54 +16,8 @@ use log::{debug, error, info};
 
 use riscv_rt::entry;
 
-// - configuration ------------------------------------------------------------
-
-const TEST_READ_SIZE: usize = 512;
-const TEST_WRITE_SIZE: usize = 512;
-
-// - global static state ------------------------------------------------------
-/*
-trait SafeRead<'a, const N: usize> {
-    fn safe_read(&mut self) -> bbqueue::Result<bbqueue::GrantR<'a, N>>;
-}
-
-impl<'a, const N: usize> SafeRead<'a, N> for bbqueue::Consumer<'a, N> {
-    fn safe_read(&mut self) -> bbqueue::Result<bbqueue::GrantR<'a, N>> {
-        self.read()
-    }
-}
-
-trait SafeWrite<'a, const N: usize> {
-    fn safe_write(&mut self, size: usize) -> bbqueue::Result<bbqueue::GrantW<'a, N>>;
-}
-
-impl<'a, const N: usize> SafeWrite<'a, N> for bbqueue::Producer<'a, N> {
-    fn safe_write(&mut self, size: usize) -> bbqueue::Result<bbqueue::GrantW<'a, N>> {
-        self.grant_exact(size)
-    }
-}
-*/
-/*pub struct UsbReceiveBuffer<'a, const N: usize> {
-    bbbuffer: bbqueue::BBBuffer<N>,
-    producer: &'a mut bbqueue::Producer<'a, N>,
-    consumer: &'a mut bbqueue::Consumer<'a, N>,
-}
-
-impl<'a, const N: usize> UsbReceiveBuffer<'a, N> {
-    pub fn new() -> Self {
-        let bbbuffer: BBBuffer<N> = BBBuffer::<N>::new();
-        let (mut producer, mut consumer) = bbbuffer.try_split().unwrap();
-        //unimplemented!();
-        Self {
-            bbbuffer,
-            producer: &mut producer,
-            consumer: &mut consumer,
-        }
-    }
-}*/
-
 const USB_RECEIVE_BUFFER_SIZE: usize =
-    moondancer::EP_MAX_ENDPOINTS * moondancer::EP_MAX_RECEIVE_LENGTH;
+    moondancer::EP_MAX_ENDPOINTS * moondancer::EP_MAX_PACKET_SIZE;
 static USB_RECEIVE_BUFFER: BBBuffer<USB_RECEIVE_BUFFER_SIZE> = BBBuffer::new();
 static mut USB_RECEIVE_BUFFER_PRODUCER: Option<Producer<USB_RECEIVE_BUFFER_SIZE>> = None;
 
@@ -101,7 +49,7 @@ fn MachineExternal() {
 
         match SetupPacket::try_from(setup_packet_buffer) {
             Ok(setup_packet) => Message::UsbReceiveSetupPacket(Target, setup_packet),
-            Err(e) => Message::ErrorMessage("USB0_EP_CONTROL failed to read setup packet"),
+            Err(_ee) => Message::ErrorMessage("USB0_EP_CONTROL failed to read setup packet"),
         }
 
     // USB0_EP_OUT UsbReceiveData
@@ -119,12 +67,12 @@ fn MachineExternal() {
         }*/
 
         if let Some(producer) = unsafe { USB_RECEIVE_BUFFER_PRODUCER.as_mut() } {
-            match producer.grant_exact(moondancer::EP_MAX_RECEIVE_LENGTH) {
+            match producer.grant_exact(moondancer::EP_MAX_PACKET_SIZE) {
                 Ok(mut grant) => {
                     let mut bytes_read = 0;
                     while usb0.ep_out.have.read().have().bit() {
                         let b = usb0.ep_out.data.read().data().bits();
-                        if bytes_read < moondancer::EP_MAX_RECEIVE_LENGTH {
+                        if bytes_read < moondancer::EP_MAX_PACKET_SIZE {
                             grant.buf()[bytes_read] = b;
                         } else {
                             leds.output.write(|w| unsafe { w.output().bits(0b10_0001) });
@@ -135,7 +83,7 @@ fn MachineExternal() {
                     usb0.clear_pending(pac::Interrupt::USB0_EP_OUT);
                     Message::UsbReceivePacket(Target, endpoint, bytes_read)
                 }
-                Err(e) => Message::ErrorMessage("no space in bbqueue"),
+                Err(_e) => Message::ErrorMessage("no space in bbqueue"),
             }
         } else {
             Message::ErrorMessage("no bbqueue")
@@ -249,8 +197,8 @@ fn main_loop() -> GreatResult<()> {
 
     // 4 MB/s
     let test_data = {
-        let mut test_data = [0_u8; TEST_WRITE_SIZE];
-        for n in 0..TEST_WRITE_SIZE {
+        let mut test_data = [0_u8; moondancer::EP_MAX_PACKET_SIZE];
+        for n in 0..moondancer::EP_MAX_PACKET_SIZE {
             test_data[n] = (n % 256) as u8;
         }
         test_data
@@ -259,8 +207,6 @@ fn main_loop() -> GreatResult<()> {
     // prime the usb OUT endpoints we'll be using
     usb0.hal_driver.ep_out_prime_receive(1);
     usb0.hal_driver.ep_out_prime_receive(2);
-
-    let mut counter = 0;
 
     loop {
         let mut queue_length = 0;
@@ -296,10 +242,6 @@ fn main_loop() -> GreatResult<()> {
 
                 // Usb0 received bulk test data on endpoint 0x01
                 UsbReceivePacket(Target, 0x01, bytes_read) => {
-                    /*counter += 1;
-                    if counter % 100 == 0 {
-                        info!("received bulk data from host: {} bytes", bytes_read);
-                    }*/
                     if bytes_read > 0 {
                         let bbbuffer = consumer.read().map_err(|_| {
                             usb0.hal_driver.ep_out_prime_receive(1);
@@ -362,9 +304,7 @@ fn main_loop() -> GreatResult<()> {
                 }
 
                 // Usb0 transfer complete
-                UsbTransferComplete(Target, endpoint) => {
-                    //leds.output.write(|w| unsafe { w.output().bits(0b10_0000) });
-                }
+                UsbTransferComplete(Target, _endpoint) => {}
 
                 // Error Message
                 ErrorMessage(message) => {
@@ -383,7 +323,7 @@ fn main_loop() -> GreatResult<()> {
         // perform tests
         match test_command {
             TestCommand::In => test_in_speed(leds, &usb0.hal_driver, &test_data, &mut test_stats),
-            TestCommand::Out => (), //test_out_speed(leds, &usb0.hal_driver, &mut test_stats),
+            TestCommand::Out => (),
             _ => (),
         }
 
@@ -400,14 +340,18 @@ fn main_loop() -> GreatResult<()> {
 /// Send test data to host as fast as possible
 #[inline(always)]
 fn test_in_speed(
-    leds: &pac::LEDS,
+    _leds: &pac::LEDS,
     usb0: &hal::Usb0,
-    test_data: &[u8; TEST_WRITE_SIZE],
+    test_data: &[u8; moondancer::EP_MAX_PACKET_SIZE],
     test_stats: &mut TestStats,
 ) {
     // Passing in a fixed size slice ref is 4MB/s vs 3.7MB/s
     #[inline(always)]
-    fn test_write_slice(usb0: &hal::Usb0, endpoint: u8, data: &[u8; TEST_WRITE_SIZE]) -> bool {
+    fn test_write_slice(
+        usb0: &hal::Usb0,
+        endpoint: u8,
+        data: &[u8; moondancer::EP_MAX_PACKET_SIZE],
+    ) -> bool {
         let mut did_reset = false;
         if usb0.ep_in.have.read().have().bit() {
             usb0.ep_in.reset.write(|w| w.reset().bit(true));
@@ -418,7 +362,7 @@ fn test_in_speed(
             usb0.ep_in.data.write(|w| unsafe { w.data().bits(*byte) });
         }
         // 5.507828119928235 MB/s - no memory access
-        /*for n in 0..TEST_WRITE_SIZE {
+        /*for n in 0..moondancer::EP_MAX_PACKET_SIZE {
             usb0.ep_in.data.write(|w| unsafe { w.data().bits((n % 256) as u8) });
         }*/
         usb0.ep_in
@@ -446,10 +390,6 @@ fn test_in_speed(
     // update stats
     test_stats.update_in(t_write, t_flush, did_reset);
 }
-
-/// Receive test data from host as fast as possible
-#[inline(always)]
-fn test_out_speed(leds: &pac::LEDS, usb0: &hal::Usb0, test_stats: &mut TestStats) {}
 
 // - types --------------------------------------------------------------------
 

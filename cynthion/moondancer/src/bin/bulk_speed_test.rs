@@ -1,29 +1,18 @@
-#![allow(dead_code, unused_imports, unused_mut, unused_variables)] // TODO
 #![no_std]
 #![no_main]
 
-use moondancer::{hal, pac, Message, UsbReceivePacket};
+use moondancer::{hal, pac, Message};
 
-use hal::{smolusb, Serial};
-
-use smolusb::control::{Direction, SetupPacket};
+use smolusb::control::SetupPacket;
 use smolusb::descriptor::*;
-use smolusb::device::{DeviceState, Speed, UsbDevice};
-use smolusb::traits::{
-    ControlRead, EndpointRead, EndpointWrite, EndpointWriteRef, UnsafeUsbDriverOperations,
-    UsbDriverOperations,
-};
+use smolusb::device::UsbDevice;
+use smolusb::traits::{ControlRead, EndpointRead, UnsafeUsbDriverOperations, UsbDriverOperations};
 
 use libgreat::{GreatError, GreatResult};
 
 use heapless::mpmc::MpMcQueue as Queue;
 
 use log::{debug, error, info};
-
-// - configuration ------------------------------------------------------------
-
-const TEST_READ_SIZE: usize = 512;
-const TEST_WRITE_SIZE: usize = 512;
 
 // - global static state ------------------------------------------------------
 
@@ -48,7 +37,6 @@ fn MachineExternal() {
     use moondancer::UsbInterface::Target;
 
     let usb0 = unsafe { hal::Usb0::summon() };
-    let leds = unsafe { &pac::Peripherals::steal().LEDS };
 
     // - usb0 interrupts - "host_phy" / "aux_phy" --
 
@@ -66,7 +54,7 @@ fn MachineExternal() {
 
         let message = match SetupPacket::try_from(setup_packet_buffer) {
             Ok(setup_packet) => Message::UsbReceiveSetupPacket(Target, setup_packet),
-            Err(e) => Message::ErrorMessage("USB0_EP_CONTROL failed to read setup packet"),
+            Err(_e) => Message::ErrorMessage("USB0_EP_CONTROL failed to read setup packet"),
         };
         dispatch_message(message);
 
@@ -185,8 +173,8 @@ fn main_loop() -> GreatResult<()> {
 
     // 4 MB/s
     let test_data = {
-        let mut test_data = [0_u8; TEST_WRITE_SIZE];
-        for n in 0..TEST_WRITE_SIZE {
+        let mut test_data = [0_u8; moondancer::EP_MAX_PACKET_SIZE];
+        for n in 0..moondancer::EP_MAX_PACKET_SIZE {
             test_data[n] = (n % 256) as u8;
         }
         test_data
@@ -198,8 +186,7 @@ fn main_loop() -> GreatResult<()> {
 
     let mut counter = 0;
 
-    let mut rx_buffer: [u8; moondancer::EP_MAX_RECEIVE_LENGTH] =
-        [0; moondancer::EP_MAX_RECEIVE_LENGTH];
+    let mut rx_buffer: [u8; moondancer::EP_MAX_PACKET_SIZE] = [0; moondancer::EP_MAX_PACKET_SIZE];
 
     loop {
         let mut queue_length = 0;
@@ -274,7 +261,7 @@ fn main_loop() -> GreatResult<()> {
                 }
 
                 // Usb0 transfer complete
-                UsbTransferComplete(Target, endpoint) => {
+                UsbTransferComplete(Target, _endpoint) => {
                     leds.output.write(|w| unsafe { w.output().bits(0b00_0111) });
                 }
 
@@ -312,14 +299,18 @@ fn main_loop() -> GreatResult<()> {
 /// Send test data to host as fast as possible
 #[inline(always)]
 fn test_in_speed(
-    leds: &pac::LEDS,
+    _leds: &pac::LEDS,
     usb0: &hal::Usb0,
-    test_data: &[u8; TEST_WRITE_SIZE],
+    test_data: &[u8; moondancer::EP_MAX_PACKET_SIZE],
     test_stats: &mut TestStats,
 ) {
     // Passing in a fixed size slice ref is 4MB/s vs 3.7MB/s
     #[inline(always)]
-    fn test_write_slice(usb0: &hal::Usb0, endpoint: u8, data: &[u8; TEST_WRITE_SIZE]) -> bool {
+    fn test_write_slice(
+        usb0: &hal::Usb0,
+        endpoint: u8,
+        data: &[u8; moondancer::EP_MAX_PACKET_SIZE],
+    ) -> bool {
         let mut did_reset = false;
         if usb0.ep_in.have.read().have().bit() {
             usb0.ep_in.reset.write(|w| w.reset().bit(true));
@@ -330,7 +321,7 @@ fn test_in_speed(
             usb0.ep_in.data.write(|w| unsafe { w.data().bits(*byte) });
         }
         // 6.392375785142406MB/s. - no memory access
-        /*for n in 0..TEST_WRITE_SIZE {
+        /*for n in 0..moondancer::EP_MAX_PACKET_SIZE {
             usb0.ep_in.data.write(|w| unsafe { w.data().bits((n % 256) as u8) });
         }*/
         usb0.ep_in

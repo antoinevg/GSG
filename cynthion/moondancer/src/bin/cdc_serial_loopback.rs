@@ -19,10 +19,10 @@ use log::{debug, error, info, trace};
 // - global static state ------------------------------------------------------
 
 use heapless::mpmc::MpMcQueue as Queue;
-use moondancer::{Message, UsbReceivePacket};
+use moondancer::{Message, UsbDataPacket};
 
 static MESSAGE_QUEUE: Queue<Message, { moondancer::EP_MAX_ENDPOINTS }> = Queue::new();
-static USB_RECEIVE_PACKET_QUEUE: Queue<UsbReceivePacket, { moondancer::EP_MAX_ENDPOINTS }> =
+static USB_RECEIVE_PACKET_QUEUE: Queue<UsbDataPacket, { moondancer::EP_MAX_ENDPOINTS }> =
     Queue::new();
 
 #[inline(always)]
@@ -36,7 +36,7 @@ fn dispatch_message(message: Message) {
 }
 
 #[inline(always)]
-fn dispatch_receive_packet(usb_receive_packet: UsbReceivePacket) {
+fn dispatch_receive_packet(usb_receive_packet: UsbDataPacket) {
     match USB_RECEIVE_PACKET_QUEUE.enqueue(usb_receive_packet) {
         Ok(()) => (),
         Err(_) => {
@@ -90,11 +90,11 @@ fn MachineExternal() {
     } else if usb0.is_pending(pac::Interrupt::USB0_EP_OUT) {
         // read data from endpoint
         let endpoint = usb0.ep_out.data_ep.read().bits() as u8;
-        let mut receive_packet = UsbReceivePacket {
+        let mut receive_packet = UsbDataPacket {
             interface: Target,
             endpoint,
             bytes_read: 0,
-            buffer: [0_u8; moondancer::EP_MAX_RECEIVE_LENGTH],
+            buffer: [0_u8; moondancer::EP_MAX_PACKET_SIZE],
         };
         receive_packet.bytes_read = usb0.read(endpoint, &mut receive_packet.buffer);
 
@@ -131,11 +131,11 @@ fn MachineExternal() {
     } else if usb1.is_pending(pac::Interrupt::USB1_EP_OUT) {
         // read data from endpoint
         let endpoint = usb1.ep_out.data_ep.read().bits() as u8;
-        let mut receive_packet = UsbReceivePacket {
+        let mut receive_packet = UsbDataPacket {
             interface: Aux,
             endpoint,
             bytes_read: 0,
-            buffer: [0_u8; moondancer::EP_MAX_RECEIVE_LENGTH],
+            buffer: [0_u8; moondancer::EP_MAX_PACKET_SIZE],
         };
         receive_packet.bytes_read = usb1.read(endpoint, &mut receive_packet.buffer);
 
@@ -242,7 +242,7 @@ fn main() -> ! {
     info!("Peripherals initialized, entering main loop.");
 
     loop {
-        if let Some(UsbReceivePacket {
+        if let Some(UsbDataPacket {
             interface,
             endpoint,
             bytes_read,

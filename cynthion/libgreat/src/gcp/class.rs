@@ -50,23 +50,6 @@ impl Class {
     }
 }
 
-// - TODO CommandHandler ------------------------------------------------------
-
-/*pub trait CommandHandler {
-    type Context;
-    fn dispatch(&mut self, context: Self::Context) -> Self::Context;
-}
-
-struct SomeCommand;
-
-impl CommandHandler for SomeCommand {
-    type Context = u32;
-    fn dispatch(&mut self, mut context: Self::Context) -> Self::Context {
-        context *= 23;
-        context
-    }
-}*/
-
 // - Verb ---------------------------------------------------------------------
 
 /// Verb
@@ -79,8 +62,6 @@ pub struct Verb {
     pub out_signature: &'static str,
     pub out_param_names: &'static str,
     pub doc: &'static str,
-    //pub command_handler: fn(arguments: &[u8], context: &'a dyn Any) -> slice::Iter<'a, u8>,
-    //pub command_handler: fn(arguments: &[u8], _context: &'a dyn Any) -> impl Iterator<Item = u8>,
 }
 
 /// Verb Descriptor
@@ -148,12 +129,6 @@ impl ClassId {
         }
     }
 }
-
-/*impl From<Class> for u32 {
-    fn from(class: Class) -> Self {
-        class.into_u32()
-    }
-}*/
 
 impl core::convert::From<U32<LittleEndian>> for ClassId {
     fn from(value: U32<LittleEndian>) -> Self {

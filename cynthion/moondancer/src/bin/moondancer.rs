@@ -272,8 +272,8 @@ impl<'a> Firmware<'a> {
 
     #[inline(always)]
     fn main_loop(&'a mut self) -> GreatResult<()> {
-        let mut rx_buffer: [u8; moondancer::EP_MAX_RECEIVE_LENGTH] =
-            [0; moondancer::EP_MAX_RECEIVE_LENGTH];
+        let mut rx_buffer: [u8; moondancer::EP_MAX_PACKET_SIZE] =
+            [0; moondancer::EP_MAX_PACKET_SIZE];
         let mut max_queue_length = 0;
         let mut queue_length = 0;
 
@@ -529,7 +529,7 @@ impl<'a> Firmware<'a> {
     fn handle_usb1_receive_control_data(
         &mut self,
         bytes_read: usize,
-        buffer: [u8; moondancer::EP_MAX_RECEIVE_LENGTH],
+        buffer: [u8; moondancer::EP_MAX_PACKET_SIZE],
     ) -> GreatResult<()> {
         // TODO state == Command::Send
 
@@ -583,7 +583,7 @@ impl<'a> Firmware<'a> {
         &mut self,
         endpoint: u8,
         bytes_read: usize,
-        buffer: [u8; moondancer::EP_MAX_RECEIVE_LENGTH],
+        buffer: [u8; moondancer::EP_MAX_PACKET_SIZE],
     ) -> GreatResult<()> {
         Ok(())
     }

@@ -36,7 +36,7 @@ pub const BOARD_INFORMATION: BoardInformation = BoardInformation {
 };
 
 pub const EP_MAX_ENDPOINTS: usize = 16;
-pub const EP_MAX_RECEIVE_LENGTH: usize = 512;
+pub const EP_MAX_PACKET_SIZE: usize = 512;
 
 // - messages -----------------------------------------------------------------
 
@@ -47,16 +47,17 @@ pub enum UsbInterface {
     Control, // Usb2
 }
 
-/// The UsbPacket message represents a single packet of data received from a USB port.
-pub struct UsbReceivePacket {
+/// The UsbDataPacket struct represents a single packet of data
+/// received from a USB port.
+pub struct UsbDataPacket {
     pub interface: UsbInterface,
     pub endpoint: u8,
     pub bytes_read: usize,
-    pub buffer: [u8; EP_MAX_RECEIVE_LENGTH],
+    pub buffer: [u8; EP_MAX_PACKET_SIZE],
 }
 
-// Starting stack size with Queue<Message, 512> is:  2976 bytes
-// New stack size with      Queue<Message, 512> is: 32384 bytes
+/// Message is used to notify the main loop of events received in the
+/// `MachineExternal` interrupt handler.
 pub enum Message {
     // interrupts
     HandleInterrupt(pac::Interrupt),
@@ -66,7 +67,7 @@ pub enum Message {
     TimerEvent(usize),
 
     // usb events
-    /// Receives a USB bus reset
+    /// Received a USB bus reset
     ///
     /// Contents is (UsbInterface)
     UsbBusReset(UsbInterface),
@@ -84,9 +85,7 @@ pub enum Message {
     /// Received a data packet on USBx_EP_OUT
     ///
     /// Contents is (UsbInterface, endpoint, bytes_read)
-    //UsbReceivePacket(UsbInterface, u8, usize, [u8; EP_MAX_RECEIVE_LENGTH]),
     UsbReceivePacket(UsbInterface, u8, usize),
-    //UsbReceivePacket(UsbReceivePacket),
 
     // misc
     ErrorMessage(&'static str),
@@ -112,14 +111,10 @@ impl core::fmt::Debug for Message {
             Message::UsbReceiveSetupPacket(interface, _setup_packet) => {
                 write!(f, "UsbReceiveSetupPacket({:?})", interface)
             }
-            //Message::UsbReceiveData(interface, endpoint, bytes_read, _buffer) => write!(
             Message::UsbReceivePacket(interface, endpoint, bytes_read) => write!(
-                //Message::UsbReceivePacket(UsbReceivePacket { interface, endpoint, bytes_read, buffer: _ }) => write!(
                 f,
                 "UsbReceiveData({:?}, {}, {})",
-                interface,
-                endpoint,
-                bytes_read
+                interface, endpoint, bytes_read
             ),
             Message::UsbTransferComplete(interface, endpoint) => {
                 write!(f, "UsbTransferComplete({:?}, {})", interface, endpoint)

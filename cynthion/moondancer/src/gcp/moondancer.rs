@@ -199,7 +199,7 @@ impl TryFrom<u8> for RegisterType {
 
 // TODO
 const NUM_ENDPOINTS: usize = 8;
-type ReceiveBuffer = [u8; crate::EP_MAX_RECEIVE_LENGTH];
+type ReceiveBuffer = [u8; crate::EP_MAX_PACKET_SIZE];
 
 /// State
 struct State {
@@ -233,7 +233,7 @@ impl Default for State {
             usb0_endpoint_complete_pending: 0,
             usb0_endpoint_prime_pending: 0,
             usb0_endpoint_nak_pending: 0,
-            receive_buffers: [[0; crate::EP_MAX_RECEIVE_LENGTH]; NUM_ENDPOINTS],
+            receive_buffers: [[0; crate::EP_MAX_PACKET_SIZE]; NUM_ENDPOINTS],
             bytes_read: [0; NUM_ENDPOINTS],
         }
     }
@@ -400,7 +400,7 @@ impl<'a> Moondancer<'a> {
     pub fn handle_usb_receive_control_data(
         &mut self,
         bytes_read: usize,
-        buffer: [u8; crate::EP_MAX_RECEIVE_LENGTH],
+        buffer: [u8; crate::EP_MAX_PACKET_SIZE],
     ) -> GreatResult<()> {
         self.state.usb0_status_pending |= UsbStatusFlag::USBSTS_D_RECEIVE_CONTROL_DATA;
         self.state.usb0_endpoint_complete_pending |= 1 << 0;
@@ -421,7 +421,7 @@ impl<'a> Moondancer<'a> {
         &mut self,
         endpoint: u8,
         bytes_read: usize,
-        buffer: [u8; crate::EP_MAX_RECEIVE_LENGTH],
+        buffer: [u8; crate::EP_MAX_PACKET_SIZE],
     ) -> GreatResult<()> {
         self.state.usb0_status_pending |= UsbStatusFlag::USBSTS_D_RECEIVE_DATA;
         self.state.usb0_endpoint_complete_pending |= 1 << endpoint;

@@ -2,8 +2,9 @@
 
 TARGET=../target/riscv32imac-unknown-none-elf/release
 
-#
-#BIN=moondancer
+# logging=off:	 44344
+# logging=debug:  9028
+BIN=moondancer
 
 # start:			  25624
 # 1 queue, no buffer: 46176
@@ -11,7 +12,7 @@ TARGET=../target/riscv32imac-unknown-none-elf/release
 
 # mpmc: 34720
 # spsc: 35272
-BIN=bulk_speed_test_spsc
+#BIN=bulk_speed_test_spsc
 
 # 16 endpoint buffer: 25620
 # with 2 endpoint buffer: 32812
@@ -20,7 +21,8 @@ BIN=bulk_speed_test_spsc
 #
 #BIN=smollest
 
-
+bins:
+	cargo build --release --bins
 
 size:
 	cargo size --release --bin $(BIN) -- -A
@@ -57,34 +59,34 @@ nm:
 	@# cargo nm --release --bin $(BIN) -- --size-sort --radix=d | grep -v Lanon | grep -v 00000000
 	cargo nm --release --bin $(BIN) -- --size-sort | grep -v Lanon | grep -v 00000000
 
-elf-size-analyze:
+elf-size-analyze: bins
 	@# https://github.com/jedrzejboczar/elf-size-analyze
 	elf-size-analyze -t riscv64-unknown-elf- \
 		--human-readable --alternating-colors --max-width 240 \
 		--ram --rom --print-sections \
 		$(TARGET)/$(BIN)
 
-elf-ram:
+elf-ram: bins
 	@# https://github.com/jedrzejboczar/elf-size-analyze
 	elf-size-analyze -t riscv64-unknown-elf- \
 		--human-readable --alternating-colors --max-width 240 \
 		--ram \
 		$(TARGET)/$(BIN)
 
-elf-rom:
+elf-rom: bins
 	@# https://github.com/jedrzejboczar/elf-size-analyze
 	elf-size-analyze -t riscv64-unknown-elf- \
 		--human-readable --alternating-colors --max-width 240 \
 		--rom \
 		$(TARGET)/$(BIN)
 
-elf-sections:
+elf-sections: bins
 	elf-size-analyze -t riscv64-unknown-elf- \
 		--human-readable \
 		--print-sections \
 		$(TARGET)/$(BIN)
 
-elf-text:
+elf-text: bins
 	elf-size-analyze -t riscv64-unknown-elf- \
 		--human-readable \
 		-S2 \

@@ -42,7 +42,7 @@ pub mod vendor {
     }
 }
 
-pub static DEVICE_DESCRIPTOR: DeviceDescriptor = DeviceDescriptor {
+pub const DEVICE_DESCRIPTOR: DeviceDescriptor = DeviceDescriptor {
     descriptor_version: 0x0200,
     device_class: 0x00,    // Composite
     device_subclass: 0x00, // Composite
@@ -58,7 +58,7 @@ pub static DEVICE_DESCRIPTOR: DeviceDescriptor = DeviceDescriptor {
     ..DeviceDescriptor::new()
 };
 
-pub static DEVICE_QUALIFIER_DESCRIPTOR: DeviceQualifierDescriptor = DeviceQualifierDescriptor {
+pub const DEVICE_QUALIFIER_DESCRIPTOR: DeviceQualifierDescriptor = DeviceQualifierDescriptor {
     descriptor_version: 0x0200,
     device_class: 0x00,    // Composite
     device_subclass: 0x00, // Composite
@@ -68,7 +68,7 @@ pub static DEVICE_QUALIFIER_DESCRIPTOR: DeviceQualifierDescriptor = DeviceQualif
     ..DeviceQualifierDescriptor::new()
 };
 
-pub static CONFIGURATION_DESCRIPTOR_0: ConfigurationDescriptor = ConfigurationDescriptor::new(
+pub const CONFIGURATION_DESCRIPTOR_0: ConfigurationDescriptor = ConfigurationDescriptor::new(
     ConfigurationDescriptorHeader {
         descriptor_type: DescriptorType::Configuration as u8,
         configuration_value: 1,
@@ -120,7 +120,7 @@ pub static CONFIGURATION_DESCRIPTOR_0: ConfigurationDescriptor = ConfigurationDe
     ],
 );
 
-pub static OTHER_SPEED_CONFIGURATION_DESCRIPTOR_0: ConfigurationDescriptor =
+pub const OTHER_SPEED_CONFIGURATION_DESCRIPTOR_0: ConfigurationDescriptor =
     ConfigurationDescriptor::new(
         ConfigurationDescriptorHeader {
             descriptor_type: DescriptorType::OtherSpeedConfiguration as u8,
@@ -173,14 +173,14 @@ pub static OTHER_SPEED_CONFIGURATION_DESCRIPTOR_0: ConfigurationDescriptor =
         ],
     );
 
-pub static USB_STRING_DESCRIPTOR_0: StringDescriptorZero =
+pub const USB_STRING_DESCRIPTOR_0: StringDescriptorZero =
     StringDescriptorZero::new(&[LanguageId::EnglishUnitedStates]);
 
-pub static USB_STRING_DESCRIPTOR_1: StringDescriptor = StringDescriptor::new("Great Scott Gadgets");
-pub static USB_STRING_DESCRIPTOR_2: StringDescriptor = StringDescriptor::new("Moondancer");
-pub static USB_STRING_DESCRIPTOR_3: StringDescriptor = StringDescriptor::new("040");
+pub const USB_STRING_DESCRIPTOR_1: StringDescriptor = StringDescriptor::new("Great Scott Gadgets");
+pub const USB_STRING_DESCRIPTOR_2: StringDescriptor = StringDescriptor::new("Moondancer");
+pub const USB_STRING_DESCRIPTOR_3: StringDescriptor = StringDescriptor::new("040");
 
-pub static USB_STRING_DESCRIPTORS: &[&StringDescriptor] = &[
+pub const USB_STRING_DESCRIPTORS: &[&StringDescriptor] = &[
     &USB_STRING_DESCRIPTOR_1,
     &USB_STRING_DESCRIPTOR_2,
     &USB_STRING_DESCRIPTOR_3,
