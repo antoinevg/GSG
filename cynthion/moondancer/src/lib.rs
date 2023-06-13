@@ -43,8 +43,8 @@ pub const EP_MAX_PACKET_SIZE: usize = 512;
 #[derive(Debug)]
 pub enum UsbInterface {
     Target,  // Usb0
-    Aux,     // Usb1
-    Control, // Usb2
+    Aux,     // Usb1 (Host on r0.4)
+    Control, // Usb2 (Sideband on r0.4)
 }
 
 /// The UsbDataPacket struct represents a single packet of data
@@ -77,15 +77,15 @@ pub enum Message {
     /// Contents is (UsbInterface, SetupPacket)
     UsbReceiveSetupPacket(UsbInterface, smolusb::control::SetupPacket),
 
-    /// Transfer is complete on USBx_EP_IN
-    ///
-    /// Contents is (UsbInterface, endpoint)
-    UsbTransferComplete(UsbInterface, u8),
-
     /// Received a data packet on USBx_EP_OUT
     ///
     /// Contents is (UsbInterface, endpoint, bytes_read)
     UsbReceivePacket(UsbInterface, u8, usize),
+
+    /// Transfer is complete on USBx_EP_IN
+    ///
+    /// Contents is (UsbInterface, endpoint)
+    UsbTransferComplete(UsbInterface, u8),
 
     // misc
     ErrorMessage(&'static str),

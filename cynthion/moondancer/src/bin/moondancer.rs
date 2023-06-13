@@ -26,7 +26,7 @@ use core::{array, iter, slice};
 
 // - global static state ------------------------------------------------------
 
-static MESSAGE_QUEUE: Queue<Message, 32> = Queue::new();
+static MESSAGE_QUEUE: Queue<Message, 128> = Queue::new();
 
 #[inline(always)]
 fn dispatch_message(message: Message) {
@@ -34,7 +34,10 @@ fn dispatch_message(message: Message) {
         Ok(()) => (),
         Err(_) => {
             error!("MachineExternal - message queue overflow");
-            panic!("MachineExternal - message queue overflow");
+            //panic!("MachineExternal - message queue overflow");
+            loop {
+                unsafe { riscv::asm::nop(); }
+            }
         }
     }
 }
@@ -53,7 +56,7 @@ fn MachineExternal() {
 
     let pending = interrupt::reg_pending();
 
-    // - usb1 interrupts - "host_phy" --
+    // - usb1 interrupts - "aux_phy" (host on r0.4) --
 
     // USB1 UsbBusReset
     if usb1.is_pending(pac::Interrupt::USB1) {
@@ -150,7 +153,7 @@ fn main() -> ! {
         Ok(()) => (),
         Err(e) => {
             error!("Firmware panicked during initialization: {}", e);
-            panic!("Firmware panicked during initialization: {}", e)
+            //panic!("Firmware panicked during initialization: {}", e)
         }
     }
 
@@ -158,12 +161,16 @@ fn main() -> ! {
     match firmware.main_loop() {
         Ok(()) => {
             error!("Firmware exited unexpectedly in main loop");
-            panic!("Firmware exited unexpectedly in main loop")
+            //panic!("Firmware exited unexpectedly in main loop")
         }
         Err(e) => {
             error!("Firmware panicked in main loop: {}", e);
-            panic!("Firmware panicked in main loop: {}", e)
+            //panic!("Firmware panicked in main loop: {}", e)
         }
+    }
+
+    loop {
+        unsafe { riscv::asm::nop(); }
     }
 }
 
@@ -179,16 +186,16 @@ struct Firmware<'a> {
 
     // classes
     core: libgreat::gcp::class_core::Core,
-    moondancer: moondancer::gcp::moondancer::Moondancer<'a>,
+    moondancer: moondancer::gcp::moondancer::Moondancer,
 }
 
 impl<'a> Firmware<'a> {
     fn new(peripherals: pac::Peripherals) -> Self {
         // initialize logging
         moondancer::log::init(hal::Serial::new(peripherals.UART));
-        trace!("Logging initialized");
+        info!("Logging initialized");
 
-        // usb1: host
+        // usb1: aux (host on r0.4)
         let mut usb1 = UsbDevice::new(
             hal::Usb1::new(
                 peripherals.USB1,
@@ -206,17 +213,11 @@ impl<'a> Firmware<'a> {
             Some(moondancer::usb::OTHER_SPEED_CONFIGURATION_DESCRIPTOR_0);
 
         // usb0: target
-        let usb0 = UsbDevice::new(
-            hal::Usb0::new(
-                peripherals.USB0,
-                peripherals.USB0_EP_CONTROL,
-                peripherals.USB0_EP_IN,
-                peripherals.USB0_EP_OUT,
-            ),
-            &moondancer::usb::DEVICE_DESCRIPTOR,
-            &moondancer::usb::CONFIGURATION_DESCRIPTOR_0,
-            &moondancer::usb::USB_STRING_DESCRIPTOR_0,
-            &moondancer::usb::USB_STRING_DESCRIPTORS,
+        let usb0 = hal::Usb0::new(
+            peripherals.USB0,
+            peripherals.USB0_EP_CONTROL,
+            peripherals.USB0_EP_IN,
+            peripherals.USB0_EP_OUT,
         );
 
         // initialize class registry
@@ -262,11 +263,6 @@ impl<'a> Firmware<'a> {
             self.enable_usb1_interrupts();
         }
 
-        // leds: ready
-        self.leds
-            .output
-            .write(|w| unsafe { w.output().bits(1 << 1) });
-
         Ok(())
     }
 
@@ -276,6 +272,11 @@ impl<'a> Firmware<'a> {
             [0; moondancer::EP_MAX_PACKET_SIZE];
         let mut max_queue_length = 0;
         let mut queue_length = 0;
+
+        // leds: ready
+        self.leds
+            .output
+            .write(|w| unsafe { w.output().bits(1 << 1) });
 
         loop {
             if queue_length > max_queue_length {
@@ -325,10 +326,9 @@ impl<'a> Firmware<'a> {
                         self.handle_usb1_receive_data(endpoint, bytes_read, rx_buffer)?;
                         self.usb1.hal_driver.ep_out_prime_receive(endpoint);
                         debug!(
-                            "Usb1 received {} bytes on usb1 endpoint: {} - {:?}",
+                            "Usb1 received {} bytes on usb1 endpoint: {}",
                             endpoint,
                             bytes_read,
-                            &rx_buffer[0..bytes_read]
                         );
                     }
 
@@ -353,31 +353,23 @@ impl<'a> Firmware<'a> {
                     // Usb0 received data on control endpoint
                     UsbReceivePacket(Target, 0, _) => {
                         // TODO maybe handle the read in moondancer.rs ?
-                        let bytes_read = self.moondancer.usb0.hal_driver.read(0, &mut rx_buffer);
+                        let bytes_read = self.moondancer.usb0.read(0, &mut rx_buffer);
                         self.moondancer
                             .handle_usb_receive_control_data(bytes_read, rx_buffer)?;
-                        self.moondancer.usb0.hal_driver.ep_out_prime_receive(0);
+                        self.moondancer.usb0.ep_out_prime_receive(0);
                     }
 
                     // Usb0 received data on endpoint
                     UsbReceivePacket(Target, endpoint, _) => {
                         // TODO maybe handle the read in moondancer.rs ?
-                        let bytes_read = self
-                            .moondancer
-                            .usb0
-                            .hal_driver
-                            .read(endpoint, &mut rx_buffer);
+                        let bytes_read = self.moondancer.usb0.read(endpoint, &mut rx_buffer);
                         self.moondancer
                             .handle_usb_receive_data(endpoint, bytes_read, rx_buffer)?;
-                        self.moondancer
-                            .usb0
-                            .hal_driver
-                            .ep_out_prime_receive(endpoint);
+                        self.moondancer.usb0.ep_out_prime_receive(endpoint);
                         debug!(
-                            "Usb0 received {} bytes on usb0 endpoint: {} - {:?}",
+                            "Usb0 received {} bytes on usb0 endpoint: {}",
                             endpoint,
                             bytes_read,
-                            &rx_buffer[0..bytes_read]
                         );
                     }
 
@@ -424,14 +416,15 @@ impl<'a> Firmware<'a> {
                 // enumerating through the supported devices.
                 //
                 // see: host/greatfet/boards/legacy.py
-                error!(" gcp: Unknown vendor request '{:?}'", vendor_request);
+                warn!(" gcp: Unknown vendor request '{:?}'", vendor_request);
                 self.usb1.hal_driver.write(0, [0].into_iter());
             }
             _ => match self.usb1.handle_setup_request(&setup_packet) {
                 Ok(()) => (),
                 Err(e) => {
                     error!("  handle_setup_request: {:?}: {:?}", e, setup_packet);
-                    panic!("  handle_setup_request: {:?}: {:?}", e, setup_packet)
+                    //panic!("  handle_setup_request: {:?}: {:?}", e, setup_packet)
+                    GreatError::Message("FATAL: failed to handle setup request");
                 }
             },
         }

@@ -8,7 +8,7 @@ use log::error;
 #[no_mangle]
 #[inline(never)]
 #[panic_handler]
-fn panic(panic_info: &PanicInfo) -> ! {
+fn panic(_panic_info: &PanicInfo) -> ! {
     // panic stations
     let peripherals = unsafe { crate::pac::Peripherals::steal() };
     let leds = &peripherals.LEDS;
@@ -21,9 +21,11 @@ fn panic(panic_info: &PanicInfo) -> ! {
         error!("Panic: Unknown");
     }
 
-    if let Some(location) = panic_info.location() {
+    // TODO This takes up about 4Kb of the firmware size!
+    /*if let Some(location) = panic_info.location() {
         error!("Panicked at '{}:{}'", location.file(), location.line(),);
-    }
+    }*/
+    error!("Firmware Panicked");
 
     loop {
         atomic::compiler_fence(Ordering::SeqCst);

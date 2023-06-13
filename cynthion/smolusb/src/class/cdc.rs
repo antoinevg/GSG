@@ -152,8 +152,7 @@ pub const USB_STRING_DESCRIPTOR_0: StringDescriptorZero =
     StringDescriptorZero::new(&[LanguageId::EnglishUnitedStates]);
 
 pub const USB_STRING_DESCRIPTOR_1: StringDescriptor = StringDescriptor::new("Great Scott Gadgets");
-pub const USB_STRING_DESCRIPTOR_2: StringDescriptor =
-    StringDescriptor::new("CDC-SERIAL Emulation");
+pub const USB_STRING_DESCRIPTOR_2: StringDescriptor = StringDescriptor::new("CDC-SERIAL Emulation");
 pub const USB_STRING_DESCRIPTOR_3: StringDescriptor = StringDescriptor::new("100");
 
 pub const USB_STRING_DESCRIPTORS: &[&StringDescriptor] = &[

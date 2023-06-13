@@ -324,15 +324,15 @@ pub mod UsbStatusFlag {
 // - Moondancer --------------------------------------------------------------
 
 /// Moondancer
-pub struct Moondancer<'a> {
-    pub usb0: UsbDevice<'a, hal::Usb0>, // TODO needs to be private
+pub struct Moondancer {
+    pub usb0: hal::Usb0, // TODO needs to be private
     state: State,
     ep0_max_packet_size: u16,
     quirk_flags: u16,
 }
 
-impl<'a> Moondancer<'a> {
-    pub fn new(usb0: UsbDevice<'a, hal::Usb0>) -> Self {
+impl Moondancer {
+    pub fn new(usb0: hal::Usb0) -> Self {
         Self {
             usb0,
             state: State::default().into(),
@@ -348,12 +348,12 @@ impl<'a> Moondancer<'a> {
         interrupt::enable(pac::Interrupt::USB0_EP_OUT);
 
         // enable all usb events
-        self.usb0.hal_driver.enable_interrupts();
+        self.usb0.enable_interrupts();
     }
 
     pub unsafe fn disable_usb_interrupts(&self) {
         // disable all usb events
-        self.usb0.hal_driver.disable_interrupts();
+        self.usb0.disable_interrupts();
 
         interrupt::enable(pac::Interrupt::USB0);
         interrupt::enable(pac::Interrupt::USB0_EP_CONTROL);
@@ -364,7 +364,7 @@ impl<'a> Moondancer<'a> {
 
 // - interrupt handlers -------------------------------------------------------
 
-impl<'a> Moondancer<'a> {
+impl Moondancer {
     pub fn handle_usb_bus_reset(&mut self) -> GreatResult<()> {
         self.state.usb0_status_pending |= UsbStatusFlag::USBSTS_D_URI; // URI: USB reset received
 
@@ -453,9 +453,9 @@ impl<'a> Moondancer<'a> {
 
 // - verb implementations: connection / disconnection -------------------------
 
-impl<'a> Moondancer<'a> {
+impl Moondancer {
     /// Connect the USB interface.
-    pub fn connect(&mut self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8> + 'a> {
+    pub fn connect(&mut self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8>> {
         #[repr(C)]
         #[derive(FromBytes, Unaligned)]
         struct Args {
@@ -481,7 +481,7 @@ impl<'a> Moondancer<'a> {
     }
 
     /// Terminate all existing communication and disconnects the USB interface.
-    pub fn disconnect(&mut self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8> + 'a> {
+    pub fn disconnect(&mut self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8>> {
         debug!("MD Moondancer::disconnect()");
 
         self.state = State::default();
@@ -492,7 +492,7 @@ impl<'a> Moondancer<'a> {
     }
 
     /// Perform a USB bus reset.
-    pub fn bus_reset(&mut self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8> + 'a> {
+    pub fn bus_reset(&mut self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8>> {
         debug!("MD Moondancer::bus_reset()");
 
         self.state = State::default();
@@ -504,9 +504,9 @@ impl<'a> Moondancer<'a> {
 
 // - verb implementations: enumeration / setup --------------------------------
 
-impl<'a> Moondancer<'a> {
+impl Moondancer {
     // TODO move tx_ack_active flag logic to hal_driver
-    pub fn set_address(&self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8> + 'a> {
+    pub fn set_address(&self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8>> {
         #[repr(C)]
         #[derive(FromBytes, Unaligned)]
         struct Args {
@@ -521,16 +521,13 @@ impl<'a> Moondancer<'a> {
 
         // activate new address
         let address = args.address & 0x7f;
-        self.usb0.hal_driver.set_address(address);
+        self.usb0.set_address(address);
 
         let iter = [].into_iter();
         Ok(iter)
     }
 
-    pub fn set_up_endpoints(
-        &mut self,
-        arguments: &[u8],
-    ) -> GreatResult<impl Iterator<Item = u8> + 'a> {
+    pub fn set_up_endpoints(&mut self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8>> {
         #[repr(C)]
         #[derive(Debug, FromBytes, Unaligned)]
         struct ArgEndpoint {
@@ -573,7 +570,7 @@ impl<'a> Moondancer<'a> {
 
 // - verb implementations: status & control -----------------------------------
 
-impl<'a> Moondancer<'a> {
+impl Moondancer {
     /// Query the Moondancer for any events that need to be processed.
     /// FIXME: should this actually use an interrupt pipe?
     ///
@@ -585,7 +582,7 @@ impl<'a> Moondancer<'a> {
     ///	3 = endpoint primed status (ENDPTSTATUS)
     ///
     ///	Returns: register_value: u32
-    pub fn get_status(&mut self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8> + 'a> {
+    pub fn get_status(&mut self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8>> {
         #[repr(C)]
         #[derive(FromBytes, Unaligned)]
         struct Args {
@@ -626,7 +623,7 @@ impl<'a> Moondancer<'a> {
     /// is waiting, the results of this vendor request are unspecified.
     ///
     /// Returns: raw_setup_packet: [u8; 8]
-    pub fn read_setup(&mut self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8> + 'a> {
+    pub fn read_setup(&mut self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8>> {
         #[repr(C)]
         #[derive(FromBytes, Unaligned)]
         struct Args {
@@ -649,19 +646,17 @@ impl<'a> Moondancer<'a> {
     }
 
     /// Temporarily stalls the given USB endpoint.
-    pub fn stall_endpoint(&self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8> + 'a> {
+    pub fn stall_endpoint(&self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8>> {
         #[repr(C)]
-        #[derive(Debug, FromBytes, Unaligned)]
+        #[derive(FromBytes, Unaligned)]
         struct Args {
             endpoint_number: u8,
         }
         let args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
 
-        self.usb0
-            .hal_driver
-            .stall_endpoint(args.endpoint_number, true);
+        self.usb0.stall_endpoint(args.endpoint_number, true);
 
-        debug!("MD Moondancer::stall_endpoint({:?})", args);
+        debug!("MD Moondancer::stall_endpoint({})", args.endpoint_number);
 
         let iter = [].into_iter();
         Ok(iter)
@@ -670,14 +665,11 @@ impl<'a> Moondancer<'a> {
 
 // - verb implementations: data transfer --------------------------------------
 
-impl<'a> Moondancer<'a> {
+impl Moondancer {
     /// Read data from the GreatFET host and sends on the provided Moondancer endpoint.
     ///
     /// The OUT request should contain a data stage containing all data to be sent.
-    pub fn send_on_endpoint(
-        &mut self,
-        arguments: &[u8],
-    ) -> GreatResult<impl Iterator<Item = u8> + 'a> {
+    pub fn send_on_endpoint(&mut self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8>> {
         struct Args<B: zerocopy::ByteSlice> {
             endpoint_number: zerocopy::LayoutVerified<B, u8>,
             data_to_send: B,
@@ -693,7 +685,7 @@ impl<'a> Moondancer<'a> {
         let endpoint: u8 = args.endpoint_number.read();
 
         let iter = args.data_to_send.into_iter();
-        self.usb0.hal_driver.write_ref(endpoint, iter);
+        self.usb0.write_ref(endpoint, iter);
 
         debug!(
             "MD Moondancer::send_on_endpoint(endpoint_number:{}, data_to_send.len:{})",
@@ -706,20 +698,17 @@ impl<'a> Moondancer<'a> {
 
     /// Should be called whenever a transfer is complete; cleans up any transfer
     /// descriptors associated with that transfer.
-    pub fn clean_up_transfer(
-        &self,
-        arguments: &[u8],
-    ) -> GreatResult<impl Iterator<Item = u8> + 'a> {
+    pub fn clean_up_transfer(&self, arguments: &[u8]) -> GreatResult<impl Iterator<Item = u8>> {
         #[repr(C)]
-        #[derive(Debug, FromBytes, Unaligned)]
+        #[derive(FromBytes, Unaligned)]
         struct Args {
             endpoint_address: u8,
         }
         let args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
         let endpoint_number = args.endpoint_address & 0x7f;
         debug!(
-            "MD Moondancer::clean_up_transfer({:?} / 0x{:x})",
-            args, endpoint_number
+            "MD Moondancer::clean_up_transfer({} / 0x{:x})",
+            args.endpoint_address, endpoint_number
         );
 
         let iter = [].into_iter();
@@ -734,18 +723,16 @@ impl<'a> Moondancer<'a> {
     pub fn start_nonblocking_read(
         &mut self,
         arguments: &[u8],
-    ) -> GreatResult<impl Iterator<Item = u8> + 'a> {
+    ) -> GreatResult<impl Iterator<Item = u8>> {
         #[repr(C)]
-        #[derive(Debug, FromBytes, Unaligned)]
+        #[derive(FromBytes, Unaligned)]
         struct Args {
             endpoint_number: u8,
         }
         let args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
-        debug!("MD Moondancer::start_nonblocking_read({:?})", args);
+        debug!("MD Moondancer::start_nonblocking_read({})", args.endpoint_number);
 
-        self.usb0
-            .hal_driver
-            .ep_out_prime_receive(args.endpoint_number);
+        self.usb0.ep_out_prime_receive(args.endpoint_number);
 
         let iter = [].into_iter();
         Ok(iter)
@@ -761,9 +748,9 @@ impl<'a> Moondancer<'a> {
     pub fn finish_nonblocking_read(
         &mut self,
         arguments: &[u8],
-    ) -> GreatResult<impl Iterator<Item = u8> + 'a> {
+    ) -> GreatResult<impl Iterator<Item = u8>> {
         #[repr(C)]
-        #[derive(Debug, FromBytes, Unaligned)]
+        #[derive(FromBytes, Unaligned)]
         struct Args {
             endpoint_number: u8,
         }
@@ -796,14 +783,14 @@ impl<'a> Moondancer<'a> {
     pub fn get_nonblocking_data_length(
         &self,
         arguments: &[u8],
-    ) -> GreatResult<impl Iterator<Item = u8> + 'a> {
+    ) -> GreatResult<impl Iterator<Item = u8>> {
         #[repr(C)]
-        #[derive(Debug, FromBytes, Unaligned)]
+        #[derive(FromBytes, Unaligned)]
         struct Args {
             endpoint_number: u8,
         }
         let args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
-        debug!("MD Moondancer::get_nonblocking_data_length({:?})", args);
+        debug!("MD Moondancer::get_nonblocking_data_length({})", args.endpoint_number);
         let iter = [].into_iter();
         Ok(iter)
     }
@@ -815,7 +802,7 @@ use libgreat::gcp::{iter_to_response, GcpResponse, GCP_MAX_RESPONSE_LENGTH};
 
 use core::{array, iter};
 
-impl<'a> Moondancer<'a> {
+impl Moondancer {
     pub fn dispatch(
         &mut self,
         verb_number: u32,
