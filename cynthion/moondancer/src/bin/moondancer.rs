@@ -2,7 +2,7 @@
 #![no_std]
 #![no_main]
 
-use moondancer::usb::vendor::{VendorRequest, VendorRequestValue};
+use moondancer::usb::vendor::{VendorRequest, VendorValue};
 use moondancer::{hal, pac, Message};
 
 use pac::csr::interrupt;
@@ -406,9 +406,15 @@ impl<'a> Firmware<'a> {
         let request_type = setup_packet.request_type();
         let vendor_request = VendorRequest::from(setup_packet.request);
 
+        //debug!("Control packet: {:?} {:?}", setup_packet.direction(), setup_packet);
+
         match (&request_type, &vendor_request) {
             (RequestType::Vendor, VendorRequest::UsbCommandRequest) => {
                 self.usb1_handle_vendor_request(&setup_packet)?;
+            }
+            (RequestType::Vendor, VendorRequest::Unknown(vendor_request)) => {
+                error!(" gcp: Unknown vendor request '{}'", vendor_request);
+                // TODO how to handle? should it be handled?
             }
             (RequestType::Vendor, vendor_request) => {
                 // TODO this is from one of the legacy boards which we
@@ -416,8 +422,24 @@ impl<'a> Firmware<'a> {
                 // enumerating through the supported devices.
                 //
                 // see: host/greatfet/boards/legacy.py
-                warn!(" gcp: Unknown vendor request '{:?}'", vendor_request);
-                self.usb1.hal_driver.write(0, [0].into_iter());
+                warn!(" gcp: Legacy vendor request '{:?}'", vendor_request);
+                match vendor_request {
+                    VendorRequest::LegacyReadBoardId => {
+                        self.usb1.hal_driver.write(0, [0].into_iter());
+                    }
+                    VendorRequest::LegacyReadVersionString => {
+                        let version_string = moondancer::BOARD_INFORMATION.version_string.as_bytes();
+                        self.usb1.hal_driver.write(0, version_string.into_iter().copied());
+                    }
+                    VendorRequest::LegacyReadPartId => {
+                        let part_id = moondancer::BOARD_INFORMATION.part_id;
+                        self.usb1.hal_driver.write(0, part_id.into_iter());
+                    }
+                    _ => {
+                        error!("TODO");
+                    }
+                }
+
             }
             _ => match self.usb1.handle_setup_request(&setup_packet) {
                 Ok(()) => (),
@@ -435,43 +457,38 @@ impl<'a> Firmware<'a> {
     fn usb1_handle_vendor_request(&mut self, setup_packet: &SetupPacket) -> GreatResult<()> {
         let direction = setup_packet.direction();
         let request = VendorRequest::from(setup_packet.request);
-        let request_value = VendorRequestValue::from(setup_packet.value);
+        let value = VendorValue::from(setup_packet.value);
         let length = setup_packet.length as usize;
 
         trace!(
             "GCP vendor_request: {:?} dir:{:?} value:{:?} length:{} index:{}",
             request,
             direction,
-            request_value,
+            value,
             length,
             setup_packet.index
         );
 
-        match (&direction, &request, &request_value) {
+        match (&direction, &request, &value) {
             // host is starting a new command sequence
             (
                 Direction::HostToDevice,
                 VendorRequest::UsbCommandRequest,
-                VendorRequestValue::Start,
+                VendorValue::Start,
             ) => {
                 self.usb1.hal_driver.ack_status_stage(setup_packet);
-                trace!("ORDER: #1");
-                trace!("GCP TODO state = Command::Begin");
-                //trace!("GCP   ack {}", length);
             }
 
             // host is ready to receive a response
             (
                 Direction::DeviceToHost,
                 VendorRequest::UsbCommandRequest,
-                VendorRequestValue::Start,
+                VendorValue::Start,
             ) => {
-                trace!("ORDER: #3");
-                trace!("GCP TODO state = Command::Send");
                 // do we have a response ready? should we wait if we don't?
                 if let Some(response) = &mut self.active_response {
                     // send it
-                    trace!("GCP sending command response of {} bytes", response.len());
+                    debug!("GCP sending command response: {} bytes", response.len());
                     self.usb1
                         .hal_driver
                         .write(0, response.take(setup_packet.length as usize));
@@ -479,16 +496,15 @@ impl<'a> Firmware<'a> {
                 } else {
                     // TODO something has gone wrong
                     error!("GCP stall: gcp response requested but no response queued");
-                    self.usb1.hal_driver.stall_request();
+                    self.usb1.hal_driver.stall_endpoint(0, true);
                 }
-                trace!("ORDER: fin");
             }
 
             // host would like to abort the current command sequence
             (
                 Direction::DeviceToHost,
                 VendorRequest::UsbCommandRequest,
-                VendorRequestValue::Cancel,
+                VendorValue::Cancel,
             ) => {
                 // cancel any queued response
                 self.active_response = None;
@@ -497,22 +513,19 @@ impl<'a> Firmware<'a> {
                 self.usb1
                     .hal_driver
                     .write(0, [0xde, 0xad, 0xde, 0xad].into_iter());
-                //self.usb1.hal_driver.ack_status_stage(setup_packet);
-                //self.usb1.hal_driver.stall_request();
 
                 // TODO cancel
-                trace!("GCP TODO state = Command::Cancel");
-                debug!(
-                    "GCP TODO cancel cynthion vendor request sequence: {}",
+                warn!(
+                    "GCP cancel cynthion vendor request sequence: {}",
                     length
                 );
             }
             _ => {
                 error!(
                     "GCP stall: unknown vendor request and/or value: {:?} {:?} {:?}",
-                    direction, request, request_value
+                    direction, request, value
                 );
-                self.usb1.hal_driver.stall_request();
+                self.usb1.hal_driver.stall_endpoint(0, true);
             }
         }
 
@@ -527,9 +540,8 @@ impl<'a> Firmware<'a> {
         // TODO state == Command::Send
 
         trace!(
-            "GCP Received {} bytes on usb1 control endpoint: {:?}",
+            "GCP Received {} bytes on usb1 control endpoint",
             bytes_read,
-            &buffer[0..bytes_read]
         );
 
         if bytes_read < 8 {
@@ -538,11 +550,16 @@ impl<'a> Firmware<'a> {
             return Ok(());
         }
 
+        if !self.active_response.is_none() {
+            warn!("comms error: requested a USB response when no communications were underway");
+            self.usb1.hal_driver.stall_endpoint(0, true); // TODO check address / direction
+            return Ok(());
+        }
+
         // parse & dispatch command
         if let Some(command) = libgreat::gcp::Command::parse(&buffer[0..bytes_read]) {
             trace!("ORDER: #2");
-            trace!("GCP dispatching command: {:?}", command);
-            // let response = self.classes.dispatch(command, &self.some_state);
+            debug!("GCP dispatch command {:?}.{}", command.class_id(), command.prelude.verb);
             let response_buffer: [u8; GCP_MAX_RESPONSE_LENGTH] = [0; GCP_MAX_RESPONSE_LENGTH];
             let response = self.dispatch_gcp_command(
                 command.class_id(),
@@ -558,13 +575,13 @@ impl<'a> Firmware<'a> {
                     //      vendor_request telling us we can send it ???
                     trace!("GCP queueing next response");
                     self.active_response = Some(response);
-                    //self.usb1.hal_driver.ep_out_prime_receive(0);
-                    //self.usb1.hal_driver.write(0, [].into_iter());
                 }
                 Err(e) => {
-                    error!("GCP stall: failed to dispatch command {}", e);
-                    error!("    {:?}", command);
-                    self.usb1.hal_driver.stall_request();
+                    error!("GCP error: failed to dispatch command {}", e);
+                    // TODO set a proper errno
+                    self.usb1
+                        .hal_driver
+                        .write(0, [0xde, 0xad, 0xde, 0xad].into_iter());
                 }
             }
             trace!("\n");

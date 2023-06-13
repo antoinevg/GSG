@@ -74,8 +74,8 @@ pub fn initialize<'a>(
     arguments: &[u8],
     _context: &'a dyn Any,
 ) -> GreatResult<impl Iterator<Item = u8> + 'a> {
-    let page_size: u32 = 8;
-    let total_size: u32 = 1;
+    let page_size: u32 = 256;
+    let total_size: u32 = 256 * 8192;
     let response = page_size
         .to_le_bytes()
         .into_iter()

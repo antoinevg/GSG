@@ -11,12 +11,25 @@ pub mod vendor {
         // libgreat/host/pygreat/comms_backends/usb.py
         //   30:  LIBGREAT_REQUEST_NUMBER = 0x65
         UsbCommandRequest = 0x65, // 101
+
+        // legacy commands - see: host/greatfet/boards/legacy.py
+        LegacyReadBoardId = 0x04,
+        LegacyReadVersionString = 0x05,
+        LegacyReadPartId = 0x06,
+        LegacyReset = 0x16,     // 22
+        LegacyReadDmesg = 0x40, // 64
+
         Unknown(u8),
     }
 
     impl From<u8> for VendorRequest {
         fn from(value: u8) -> Self {
             match value {
+                0x04 => VendorRequest::LegacyReadBoardId,
+                0x05 => VendorRequest::LegacyReadVersionString,
+                0x06 => VendorRequest::LegacyReadPartId,
+                0x16 => VendorRequest::LegacyReset,
+                0x40 => VendorRequest::LegacyReadDmesg,
                 0x65 => VendorRequest::UsbCommandRequest,
                 _ => VendorRequest::Unknown(value),
             }
@@ -25,18 +38,18 @@ pub mod vendor {
 
     #[repr(u16)]
     #[derive(Debug, PartialEq)]
-    pub enum VendorRequestValue {
+    pub enum VendorValue {
         Start = 0x0000,
         Cancel = 0xdead,
         Unknown(u16),
     }
 
-    impl From<u16> for VendorRequestValue {
+    impl From<u16> for VendorValue {
         fn from(value: u16) -> Self {
             match value {
-                0x0000 => VendorRequestValue::Start,
-                0xdead => VendorRequestValue::Cancel,
-                _ => VendorRequestValue::Unknown(value),
+                0x0000 => VendorValue::Start,
+                0xdead => VendorValue::Cancel,
+                _ => VendorValue::Unknown(value),
             }
         }
     }
