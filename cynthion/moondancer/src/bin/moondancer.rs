@@ -413,7 +413,7 @@ impl<'a> Firmware<'a> {
                 self.usb1_handle_vendor_request(&setup_packet)?;
             }
             (RequestType::Vendor, VendorRequest::Unknown(vendor_request)) => {
-                error!(" gcp: Unknown vendor request '{}'", vendor_request);
+                error!("GCP Unknown vendor request '{}'", vendor_request);
                 // TODO how to handle? should it be handled?
             }
             (RequestType::Vendor, vendor_request) => {
@@ -422,8 +422,22 @@ impl<'a> Firmware<'a> {
                 // enumerating through the supported devices.
                 //
                 // see: host/greatfet/boards/legacy.py
-                warn!(" gcp: Legacy vendor request '{:?}'", vendor_request);
-                match vendor_request {
+
+                // The greatfet board scan code expects the endpoint
+                // to be stalled if this is not a legacy device.
+                self.usb1.hal_driver.ep_in.epno.write(|w| unsafe { w.epno().bits(0) });
+                self.usb1.hal_driver.ep_in.stall.write(|w| w.stall().bit(true));
+
+                // wait a moment
+                unsafe { riscv::asm::delay(2000); }
+
+                // clear stall
+                self.usb1.hal_driver.ep_in.reset.write(|w| w.reset().bit(true));
+
+                warn!("GCP Legacy vendor request '{:?}'", vendor_request);
+
+                // enable these if you want to pretend to be a legacy greatfet device :-)
+                /*match vendor_request {
                     VendorRequest::LegacyReadBoardId => {
                         self.usb1.hal_driver.write(0, [0].into_iter());
                     }
@@ -438,8 +452,7 @@ impl<'a> Firmware<'a> {
                     _ => {
                         error!("TODO");
                     }
-                }
-
+                }*/
             }
             _ => match self.usb1.handle_setup_request(&setup_packet) {
                 Ok(()) => (),
@@ -488,7 +501,7 @@ impl<'a> Firmware<'a> {
                 // do we have a response ready? should we wait if we don't?
                 if let Some(response) = &mut self.active_response {
                     // send it
-                    debug!("GCP sending command response: {} bytes", response.len());
+                    trace!("GCP sending command response: {} bytes", response.len());
                     self.usb1
                         .hal_driver
                         .write(0, response.take(setup_packet.length as usize));
@@ -558,8 +571,7 @@ impl<'a> Firmware<'a> {
 
         // parse & dispatch command
         if let Some(command) = libgreat::gcp::Command::parse(&buffer[0..bytes_read]) {
-            trace!("ORDER: #2");
-            debug!("GCP dispatch command {:?}.{}", command.class_id(), command.prelude.verb);
+            trace!("GCP dispatch command {:?}.{}", command.class_id(), command.prelude.verb);
             let response_buffer: [u8; GCP_MAX_RESPONSE_LENGTH] = [0; GCP_MAX_RESPONSE_LENGTH];
             let response = self.dispatch_gcp_command(
                 command.class_id(),
