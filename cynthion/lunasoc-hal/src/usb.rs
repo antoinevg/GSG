@@ -349,7 +349,7 @@ macro_rules! impl_usb {
                 /// TODO endpoint_address is a USB address i.e. masked with 0x80
                 /// for direction. It may be more consistent to actually pass
                 /// in the direction and peripheral address separately
-                fn stall_endpoint(&self, endpoint_address: u8, state: bool) {
+                fn stall_endpoint_address(&self, endpoint_address: u8, state: bool) {
                     match Direction::from(endpoint_address) {
                         Direction::HostToDevice => {
                             self.ep_out
@@ -366,6 +366,30 @@ macro_rules! impl_usb {
                             log::debug!("  usb::stall_endpoint EP_IN: {} -> {}", endpoint_address & 0xf, state);
                         }
                     }
+                }
+
+                /// Set stall for the given IN endpoint address
+                fn stall_endpoint_in(&self, endpoint: u8) {
+                    self.ep_in.epno.write(|w| unsafe { w.epno().bits(endpoint) });
+                    self.ep_in.stall.write(|w| w.stall().bit(true));
+
+                    // wait a moment, then clear stall
+                    // TODO is this the correct behaviour?
+                    unsafe { riscv::asm::delay(2000); }
+                    self.ep_in.reset.write(|w| w.reset().bit(true));
+                }
+
+                /// Set stall for the given OUT endpoint address
+                /// TODO test this!
+                fn stall_endpoint_out(&self, endpoint: u8) {
+                    self.ep_out.epno.write(|w| unsafe { w.epno().bits(endpoint) });
+                    self.ep_out.stall.write(|w| w.stall().bit(true));
+
+                    // wait a moment, then clear stall
+                    // TODO does ep_out clear stall as with ep_in ?
+                    // TODO is this the correct behaviour?
+                    unsafe { riscv::asm::delay(2000); }
+                    self.ep_out.reset.write(|w| w.reset().bit(true));
                 }
 
                 /// Clear PID toggle bit for the given endpoint address.

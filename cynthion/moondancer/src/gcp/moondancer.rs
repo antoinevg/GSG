@@ -24,8 +24,8 @@ use core::slice;
 // - class information --------------------------------------------------------
 
 pub static CLASS: gcp::Class = gcp::Class {
-    id: gcp::ClassId::greatdancer,
-    name: "greatdancer",
+    id: gcp::ClassId::moondancer,
+    name: "moondancer",
     docs: CLASS_DOCS,
     verbs: &VERBS,
 };
@@ -654,7 +654,7 @@ impl Moondancer {
         }
         let args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
 
-        self.usb0.stall_endpoint(args.endpoint_number, true);
+        self.usb0.stall_endpoint_address(args.endpoint_number, true);
 
         debug!("MD Moondancer::stall_endpoint({})", args.endpoint_number);
 
@@ -890,7 +890,7 @@ impl Moondancer {
             }
 
             verb_number => Err(GreatError::GcpVerbNotFound(
-                gcp::class::ClassId::greatdancer,
+                gcp::class::ClassId::moondancer,
                 verb_number,
             )),
         }

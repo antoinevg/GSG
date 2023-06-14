@@ -45,9 +45,16 @@ pub trait UsbDriverOperations {
     fn ack(&self, endpoint: u8, direction: Direction);
     fn set_address(&self, address: u8);
     /// Stall the current control request.
+    /// TODO replace this with stall_endpoint_*
     fn stall_request(&self);
     /// Set the stall state for the given endpoint address
-    fn stall_endpoint(&self, endpoint: u8, state: bool);
+    /// TODO replace this with stall_endpoint_*
+    fn stall_endpoint_address(&self, endpoint: u8, state: bool);
+    /// Stall the given IN endpoint
+    fn stall_endpoint_in(&self, endpoint: u8);
+    /// Stall the given OUT endpoint
+    fn stall_endpoint_out(&self, endpoint: u8);
+
     /// Clear any halt condition on the target endpoint, and clear the data toggle bit.
     fn clear_feature_endpoint_halt(&self, endpoint_address: u8);
 }

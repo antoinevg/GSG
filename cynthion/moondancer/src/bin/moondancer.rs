@@ -425,14 +425,7 @@ impl<'a> Firmware<'a> {
 
                 // The greatfet board scan code expects the endpoint
                 // to be stalled if this is not a legacy device.
-                self.usb1.hal_driver.ep_in.epno.write(|w| unsafe { w.epno().bits(0) });
-                self.usb1.hal_driver.ep_in.stall.write(|w| w.stall().bit(true));
-
-                // wait a moment
-                unsafe { riscv::asm::delay(2000); }
-
-                // clear stall
-                self.usb1.hal_driver.ep_in.reset.write(|w| w.reset().bit(true));
+                self.usb1.hal_driver.stall_endpoint_in(0);
 
                 warn!("GCP Legacy vendor request '{:?}'", vendor_request);
 
@@ -501,7 +494,7 @@ impl<'a> Firmware<'a> {
                 // do we have a response ready? should we wait if we don't?
                 if let Some(response) = &mut self.active_response {
                     // send it
-                    trace!("GCP sending command response: {} bytes", response.len());
+                    //debug!("GCP sending command response: {} bytes", response.len());
                     self.usb1
                         .hal_driver
                         .write(0, response.take(setup_packet.length as usize));
@@ -509,7 +502,7 @@ impl<'a> Firmware<'a> {
                 } else {
                     // TODO something has gone wrong
                     error!("GCP stall: gcp response requested but no response queued");
-                    self.usb1.hal_driver.stall_endpoint(0, true);
+                    self.usb1.hal_driver.stall_endpoint_in(0);
                 }
             }
 
@@ -538,7 +531,7 @@ impl<'a> Firmware<'a> {
                     "GCP stall: unknown vendor request and/or value: {:?} {:?} {:?}",
                     direction, request, value
                 );
-                self.usb1.hal_driver.stall_endpoint(0, true);
+                self.usb1.hal_driver.stall_endpoint_address(0, true);
             }
         }
 
@@ -563,15 +556,9 @@ impl<'a> Firmware<'a> {
             return Ok(());
         }
 
-        if !self.active_response.is_none() {
-            warn!("comms error: requested a USB response when no communications were underway");
-            self.usb1.hal_driver.stall_endpoint(0, true); // TODO check address / direction
-            return Ok(());
-        }
-
         // parse & dispatch command
         if let Some(command) = libgreat::gcp::Command::parse(&buffer[0..bytes_read]) {
-            trace!("GCP dispatch command {:?}.{}", command.class_id(), command.prelude.verb);
+            //debug!("GCP dispatch command {:?}.{}", command.class_id(), command.prelude.verb);
             let response_buffer: [u8; GCP_MAX_RESPONSE_LENGTH] = [0; GCP_MAX_RESPONSE_LENGTH];
             let response = self.dispatch_gcp_command(
                 command.class_id(),
@@ -585,7 +572,7 @@ impl<'a> Firmware<'a> {
                     // NEXT so what's happening with greatfet info is that we queue
                     //      the response but the host errors out before we get the
                     //      vendor_request telling us we can send it ???
-                    trace!("GCP queueing next response");
+                    //debug!("GCP queueing next response");
                     self.active_response = Some(response);
                 }
                 Err(e) => {
@@ -596,7 +583,6 @@ impl<'a> Firmware<'a> {
                         .write(0, [0xde, 0xad, 0xde, 0xad].into_iter());
                 }
             }
-            trace!("\n");
         }
         Ok(())
     }
