@@ -300,53 +300,51 @@ impl<'a> Firmware<'a> {
                     // Usb1 received USB bus reset
                     UsbBusReset(Aux) => {
                         // handled in MachineExternal
+                        warn!("ME UsbBusReset");
                     }
 
                     // Usb1 received setup packet
                     UsbReceiveSetupPacket(Aux, packet) => {
-                        self.handle_usb1_receive_setup_packet(packet)?;
-                    }
-
-                    // Usb1 transfer complete
-                    UsbTransferComplete(Aux, endpoint) => {
-                        self.handle_usb1_transfer_complete(endpoint)?;
-                        trace!("MachineExternal - USB1_EP_IN {}\n", endpoint);
+                        self.handle_receive_setup_packet(packet)?;
+                        warn!("ME UsbReceiveSetupPacket");
                     }
 
                     // Usb1 received data on control endpoint
                     UsbReceivePacket(Aux, 0, _) => {
                         let bytes_read = self.usb1.hal_driver.read(0, &mut rx_buffer);
-                        self.handle_usb1_receive_control_data(bytes_read, rx_buffer)?;
+                        self.handle_receive_control_data(bytes_read, rx_buffer)?;
                         self.usb1.hal_driver.ep_out_prime_receive(0);
+                        warn!("ME UsbReceivePacket 0");
                     }
 
-                    // Usb1 received data on endpoint
+                    // Usb1 received data on endpoint - shouldn't ever be called
                     UsbReceivePacket(Aux, endpoint, _) => {
                         let bytes_read = self.usb1.hal_driver.read(endpoint, &mut rx_buffer);
-                        self.handle_usb1_receive_data(endpoint, bytes_read, rx_buffer)?;
+                        self.handle_receive_data(endpoint, bytes_read, rx_buffer)?;
                         self.usb1.hal_driver.ep_out_prime_receive(endpoint);
-                        debug!(
-                            "Usb1 received {} bytes on usb1 endpoint: {}",
-                            endpoint,
-                            bytes_read,
-                        );
+                    }
+
+                    // Usb1 transfer complete
+                    UsbTransferComplete(Aux, endpoint) => {
+                        self.handle_transfer_complete(endpoint)?;
+                        warn!("ME UsbTransferComplete");
                     }
 
                     // - usb0 message handlers --
 
                     // Usb0 received USB bus reset
                     UsbBusReset(Target) => {
-                        self.moondancer.handle_usb_bus_reset()?;
+                        self.moondancer.handle_bus_reset()?;
                     }
 
                     // Usb0 received setup packet
                     UsbReceiveSetupPacket(Target, packet) => {
-                        self.moondancer.handle_usb_receive_setup_packet(packet)?;
+                        self.moondancer.handle_receive_setup_packet(packet)?;
                     }
 
                     // Usb0 transfer complete
                     UsbTransferComplete(Target, endpoint) => {
-                        self.moondancer.handle_usb_transfer_complete(endpoint)?;
+                        self.moondancer.handle_transfer_complete(endpoint)?;
                         trace!("MachineExternal - USB0_EP_IN {}\n", endpoint);
                     }
 
@@ -355,7 +353,7 @@ impl<'a> Firmware<'a> {
                         // TODO maybe handle the read in moondancer.rs ?
                         let bytes_read = self.moondancer.usb0.read(0, &mut rx_buffer);
                         self.moondancer
-                            .handle_usb_receive_control_data(bytes_read, rx_buffer)?;
+                            .handle_receive_control_data(bytes_read, rx_buffer)?;
                         self.moondancer.usb0.ep_out_prime_receive(0);
                     }
 
@@ -364,7 +362,7 @@ impl<'a> Firmware<'a> {
                         // TODO maybe handle the read in moondancer.rs ?
                         let bytes_read = self.moondancer.usb0.read(endpoint, &mut rx_buffer);
                         self.moondancer
-                            .handle_usb_receive_data(endpoint, bytes_read, rx_buffer)?;
+                            .handle_receive_data(endpoint, bytes_read, rx_buffer)?;
                         self.moondancer.usb0.ep_out_prime_receive(endpoint);
                         debug!(
                             "Usb0 received {} bytes on usb0 endpoint: {}",
@@ -389,9 +387,11 @@ impl<'a> Firmware<'a> {
         #[allow(unreachable_code)] // TODO
         Ok(())
     }
+}
 
-    // - usb1 interrupt handlers ----------------------------------------------
+// - usb1 interrupt handlers ----------------------------------------------
 
+impl<'a> Firmware<'a> {
     unsafe fn enable_usb1_interrupts(&self) {
         interrupt::enable(pac::Interrupt::USB1);
         interrupt::enable(pac::Interrupt::USB1_EP_CONTROL);
@@ -402,7 +402,7 @@ impl<'a> Firmware<'a> {
         self.usb1.hal_driver.enable_interrupts();
     }
 
-    fn handle_usb1_receive_setup_packet(&mut self, setup_packet: SetupPacket) -> GreatResult<()> {
+    fn handle_receive_setup_packet(&mut self, setup_packet: SetupPacket) -> GreatResult<()> {
         let request_type = setup_packet.request_type();
         let vendor_request = VendorRequest::from(setup_packet.request);
 
@@ -410,7 +410,7 @@ impl<'a> Firmware<'a> {
 
         match (&request_type, &vendor_request) {
             (RequestType::Vendor, VendorRequest::UsbCommandRequest) => {
-                self.usb1_handle_vendor_request(&setup_packet)?;
+                self.handle_vendor_request(&setup_packet)?;
             }
             (RequestType::Vendor, VendorRequest::Unknown(vendor_request)) => {
                 error!("GCP Unknown vendor request '{}'", vendor_request);
@@ -460,7 +460,7 @@ impl<'a> Firmware<'a> {
     }
 
     /// Usb1: gcp vendor request handler
-    fn usb1_handle_vendor_request(&mut self, setup_packet: &SetupPacket) -> GreatResult<()> {
+    fn handle_vendor_request(&mut self, setup_packet: &SetupPacket) -> GreatResult<()> {
         let direction = setup_packet.direction();
         let request = VendorRequest::from(setup_packet.request);
         let value = VendorValue::from(setup_packet.value);
@@ -538,7 +538,7 @@ impl<'a> Firmware<'a> {
         Ok(())
     }
 
-    fn handle_usb1_receive_control_data(
+    fn handle_receive_control_data(
         &mut self,
         bytes_read: usize,
         buffer: [u8; moondancer::EP_MAX_PACKET_SIZE],
@@ -587,16 +587,22 @@ impl<'a> Firmware<'a> {
         Ok(())
     }
 
-    fn handle_usb1_receive_data(
+    /// This shouldn't ever be called
+    fn handle_receive_data(
         &mut self,
         endpoint: u8,
         bytes_read: usize,
         buffer: [u8; moondancer::EP_MAX_PACKET_SIZE],
     ) -> GreatResult<()> {
+        warn!(
+            "Usb1 received {} bytes on endpoint: {}",
+            endpoint,
+            bytes_read,
+        );
         Ok(())
     }
 
-    pub fn handle_usb1_transfer_complete(&mut self, endpoint: u8) -> GreatResult<()> {
+    pub fn handle_transfer_complete(&mut self, endpoint: u8) -> GreatResult<()> {
         Ok(())
     }
 

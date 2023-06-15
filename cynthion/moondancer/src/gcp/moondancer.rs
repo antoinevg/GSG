@@ -340,7 +340,11 @@ impl Moondancer {
             quirk_flags: 0,
         }
     }
+}
 
+// - usb0 interrupt handlers --------------------------------------------------
+
+impl Moondancer {
     pub unsafe fn enable_usb_interrupts(&self) {
         interrupt::enable(pac::Interrupt::USB0);
         interrupt::enable(pac::Interrupt::USB0_EP_CONTROL);
@@ -360,28 +364,24 @@ impl Moondancer {
         interrupt::enable(pac::Interrupt::USB0_EP_IN);
         interrupt::enable(pac::Interrupt::USB0_EP_OUT);
     }
-}
 
-// - interrupt handlers -------------------------------------------------------
-
-impl Moondancer {
-    pub fn handle_usb_bus_reset(&mut self) -> GreatResult<()> {
+    pub fn handle_bus_reset(&mut self) -> GreatResult<()> {
         self.state.usb0_status_pending |= UsbStatusFlag::USBSTS_D_URI; // URI: USB reset received
 
         debug!(
-            "MD => IRQ handle_usb_bus_reset() -> 0b{:b}",
+            "MD => IRQ handle_bus_reset() -> 0b{:b}",
             self.state.usb0_status_pending
         );
 
         Ok(())
     }
 
-    pub fn handle_usb_receive_setup_packet(
+    pub fn handle_receive_setup_packet(
         &mut self,
         setup_packet: SetupPacket,
     ) -> GreatResult<()> {
         debug!(
-            "MD => IRQ handle_usb_receive_setup_packet({:?}) -> 0b{:b}",
+            "MD => IRQ handle_receive_setup_packet({:?}) -> 0b{:b}",
             setup_packet, self.state.usb0_status_pending,
         );
 
@@ -397,7 +397,7 @@ impl Moondancer {
         Ok(())
     }
 
-    pub fn handle_usb_receive_control_data(
+    pub fn handle_receive_control_data(
         &mut self,
         bytes_read: usize,
         buffer: [u8; crate::EP_MAX_PACKET_SIZE],
@@ -406,7 +406,7 @@ impl Moondancer {
         self.state.usb0_endpoint_complete_pending |= 1 << 0;
 
         debug!(
-            "MD => IRQ handle_usb_receive_control_data({}) -> 0b{:b} -> 0b{:b}",
+            "MD => IRQ handle_receive_control_data({}) -> 0b{:b} -> 0b{:b}",
             bytes_read, self.state.usb0_status_pending, self.state.usb0_endpoint_nak_pending,
         );
 
@@ -417,7 +417,7 @@ impl Moondancer {
         Ok(())
     }
 
-    pub fn handle_usb_receive_data(
+    pub fn handle_receive_data(
         &mut self,
         endpoint: u8,
         bytes_read: usize,
@@ -427,7 +427,7 @@ impl Moondancer {
         self.state.usb0_endpoint_complete_pending |= 1 << endpoint;
 
         debug!(
-            "MD => IRQ handle_usb_receive_data({}) -> 0b{:b} -> 0b{:b}",
+            "MD => IRQ handle_receive_data({}) -> 0b{:b} -> 0b{:b}",
             bytes_read, self.state.usb0_status_pending, self.state.usb0_endpoint_nak_pending,
         );
 
@@ -438,12 +438,12 @@ impl Moondancer {
         Ok(())
     }
 
-    pub fn handle_usb_transfer_complete(&mut self, endpoint: u8) -> GreatResult<()> {
+    pub fn handle_transfer_complete(&mut self, endpoint: u8) -> GreatResult<()> {
         self.state.usb0_status_pending |= UsbStatusFlag::USBSTS_D_SEND_COMPLETE;
         self.state.usb0_endpoint_complete_pending |= 1 << (endpoint + 16);
 
         debug!(
-            "MD => IRQ handle_usb_transfer_complete({}) -> 0b{:b}",
+            "MD => IRQ handle_transfer_complete({}) -> 0b{:b}",
             endpoint, self.state.usb0_status_pending
         );
 
