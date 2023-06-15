@@ -24,7 +24,7 @@ pub static VERBS: [Verb; 5] = [
     Verb {
         id: 0x0,
         name: "initialize\0",
-        doc: "Prepare the board to have its firmware programmed.\0",
+        doc: "\0", //"Prepare the board to have its firmware programmed.\0",
         in_signature: "\0",
         in_param_names: "*\0",
         out_signature: "<II\0",
@@ -33,7 +33,7 @@ pub static VERBS: [Verb; 5] = [
     Verb {
         id: 0x1,
         name: "full_erase\0",
-        doc: "Erase the entire firmware flash chip.\0",
+        doc: "\0", //"Erase the entire firmware flash chip.\0",
         in_signature: "\0",
         in_param_names: "*\0",
         out_signature: "\0",
@@ -42,7 +42,7 @@ pub static VERBS: [Verb; 5] = [
     Verb {
         id: 0x2,
         name: "page_erase\0",
-        doc: "Erase the page with the given address on the firmware flash chip.\0",
+        doc: "\0", //"Erase the page with the given address on the firmware flash chip.\0",
         in_signature: "<I\0",
         in_param_names: "address\0",
         out_signature: "\0",
@@ -51,7 +51,7 @@ pub static VERBS: [Verb; 5] = [
     Verb {
         id: 0x3,
         name: "write_page\0",
-        doc: "Write the provided data to a single firmware flash page.\0",
+        doc: "\0", //"Write the provided data to a single firmware flash page.\0",
         in_signature: "<I*X\0",
         in_param_names: "address, data\0",
         out_signature: "\0",
@@ -60,7 +60,7 @@ pub static VERBS: [Verb; 5] = [
     Verb {
         id: 0x4,
         name: "read_page\0",
-        doc: "Return the content of the flash page at the given address.\0",
+        doc: "\0", //"Return the content of the flash page at the given address.\0",
         in_signature: "<I\0",
         in_param_names: "address\0",
         out_signature: "<*X\0",

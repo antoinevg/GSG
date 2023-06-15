@@ -342,7 +342,7 @@ impl Core {
             }
             0x7 => {
                 // core::get_verb_descriptor
-                let iter = self.get_verb_descriptor(arguments)?.take(48); // TODO fix overflow error
+                let iter = self.get_verb_descriptor(arguments)?;
                 let response = unsafe { iter_to_response(iter, response_buffer) };
                 Ok(response)
             }
@@ -354,7 +354,7 @@ impl Core {
             }
             0x9 => {
                 // core::get_class_docs
-                let iter = self.get_class_docs(arguments)?.take(48); // TODO fix overflow error
+                let iter = self.get_class_docs(arguments)?;
                 let response = unsafe { iter_to_response(iter, response_buffer) };
                 Ok(response)
             }

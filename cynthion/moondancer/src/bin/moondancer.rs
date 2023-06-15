@@ -225,10 +225,10 @@ impl<'a> Firmware<'a> {
         );
 
         // initialize class registry
-        static CLASSES: [libgreat::gcp::Class; 1] = [
+        static CLASSES: [libgreat::gcp::Class; 3] = [
             libgreat::gcp::class_core::CLASS,
-            //moondancer::gcp::firmware::CLASS,
-            //moondancer::gcp::moondancer::CLASS,
+            moondancer::gcp::firmware::CLASS,
+            moondancer::gcp::moondancer::CLASS,
         ];
         let classes = libgreat::gcp::Classes(&CLASSES);
 
@@ -315,19 +315,19 @@ impl<'a> Firmware<'a> {
                     // Usb1 received USB bus reset
                     UsbBusReset(Aux) => {
                         // handled in MachineExternal
-                        warn!("ME Usb1BusReset");
+                        //warn!("ME Usb1BusReset");
                     }
 
                     // Usb1 received setup packet
                     UsbReceiveSetupPacket(Aux, packet) => {
-                        warn!("");
-                        warn!("ME Usb1ReceiveSetupPacket");
+                        //warn!("");
+                        //warn!("ME Usb1ReceiveSetupPacket");
                         self.handle_receive_setup_packet(packet)?;
                     }
 
                     // Usb1 received data on control endpoint
                     UsbReceivePacket(Aux, 0, _) => {
-                        warn!("ME Usb1ReceivePacket 0");
+                        //warn!("ME Usb1ReceivePacket 0");
                         let bytes_read = self.usb1.hal_driver.read(0, &mut rx_buffer);
                         self.handle_receive_control_data(bytes_read, rx_buffer)?;
                         self.usb1.hal_driver.ep_out_prime_receive(0);
@@ -335,7 +335,7 @@ impl<'a> Firmware<'a> {
 
                     // Usb1 received data on endpoint - shouldn't ever be called
                     UsbReceivePacket(Aux, endpoint, _) => {
-                        warn!("ME Usb1ReceivePacket {}", endpoint);
+                        //warn!("ME Usb1ReceivePacket {}", endpoint);
                         let bytes_read = self.usb1.hal_driver.read(endpoint, &mut rx_buffer);
                         self.handle_receive_data(endpoint, bytes_read, rx_buffer)?;
                         self.usb1.hal_driver.ep_out_prime_receive(endpoint);
@@ -343,7 +343,7 @@ impl<'a> Firmware<'a> {
 
                     // Usb1 transfer complete
                     UsbTransferComplete(Aux, endpoint) => {
-                        warn!("ME Usb1TransferComplete");
+                        //warn!("ME Usb1TransferComplete");
                         self.handle_transfer_complete(endpoint)?;
                     }
 
@@ -526,7 +526,7 @@ impl<'a> Firmware<'a> {
         bytes_read: usize,
         buffer: [u8; moondancer::EP_MAX_PACKET_SIZE],
     ) -> GreatResult<()> {
-        debug!("Received {} bytes on usb1 control endpoint", bytes_read,);
+        trace!("Received {} bytes on usb1 control endpoint", bytes_read,);
 
         if bytes_read >= 8 {
             // it's gcp request data, dispatch it
@@ -573,7 +573,7 @@ impl<'a> Firmware<'a> {
             }
         };
 
-        debug!("GCP dispatch request {:?}.{}", class_id, verb_number);
+        //debug!("GCP dispatch request {:?}.{}", class_id, verb_number);
 
         // dispatch command
         let response_buffer: [u8; GCP_MAX_RESPONSE_LENGTH] = [0; GCP_MAX_RESPONSE_LENGTH];
@@ -602,7 +602,7 @@ impl<'a> Firmware<'a> {
                 // NEXT so what's happening with greatfet info is that we queue
                 //      the response but the host errors out before we get the
                 //      vendor_request telling us we can send it ???
-                debug!("GCP queueing response");
+                //debug!("GCP queueing response");
                 self.gcp_response = Some(response);
             }
             Err(e) => {
@@ -621,7 +621,7 @@ impl<'a> Firmware<'a> {
         // do we have a response ready?
         if let Some(response) = &mut self.gcp_response {
             // send it
-            debug!("GCP dispatch response: {} bytes", response.len());
+            // debug!("GCP dispatch response: {} bytes", response.len());
             // TODO handle long writes -> setup_packet.length as usize is 4096
             self.usb1
                 .hal_driver

@@ -39,7 +39,7 @@ pub static VERBS: [Verb; 13] = [
     Verb {
         id: 0x0,
         name: "connect\0",
-        doc: "Setup the target port to connect to a host.\nEnables the target port's USB pull-ups.\0",
+        doc: "\0", //"Setup the target port to connect to a host.\nEnables the target port's USB pull-ups.\0",
         in_signature: "<HH\0",
         in_param_names: "ep0_max_packet_size, quirk_flags\0",
         out_signature: "\0",
@@ -48,7 +48,7 @@ pub static VERBS: [Verb; 13] = [
     Verb {
         id: 0x1,
         name: "disconnect\0",
-        doc: "Disconnect the target port from the host.\0",
+        doc: "\0", //"Disconnect the target port from the host.\0",
         in_signature: "\0",
         in_param_names: "*\0",
         out_signature: "\0",
@@ -57,7 +57,7 @@ pub static VERBS: [Verb; 13] = [
     Verb {
         id: 0x2,
         name: "bus_reset\0",
-        doc: "Cause the target device to handle a bus reset.\0",
+        doc: "\0", //"Cause the target device to handle a bus reset.\0",
         in_signature: "\0",
         in_param_names: "*\0",
         out_signature: "\0",
@@ -68,7 +68,7 @@ pub static VERBS: [Verb; 13] = [
     Verb {
         id: 0x3,
         name: "set_address\0",
-        doc: "Set the address of the target device.\nIf deferred is set this action won't complete until the setup phase ends.\0",
+        doc: "\0", //"Set the address of the target device.\nIf deferred is set this action won't complete until the setup phase ends.\0",
         in_signature: "<BB\0",
         in_param_names: "address, deferred\0",
         out_signature: "\0",
@@ -77,7 +77,7 @@ pub static VERBS: [Verb; 13] = [
     Verb {
         id: 0x4,
         name: "set_up_endpoints\0",
-        doc: "Set up all of the non-control endpoints for the device.\0",
+        doc: "\0", //"Set up all of the non-control endpoints for the device.\0",
         in_signature: "<*(BHB)\0",
         in_param_names: "endpoint_descriptors\0",
         out_signature: "\0",
@@ -88,7 +88,7 @@ pub static VERBS: [Verb; 13] = [
     Verb {
         id: 0x5,
         name: "get_status\0",
-        doc: "Read one of the device's USB status registers.\0",
+        doc: "\0", //"Read one of the device's USB status registers.\0",
         in_signature: "<B\0",
         in_param_names: "register_type\0",
         out_signature: "<I\0",
@@ -97,7 +97,7 @@ pub static VERBS: [Verb; 13] = [
     Verb {
         id: 0x6,
         name: "read_setup\0",
-        doc: "Read any pending setup packets recieved on the given endpoint.\0",
+        doc: "\0", //"Read any pending setup packets recieved on the given endpoint.\0",
         in_signature: "<B\0",
         in_param_names: "endpoint_number\0",
         out_signature: "<8X\0",
@@ -106,7 +106,7 @@ pub static VERBS: [Verb; 13] = [
     Verb {
         id: 0x7,
         name: "stall_endpoint\0",
-        doc: "Stall the endpoint with the provided address.\0",
+        doc: "\0", //"Stall the endpoint with the provided address.\0",
         in_signature: "<B\0",
         in_param_names: "endpoint_address\0",
         out_signature: "\0",
@@ -117,7 +117,7 @@ pub static VERBS: [Verb; 13] = [
     Verb {
         id: 0x8,
         name: "send_on_endpoint\0",
-        doc: "Send the provided data on the given IN endpoint.\0",
+        doc: "\0", //"Send the provided data on the given IN endpoint.\0",
         in_signature: "<B*X\0",
         in_param_names: "endpoint_number, data_to_send\0",
         out_signature: "\0",
@@ -126,7 +126,7 @@ pub static VERBS: [Verb; 13] = [
     Verb {
         id: 0x9,
         name: "clean_up_transfer\0",
-        doc: "Clean up any complete transfers on the given endpoint.\0",
+        doc: "\0", //"Clean up any complete transfers on the given endpoint.\0",
         in_signature: "<B\0",
         in_param_names: "endpoint_address\0",
         out_signature: "\0",
@@ -135,7 +135,7 @@ pub static VERBS: [Verb; 13] = [
     Verb {
         id: 0xa,
         name: "start_nonblocking_read\0",
-        doc: "Begin listening for data on the given OUT endpoint.\0",
+        doc: "\0", //"Begin listening for data on the given OUT endpoint.\0",
         in_signature: "<B\0",
         in_param_names: "endpoint_number\0",
         out_signature: "\0",
@@ -144,7 +144,7 @@ pub static VERBS: [Verb; 13] = [
     Verb {
         id: 0xb,
         name: "finish_nonblocking_read\0",
-        doc: "Return the data read after a given non-blocking read.\0",
+        doc: "\0", //"Return the data read after a given non-blocking read.\0",
         in_signature: "<B\0",
         in_param_names: "endpoint_number\0",
         out_signature: "<*X\0",
@@ -153,7 +153,7 @@ pub static VERBS: [Verb; 13] = [
     Verb {
         id: 0xc,
         name: "get_nonblocking_data_length\0",
-        doc: "Return the amount of data read after a given non-blocking read.\0",
+        doc: "\0", //"Return the amount of data read after a given non-blocking read.\0",
         in_signature: "<B\0",
         in_param_names: "endpoint_number\0",
         out_signature: "<I\0",
