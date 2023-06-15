@@ -39,7 +39,7 @@ pub mod vendor {
     #[repr(u16)]
     #[derive(Debug, PartialEq)]
     pub enum VendorValue {
-        Start = 0x0000,
+        Execute = 0x0000,
         Cancel = 0xdead,
         Unknown(u16),
     }
@@ -47,7 +47,7 @@ pub mod vendor {
     impl From<u16> for VendorValue {
         fn from(value: u16) -> Self {
             match value {
-                0x0000 => VendorValue::Start,
+                0x0000 => VendorValue::Execute,
                 0xdead => VendorValue::Cancel,
                 _ => VendorValue::Unknown(value),
             }

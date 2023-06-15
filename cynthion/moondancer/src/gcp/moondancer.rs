@@ -376,10 +376,7 @@ impl Moondancer {
         Ok(())
     }
 
-    pub fn handle_receive_setup_packet(
-        &mut self,
-        setup_packet: SetupPacket,
-    ) -> GreatResult<()> {
+    pub fn handle_receive_setup_packet(&mut self, setup_packet: SetupPacket) -> GreatResult<()> {
         debug!(
             "MD => IRQ handle_receive_setup_packet({:?}) -> 0b{:b}",
             setup_packet, self.state.usb0_status_pending,
@@ -410,7 +407,6 @@ impl Moondancer {
             bytes_read, self.state.usb0_status_pending, self.state.usb0_endpoint_nak_pending,
         );
 
-        // TODO if endpoint > NUM_ENDPOINTS
         self.state.bytes_read[0] = bytes_read;
         self.state.receive_buffers[0] = buffer;
 
@@ -730,7 +726,10 @@ impl Moondancer {
             endpoint_number: u8,
         }
         let args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
-        debug!("MD Moondancer::start_nonblocking_read({})", args.endpoint_number);
+        debug!(
+            "MD Moondancer::start_nonblocking_read({})",
+            args.endpoint_number
+        );
 
         self.usb0.ep_out_prime_receive(args.endpoint_number);
 
@@ -790,7 +789,10 @@ impl Moondancer {
             endpoint_number: u8,
         }
         let args = Args::read_from(arguments).ok_or(GreatError::BadMessage)?;
-        debug!("MD Moondancer::get_nonblocking_data_length({})", args.endpoint_number);
+        debug!(
+            "MD Moondancer::get_nonblocking_data_length({})",
+            args.endpoint_number
+        );
         let iter = [].into_iter();
         Ok(iter)
     }

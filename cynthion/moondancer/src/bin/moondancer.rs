@@ -36,7 +36,9 @@ fn dispatch_message(message: Message) {
             error!("MachineExternal - message queue overflow");
             //panic!("MachineExternal - message queue overflow");
             loop {
-                unsafe { riscv::asm::nop(); }
+                unsafe {
+                    riscv::asm::nop();
+                }
             }
         }
     }
@@ -170,7 +172,9 @@ fn main() -> ! {
     }
 
     loop {
-        unsafe { riscv::asm::nop(); }
+        unsafe {
+            riscv::asm::nop();
+        }
     }
 }
 
@@ -182,7 +186,7 @@ struct Firmware<'a> {
     usb1: UsbDevice<'a, hal::Usb1>,
 
     // state
-    active_response: Option<GcpResponse<'a>>,
+    gcp_response: Option<GcpResponse<'a>>,
 
     // classes
     core: libgreat::gcp::class_core::Core,
@@ -221,10 +225,10 @@ impl<'a> Firmware<'a> {
         );
 
         // initialize class registry
-        static CLASSES: [libgreat::gcp::Class; 3] = [
+        static CLASSES: [libgreat::gcp::Class; 1] = [
             libgreat::gcp::class_core::CLASS,
-            moondancer::gcp::firmware::CLASS,
-            moondancer::gcp::moondancer::CLASS,
+            //moondancer::gcp::firmware::CLASS,
+            //moondancer::gcp::moondancer::CLASS,
         ];
         let classes = libgreat::gcp::Classes(&CLASSES);
 
@@ -235,7 +239,7 @@ impl<'a> Firmware<'a> {
         Self {
             leds: peripherals.LEDS,
             usb1,
-            active_response: None,
+            gcp_response: None,
             core,
             moondancer,
         }
@@ -249,7 +253,7 @@ impl<'a> Firmware<'a> {
 
         // connect usb1
         let speed = self.usb1.connect();
-        debug!("Connected usb1 device: {:?}", speed);
+        info!("Connected usb1 device: {:?}", speed);
 
         // enable interrupts
         unsafe {
@@ -273,12 +277,17 @@ impl<'a> Firmware<'a> {
         let mut max_queue_length = 0;
         let mut queue_length = 0;
 
-        // leds: ready
-        self.leds
-            .output
-            .write(|w| unsafe { w.output().bits(1 << 1) });
+        info!("Peripherals initialized, entering main loop");
+
+        let mut counter: usize = 0;
 
         loop {
+            // leds: main loop is responsive
+            self.leds
+                .output
+                .write(|w| unsafe { w.output().bits((counter % 256) as u8) });
+            counter += 1;
+
             if queue_length > max_queue_length {
                 max_queue_length = queue_length;
                 debug!("max_queue_length: {}", max_queue_length);
@@ -286,6 +295,13 @@ impl<'a> Firmware<'a> {
             queue_length = 0;
 
             while let Some(message) = MESSAGE_QUEUE.dequeue() {
+                //debug!("MachineExternal: {:?}", message);
+
+                // leds: message loop is active
+                self.leds
+                    .output
+                    .write(|w| unsafe { w.output().bits(1 << 0) });
+
                 use moondancer::{
                     Message::*,
                     UsbInterface::{Aux, Target},
@@ -293,32 +309,33 @@ impl<'a> Firmware<'a> {
 
                 queue_length += 1;
 
-                trace!("MachineExternal: {:?}", message);
                 match message {
                     // - usb1 message handlers --
 
                     // Usb1 received USB bus reset
                     UsbBusReset(Aux) => {
                         // handled in MachineExternal
-                        warn!("ME UsbBusReset");
+                        warn!("ME Usb1BusReset");
                     }
 
                     // Usb1 received setup packet
                     UsbReceiveSetupPacket(Aux, packet) => {
+                        warn!("");
+                        warn!("ME Usb1ReceiveSetupPacket");
                         self.handle_receive_setup_packet(packet)?;
-                        warn!("ME UsbReceiveSetupPacket");
                     }
 
                     // Usb1 received data on control endpoint
                     UsbReceivePacket(Aux, 0, _) => {
+                        warn!("ME Usb1ReceivePacket 0");
                         let bytes_read = self.usb1.hal_driver.read(0, &mut rx_buffer);
                         self.handle_receive_control_data(bytes_read, rx_buffer)?;
                         self.usb1.hal_driver.ep_out_prime_receive(0);
-                        warn!("ME UsbReceivePacket 0");
                     }
 
                     // Usb1 received data on endpoint - shouldn't ever be called
                     UsbReceivePacket(Aux, endpoint, _) => {
+                        warn!("ME Usb1ReceivePacket {}", endpoint);
                         let bytes_read = self.usb1.hal_driver.read(endpoint, &mut rx_buffer);
                         self.handle_receive_data(endpoint, bytes_read, rx_buffer)?;
                         self.usb1.hal_driver.ep_out_prime_receive(endpoint);
@@ -326,31 +343,27 @@ impl<'a> Firmware<'a> {
 
                     // Usb1 transfer complete
                     UsbTransferComplete(Aux, endpoint) => {
+                        warn!("ME Usb1TransferComplete");
                         self.handle_transfer_complete(endpoint)?;
-                        warn!("ME UsbTransferComplete");
                     }
 
                     // - usb0 message handlers --
 
                     // Usb0 received USB bus reset
                     UsbBusReset(Target) => {
+                        warn!("ME Usb0BusReset");
                         self.moondancer.handle_bus_reset()?;
                     }
 
                     // Usb0 received setup packet
                     UsbReceiveSetupPacket(Target, packet) => {
+                        warn!("ME Usb0ReceiveSetupPacket");
                         self.moondancer.handle_receive_setup_packet(packet)?;
-                    }
-
-                    // Usb0 transfer complete
-                    UsbTransferComplete(Target, endpoint) => {
-                        self.moondancer.handle_transfer_complete(endpoint)?;
-                        trace!("MachineExternal - USB0_EP_IN {}\n", endpoint);
                     }
 
                     // Usb0 received data on control endpoint
                     UsbReceivePacket(Target, 0, _) => {
-                        // TODO maybe handle the read in moondancer.rs ?
+                        warn!("ME Usb0ReceivePacket 0");
                         let bytes_read = self.moondancer.usb0.read(0, &mut rx_buffer);
                         self.moondancer
                             .handle_receive_control_data(bytes_read, rx_buffer)?;
@@ -359,26 +372,27 @@ impl<'a> Firmware<'a> {
 
                     // Usb0 received data on endpoint
                     UsbReceivePacket(Target, endpoint, _) => {
-                        // TODO maybe handle the read in moondancer.rs ?
+                        warn!("ME Usb0ReceivePacket {}", endpoint);
                         let bytes_read = self.moondancer.usb0.read(endpoint, &mut rx_buffer);
                         self.moondancer
                             .handle_receive_data(endpoint, bytes_read, rx_buffer)?;
                         self.moondancer.usb0.ep_out_prime_receive(endpoint);
-                        debug!(
-                            "Usb0 received {} bytes on usb0 endpoint: {}",
-                            endpoint,
-                            bytes_read,
-                        );
+                    }
+
+                    // Usb0 transfer complete
+                    UsbTransferComplete(Target, endpoint) => {
+                        warn!("ME Usb0TransferComplete");
+                        self.moondancer.handle_transfer_complete(endpoint)?;
                     }
 
                     // Error Message
                     ErrorMessage(message) => {
-                        error!("MachineExternal Error - {}\n", message);
+                        error!("MachineExternal Error - {}", message);
                     }
 
                     // Unhandled message
                     _ => {
-                        error!("Unhandled message: {:?}\n", message);
+                        error!("Unhandled message: {:?}", message);
                     }
                 }
             }
@@ -406,7 +420,11 @@ impl<'a> Firmware<'a> {
         let request_type = setup_packet.request_type();
         let vendor_request = VendorRequest::from(setup_packet.request);
 
-        //debug!("Control packet: {:?} {:?}", setup_packet.direction(), setup_packet);
+        trace!(
+            "Control packet: {:?} {:?}",
+            setup_packet.direction(),
+            setup_packet
+        );
 
         match (&request_type, &vendor_request) {
             (RequestType::Vendor, VendorRequest::UsbCommandRequest) => {
@@ -477,55 +495,20 @@ impl<'a> Firmware<'a> {
 
         match (&direction, &request, &value) {
             // host is starting a new command sequence
-            (
-                Direction::HostToDevice,
-                VendorRequest::UsbCommandRequest,
-                VendorValue::Start,
-            ) => {
+            (Direction::HostToDevice, VendorRequest::UsbCommandRequest, VendorValue::Execute) => {
                 self.usb1.hal_driver.ack_status_stage(setup_packet);
             }
 
             // host is ready to receive a response
-            (
-                Direction::DeviceToHost,
-                VendorRequest::UsbCommandRequest,
-                VendorValue::Start,
-            ) => {
-                // do we have a response ready? should we wait if we don't?
-                if let Some(response) = &mut self.active_response {
-                    // send it
-                    //debug!("GCP sending command response: {} bytes", response.len());
-                    self.usb1
-                        .hal_driver
-                        .write(0, response.take(setup_packet.length as usize));
-                    self.active_response = None;
-                } else {
-                    // TODO something has gone wrong
-                    error!("GCP stall: gcp response requested but no response queued");
-                    self.usb1.hal_driver.stall_endpoint_in(0);
-                }
+            (Direction::DeviceToHost, VendorRequest::UsbCommandRequest, VendorValue::Execute) => {
+                self.dispatch_gcp_response(setup_packet)?;
             }
 
             // host would like to abort the current command sequence
-            (
-                Direction::DeviceToHost,
-                VendorRequest::UsbCommandRequest,
-                VendorValue::Cancel,
-            ) => {
-                // cancel any queued response
-                self.active_response = None;
-
-                // TODO - how long? ack?
-                self.usb1
-                    .hal_driver
-                    .write(0, [0xde, 0xad, 0xde, 0xad].into_iter());
-
-                // TODO cancel
-                warn!(
-                    "GCP cancel cynthion vendor request sequence: {}",
-                    length
-                );
+            (Direction::DeviceToHost, VendorRequest::UsbCommandRequest, VendorValue::Cancel) => {
+                self.dispatch_gcp_abort(setup_packet)?;
             }
+
             _ => {
                 error!(
                     "GCP stall: unknown vendor request and/or value: {:?} {:?} {:?}",
@@ -543,47 +526,15 @@ impl<'a> Firmware<'a> {
         bytes_read: usize,
         buffer: [u8; moondancer::EP_MAX_PACKET_SIZE],
     ) -> GreatResult<()> {
-        // TODO state == Command::Send
+        debug!("Received {} bytes on usb1 control endpoint", bytes_read,);
 
-        trace!(
-            "GCP Received {} bytes on usb1 control endpoint",
-            bytes_read,
-        );
-
-        if bytes_read < 8 {
-            // short read
-            //warn!("GCP   short read of {} bytes\n", bytes_read);
-            return Ok(());
+        if bytes_read >= 8 {
+            // it's gcp request data, dispatch it
+            self.dispatch_gcp_request(&buffer[0..bytes_read])?;
+        } else {
+            // it's an ack for the last gcp response we sent, ignore it
         }
 
-        // parse & dispatch command
-        if let Some(command) = libgreat::gcp::Command::parse(&buffer[0..bytes_read]) {
-            //debug!("GCP dispatch command {:?}.{}", command.class_id(), command.prelude.verb);
-            let response_buffer: [u8; GCP_MAX_RESPONSE_LENGTH] = [0; GCP_MAX_RESPONSE_LENGTH];
-            let response = self.dispatch_gcp_command(
-                command.class_id(),
-                command.verb_number(),
-                command.arguments,
-                response_buffer,
-            );
-            match response {
-                Ok(response) => {
-                    // TODO we really need a better way to get this to the vendor request
-                    // NEXT so what's happening with greatfet info is that we queue
-                    //      the response but the host errors out before we get the
-                    //      vendor_request telling us we can send it ???
-                    //debug!("GCP queueing next response");
-                    self.active_response = Some(response);
-                }
-                Err(e) => {
-                    error!("GCP error: failed to dispatch command {}", e);
-                    // TODO set a proper errno
-                    self.usb1
-                        .hal_driver
-                        .write(0, [0xde, 0xad, 0xde, 0xad].into_iter());
-                }
-            }
-        }
         Ok(())
     }
 
@@ -596,41 +547,106 @@ impl<'a> Firmware<'a> {
     ) -> GreatResult<()> {
         warn!(
             "Usb1 received {} bytes on endpoint: {}",
-            endpoint,
-            bytes_read,
+            endpoint, bytes_read,
         );
         Ok(())
     }
 
+    /// TODO we should probably take this into account for state handling
     pub fn handle_transfer_complete(&mut self, endpoint: u8) -> GreatResult<()> {
         Ok(())
     }
+}
 
-    fn dispatch_gcp_command(
-        &mut self,
-        class_id: libgreat::gcp::ClassId,
-        verb_id: u32,
-        arguments: &[u8],
-        response_buffer: [u8; GCP_MAX_RESPONSE_LENGTH],
-    ) -> GreatResult<GcpResponse> {
-        let no_context: Option<u8> = None;
+// - gcp command dispatch -----------------------------------------------------
 
-        match (class_id, verb_id) {
+impl<'a> Firmware<'a> {
+    fn dispatch_gcp_request(&mut self, command_buffer: &[u8]) -> GreatResult<()> {
+        // parse command
+        let (class_id, verb_number, arguments) = match libgreat::gcp::Command::parse(command_buffer)
+        {
+            Some(command) => (command.class_id(), command.verb_number(), command.arguments),
+            None => {
+                // TODO some kind of error handling
+                error!("Failed to parse GCP command");
+                return Ok(());
+            }
+        };
+
+        debug!("GCP dispatch request {:?}.{}", class_id, verb_number);
+
+        // dispatch command
+        let response_buffer: [u8; GCP_MAX_RESPONSE_LENGTH] = [0; GCP_MAX_RESPONSE_LENGTH];
+        let response = match class_id {
             // class: core
-            (libgreat::gcp::ClassId::core, verb_id) => {
-                self.core.dispatch(verb_id, arguments, response_buffer)
+            libgreat::gcp::ClassId::core => {
+                self.core.dispatch(verb_number, arguments, response_buffer)
             }
             // class: firmware
-            (libgreat::gcp::ClassId::firmware, verb_id) => {
-                moondancer::gcp::firmware::dispatch(verb_id, arguments, response_buffer)
+            libgreat::gcp::ClassId::firmware => {
+                moondancer::gcp::firmware::dispatch(verb_number, arguments, response_buffer)
             }
             // class: moondancer
-            (libgreat::gcp::ClassId::moondancer, verb_id) => {
+            libgreat::gcp::ClassId::moondancer => {
                 self.moondancer
-                    .dispatch(verb_id, arguments, response_buffer)
+                    .dispatch(verb_number, arguments, response_buffer)
             }
 
             _ => Err(GreatError::Message("class or verb not found")),
+        };
+
+        // queue response
+        match response {
+            Ok(response) => {
+                // TODO we really need a better way to get this to the vendor request
+                // NEXT so what's happening with greatfet info is that we queue
+                //      the response but the host errors out before we get the
+                //      vendor_request telling us we can send it ???
+                debug!("GCP queueing response");
+                self.gcp_response = Some(response);
+            }
+            Err(e) => {
+                error!("GCP error: failed to dispatch command {}", e);
+                // TODO set a proper errno
+                self.usb1
+                    .hal_driver
+                    .write(0, [0xde, 0xad, 0xde, 0xad].into_iter());
+            }
         }
+
+        Ok(())
+    }
+
+    fn dispatch_gcp_response(&mut self, setup_packet: &SetupPacket) -> GreatResult<()> {
+        // do we have a response ready?
+        if let Some(response) = &mut self.gcp_response {
+            // send it
+            debug!("GCP dispatch response: {} bytes", response.len());
+            // TODO handle long writes -> setup_packet.length as usize is 4096
+            self.usb1
+                .hal_driver
+                .write(0, response.take(moondancer::EP_MAX_PACKET_SIZE));
+            self.gcp_response = None;
+        } else {
+            // TODO figure out what to do if we don't have a response
+            error!("GCP stall: gcp response requested but no response queued");
+            self.usb1.hal_driver.stall_endpoint_in(0);
+        }
+
+        Ok(())
+    }
+
+    fn dispatch_gcp_abort(&mut self, setup_packet: &SetupPacket) -> GreatResult<()> {
+        debug!("GCP dispatch abort");
+
+        // cancel any queued response
+        self.gcp_response = None;
+
+        // TODO figure out what response host is expecting
+        self.usb1
+            .hal_driver
+            .write(0, [0xde, 0xad, 0xde, 0xad].into_iter());
+
+        Ok(())
     }
 }
