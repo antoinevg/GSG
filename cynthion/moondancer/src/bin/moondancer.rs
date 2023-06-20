@@ -591,7 +591,7 @@ impl<'a> Firmware<'a> {
                 self.moondancer
                     .dispatch(verb_number, arguments, response_buffer)
             }
-
+            // class: unsupported
             _ => Err(GreatError::Message("class or verb not found")),
         };
 

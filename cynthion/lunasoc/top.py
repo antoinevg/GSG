@@ -1,4 +1,4 @@
-from gpio                                    import GpioPeripheral
+from peripheral                              import GpioPeripheral, LedPeripheral
 from vexsoc                                  import LunaSoC
 
 from luna                                    import configure_default_logging, top_level_cli
@@ -8,8 +8,6 @@ from luna.gateware.usb.usb2.interfaces.eptri import SetupFIFOInterface, InFIFOIn
 from amaranth                                import Elaboratable, Module, Cat
 from amaranth.hdl.rec                        import Record
 
-from lambdasoc.periph                        import Peripheral
-
 import logging
 import os
 import sys
@@ -18,43 +16,9 @@ CLOCK_FREQUENCIES_MHZ = {
     'sync': 60
 }
 
-# - LedPeripheral -------------------------------------------------------------
+# - MoondancerSoc ---------------------------------------------------------------
 
-class LedPeripheral(Peripheral, Elaboratable):
-    """ Example peripheral that controls the board's LEDs. """
-
-    def __init__(self):
-        super().__init__()
-
-        # Create our LED register.
-        # Note that there's a bunch of 'magic' that goes on behind the scenes, here:
-        # a memory address will automatically be reserved for this register in the address
-        # space it's attached to; and the SoC utilities will automatically generate header
-        # entires and stub functions for it.
-        bank            = self.csr_bank()
-        self._output    = bank.csr(6, "w")
-
-        # ... and convert our register into a Wishbone peripheral.
-        self._bridge    = self.bridge(data_width=32, granularity=8, alignment=2)
-        self.bus        = self._bridge.bus
-
-
-    def elaborate(self, platform):
-        m = Module()
-        m.submodules.bridge = self._bridge
-
-        # Grab our LEDS...
-        leds = Cat(platform.request("led", i) for i in range(6))
-
-        # ... and update them on each register write.
-        with m.If(self._output.w_stb):
-            m.d.sync += leds.eq(self._output.w_data)
-
-        return m
-
-# - CynthionSoC ---------------------------------------------------------------
-
-class CynthionSoC(Elaboratable):
+class MoondancerSoc(Elaboratable):
     def __init__(self, clock_frequency):
 
         # Create a stand-in for our UART.
@@ -140,7 +104,7 @@ class CynthionSoC(Elaboratable):
             m.d.comb += self.soc.cpu.ext_reset.eq(user1_io.i)
         else:
             logging.error("Unsupported platform: {}".format(platform))
-            sys.exit()
+            sys.exit(1)
 
         # create our USB devices, connect device controllers and add eptri endpoint handlers
         ulpi0 = platform.request(platform.default_usb_connection) # target_phy
@@ -220,12 +184,12 @@ if __name__ == "__main__":
         clock_frequency=int(1e6)
     else:
         logging.error("Unsupported platform: {}".format(platform))
-        sys.exit()
+        sys.exit(1)
 
     logging.info(f"Platform clock frequency: {clock_frequency}")
 
     # create design
-    design = CynthionSoC(clock_frequency=clock_frequency)
+    design = MoondancerSoc(clock_frequency=clock_frequency)
 
     # TODO fix litex build
     thirdparty = os.path.join(build_dir, "lambdasoc.soc.cpu/bios/3rdparty/litex")

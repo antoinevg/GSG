@@ -30,8 +30,10 @@ pub static CLASS: gcp::Class = gcp::Class {
     verbs: &VERBS,
 };
 
-pub static CLASS_DOCS: &str = "Common API for updating firmware on a libgreat device.\0";
+pub static CLASS_DOCS: &str = "API for fine-grained control of the Target USB port.\0";
 
+/// Verb definitions for class: moondancer
+///
 /// Fields are `"\0"`  where C implementation has `""`
 /// Fields are `"*\0"` where C implementation has `NULL`
 pub static VERBS: [Verb; 13] = [
