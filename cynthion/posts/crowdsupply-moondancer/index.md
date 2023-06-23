@@ -4,13 +4,13 @@
 
 One of the core features we have not yet covered in an update is Cynthion's support for emulating USB devices in Python with [FaceDancer](https://github.com/greatscottgadgets/facedancer).
 
-Much like GreatFET before it, FaeDancer will allow you to use Cynthion to remotely control USB ports
+Much like GreatFET and others before it, FaceDancer can now also use Cynthion to remotely control USB ports.
 
 But why would one want to do such a thing?
 
 Well, the USB protocol is simply a series of signals over wire which are completely independent of the actual device being controlled.
 
-The actual meaning of those signals are agreed on by the device and the software running on a connected host.
+The actual meaning of those signals are agreed on by the device and the software running on the connected host.
 
 What this means is that if we had a way of directly programming a USB controller we gain direct control over the data being encoded in the USB streams.
 
@@ -24,7 +24,7 @@ For example, let's say we needed to automate the operation of a computer running
 
 ![Figure 1: USB Keyboard](figure-1.png)
 
-With FaceDancer we can write a small program that will appear to the host as a standard USB keyboard:
+With FaceDancer we can instead write a small program that will appear to the host as a standard USB keyboard:
 
 ![Figure 2: Device emulation](figure-2.png)
 
@@ -49,10 +49,6 @@ async def type_letters():
     await device.type_string('calc\n')
 ```
 
-More information: https://www.cs.dartmouth.edu/~sergey/usb/
-
-
----
 
 ## How we did it
 
@@ -114,7 +110,6 @@ While the feature set may be modest in comparison to most commercial micro-contr
 
 ![Figure 3: MoonDancer SoC](figure-3.png)
 
-
 None of this would have been possible even a few years ago and it is thanks to the efforts of a wide community that we were able to do it within the time and resources available to us:
 
 * [Spinal HDL VecRiscv](https://github.com/SpinalHDL/VexRiscv)
@@ -123,7 +118,18 @@ None of this would have been possible even a few years ago and it is thanks to t
 * [Luna](https://github.com/greatscottgadgets/luna)
 * [LunaSoC](https://github.com/greatscottgadgets/luna-soc)
 
-### lunasoc-pac
+### MoonDancer Firmware
+
+After bringing up our "hardware" platform for the MoonDancer firmware we faced a whole new set of obstacles. In commercial SoC development there is usually a whole second team tasked with creating the tooling, device drivers and development libraries for a new design.
+
+This is where we got our first taste of why an open standard ISA is such a powerful idea.
+
+While we would still have to develop our own device drivers and libraries for our design we did not need to create yet another fork of GCC to implement our own custom toolchain with compiler, debugger, linker and sundry utilities.
+
+Thanks to the efforts of many contributors, both commercial and community, the [GNU toolchain](https://www.linux.org/threads/gnu-toolchain-explained.10570/) has been shipping RiscV support for some time now and Rust (via [LLVM](https://llvm.org/)) is able to compile binaries for many RiscV variants out the box.
+
+
+#### lunasoc-pac
 
 One of the fundamental building blocks in any Embedded Rust project is a Peripheral Access Crate (PAC) which provides safe register-level access to the processor's peripherals.
 
@@ -135,7 +141,7 @@ One of our first jobs was therefore to extend the LunaSoC library with the abili
 
 Using `svd2rust` we were now able to easily generate a PAC for any LunaSoC design.
 
-### lunasoc-hal
+#### lunasoc-hal
 
 While it is entirely possible to develop an entire firmware using just a PAC crate it would be nice to offer a friendler programming interface and the possibility of code re-use across different processors.
 
@@ -151,7 +157,7 @@ By adopting `embedded-hal` for our LunaSoC designs we've made it possible for ot
 
 At the time of writing we have implemented `embedded-hal` compliant drivers for all SoC peripherals including the `gpio`, `timer` and `serial` peripherals.
 
-### SmolUSB
+#### SmolUSB
 
 A special case is the implementation for the `usb` peripherals as there is not yet an official `embedded-hal` specification for USB.
 
@@ -170,15 +176,43 @@ It provides:
 
 It does not require Rust `alloc` support, uses a single statically allocated buffer for read operations and supports [zero-copy](https://github.com/google/zerocopy) write operations.
 
+What makes SmolUSB a little different from other USB stacks is that it is a very thin abstraction over the device driver.
 
-### MoonDancer
+While it does provide an API surface for high-level operations such as device enumeration it also provides several "escape hatches" that provide raw access to the behaviour of the underlying peripheral.
 
-MoonDancer brings these components together in the form of the device firmware and the FaceDancer backend for Cynthion.
+A good example of this would be the way that device enumeration works with a FaceDancer emulated peripheral.
 
+Rather than relying on the device firmware itself to respond to enumeration requests received on Cynthion's Target port these commands are instead forwarded to the FaceDancer host which will then construct the enumeration responses to be sent back via the target port.
+
+The Aux port, on the other hand, acts as a traditional USB device and relies on SmolUSB to handle enumeration requests from the FaceDancer host.
+
+
+#### MoonDancer her self.
+
+Now that we had our "hardware" platform, a toolchain, device drivers and development libraries we were finally in a position to implement a FaceDancer backend for Cynthion!
+
+MoonDancer is the heart of Cynthion's FaceDancer support and is responsible for mediating all communication between FaceDancer and the remotely controlled USB peripheral.
+
+On the host side, the MoonDancer backend is responsible for translating calls from FaceDancer into libgreat commands which are then received on Cynthion's Aux USB port, deserialized by libgreat and forwarded to the MoonDancer firmware which is responsible for operating the Cynthion's Target USB port:
 
 ![Figure 4: MoonDancer](figure-4.png)
 
+To mediate communication between the backend and the MoonDancer firmware we've used a Rust implementation of the same [`libgreat`](https://greatfet.readthedocs.io/en/latest/libgreat_verb_signatures.html) RPC protocol used by GreatFET and other Great Scott open-source projects.
 
-The MoonDancer device firmware communicates with a FaceDancer host using a Rust implementation of the same [`libgreat`](https://greatfet.readthedocs.io/en/latest/libgreat_verb_signatures.html) RPC protocol used by GreatFET and other Great Scott open-source projects.
+The power of libgreat is it's ability to generate and expose simple explorable API's via Python that allows for flexible communications between computers and embedded devices, embedded drivers, and more without having to get into the murky details of driver development, transports or serialization protocols.
 
-It exposes a simple explorable API via Python that allows for flexible communications between computers and embedded devices, embedded drivers, and more.
+We hope this design decision will also allow others to more easily develop and integrate their own custom firmware for embedded USB applications with host software!
+
+Finally, the MoonDancer firmware implements the MoonDancer API for directly controlling the USB Peripheral via operations to manage port connection, bus reset, setting the device address, manage endpoints and send/receive of data packets.
+
+## Conclusion
+
+I hope you enjoyed this overview of what we've been working on. If you have access to Cynthion hardware and would like to try out MoonDancer please feel free to check out the project page:
+
+https://
+
+Also, if you're interested in custom SoC development and Embedded Rust, please check out:
+
+https://
+
+Most of the non-USB functionality has been tested on other ECP5 devices so, with a little bit of work, you should be able to get something going with your favorite development board.
