@@ -28,8 +28,8 @@ from lambdasoc.soc.cpu       import CPUSoC, BIOSBuilder
 from lambdasoc.sim.platform          import CXXRTLPlatform
 from lambdasoc.sim.blackboxes.serial import AsyncSerial_Blackbox
 
-from luna.gateware.soc.memory import WishboneRAM
-from sram                     import SRAMPeripheral as SRAMPeripheralWithACK
+from luna_soc.gateware.wishbone.memory import WishboneRAM
+from sram                              import SRAMPeripheral as SRAMPeripheralWithACK
 
 import logging
 

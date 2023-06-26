@@ -2,8 +2,9 @@ from peripheral                              import GpioPeripheral, LedPeriphera
 from vexsoc                                  import LunaSoC
 
 from luna                                    import configure_default_logging, top_level_cli
-from luna.gateware.usb.usb2.device           import USBDevice, USBDeviceController
-from luna.gateware.usb.usb2.interfaces.eptri import SetupFIFOInterface, InFIFOInterface, OutFIFOInterface
+
+from luna_soc.gateware.csr.usb2.device           import USBDevice, USBDeviceController
+from luna_soc.gateware.csr.usb2.interfaces.eptri import SetupFIFOInterface, InFIFOInterface, OutFIFOInterface
 
 from amaranth                                import Elaboratable, Module, Cat
 from amaranth.hdl.rec                        import Record
