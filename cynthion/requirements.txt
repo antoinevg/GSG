@@ -1,6 +1,7 @@
 # - luna ----------------------------------------------------------------------
 
 #luna @ git+https://github.com/greatscottgadgets/luna@main
+#luna-soc @ git+https://github.com/greatscottgadgets/luna-soc@main
 
 # - luna dev dependencies -----------------------------------------------------
 

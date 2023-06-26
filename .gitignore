@@ -24,6 +24,6 @@ cynthion/design/usb/gateware.d2
 cynthion/design/usb/gateware.svg
 cynthion/hello-rust/link-orig.x
 cynthion/libgreat/Makefile
-cynthion/lunasoc/verilog/femtorv/
-cynthion/lunasoc/verilog/vexriscv/scala/src/main/scala/DBusCynthionPlugin.scala
+cynthion/moondancer-soc/verilog/femtorv/
+cynthion/moondancer-soc/verilog/vexriscv/scala/src/main/scala/DBusCynthionPlugin.scala
 cynthion/notes/
