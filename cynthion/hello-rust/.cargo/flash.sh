@@ -13,7 +13,7 @@ echo "Using Cynthion UART=$UART"
 
 # bitstream
 BASE_MEM=0x40000000
-BITSTREAM=../lunasoc/build/top.bit
+BITSTREAM=../moondancer-soc/build/top.bit
 
 # create bin file
 NAME=$(basename $1)

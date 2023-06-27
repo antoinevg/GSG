@@ -1,13 +1,14 @@
-from peripheral                              import GpioPeripheral, LedPeripheral
-from vexsoc                                  import LunaSoC
+from luna                                        import configure_default_logging, top_level_cli
+from luna.gateware.usb.usb2.device               import USBDevice
 
-from luna                                    import configure_default_logging, top_level_cli
-
-from luna_soc.gateware.csr.usb2.device           import USBDevice, USBDeviceController
+from luna_soc.gateware.cpu.vexriscv              import VexRiscv
+from luna_soc.gateware.soc                       import LunaSoC
+from luna_soc.gateware.csr                       import GpioPeripheral, LedPeripheral
+from luna_soc.gateware.csr.usb2.device           import USBDeviceController
 from luna_soc.gateware.csr.usb2.interfaces.eptri import SetupFIFOInterface, InFIFOInterface, OutFIFOInterface
 
-from amaranth                                import Elaboratable, Module, Cat
-from amaranth.hdl.rec                        import Record
+from amaranth                                    import Elaboratable, Module, Cat
+from amaranth.hdl.rec                            import Record
 
 import logging
 import os
@@ -29,9 +30,13 @@ class MoondancerSoc(Elaboratable):
         ])
 
         # Create our SoC...
-        self.soc = LunaSoC(clock_frequency, internal_sram_size=65536)
+        self.soc = LunaSoC(
+            cpu=VexRiscv(reset_addr=0x00000000, variant="cynthion"),
+            clock_frequency=clock_frequency,
+            internal_sram_size=65536,
+        )
 
-        # Add bios and core peripherals
+        # ... add bios and core peripherals ...
         self.soc.add_bios_and_peripherals(uart_pins=self.uart_pins)
 
         # ... add two gpio peripherals for our PMOD connectors ...
@@ -152,7 +157,7 @@ except:
 from lambdasoc.sim.platform          import CXXRTLPlatform
 
 if __name__ == "__main__":
-    from generate import Generate
+    from luna_soc.generate import Generate
 
     # Disable UnusedElaborable warnings
     from amaranth._unused import MustUse
@@ -213,7 +218,7 @@ if __name__ == "__main__":
     products = platform.build(design, do_program=False, build_dir=build_dir, **overrides)
 
     # log resources
-    from lunasoc import Introspect
+    from luna_soc.generate import Introspect
     Introspect(design.soc).log_resources()
 
     # generate artifacts
